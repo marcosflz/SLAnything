@@ -26,6 +26,8 @@ y móvil. La decisión y la ruta a un wrapper nativo están en
 cookies, volumen `aula-llm-data`) se mantienen por compatibilidad; el nombre del
 producto es SLAnything.
 
+![Portada de SLAnything con el programa del curso](docs/capturas/00b_landing_programa.png)
+
 ---
 
 ## Contexto para agentes
@@ -132,17 +134,55 @@ Guía completa: [`docs/AUTHORING.md`](docs/AUTHORING.md).
 
 ### Capturas
 
-| Portada | Dashboard |
-|---|---|
-| ![Portada](docs/capturas/00_landing_full.png) | ![Dashboard](docs/capturas/01_dashboard.png) |
+Todas las imágenes están tomadas de la app en local: 1440 × 1000 px en
+escritorio y 390 × 844 px en móvil. La galería completa está en
+[`docs/capturas/`](docs/capturas/README.md), con una descripción por archivo.
 
-| Lección | Laboratorio de n-gramas |
+**Portada y catálogo**
+
+| Portada completa | Programa del curso |
 |---|---|
-| ![Lección](docs/capturas/03_leccion.png) | ![N-gramas](docs/capturas/04_lab_ngram.png) |
+| ![Portada](docs/capturas/00_landing_full.png) | ![Programa del curso](docs/capturas/02_curso.png) |
+
+**Aula**
+
+| Dashboard del estudiante | Lección |
+|---|---|
+| ![Dashboard](docs/capturas/01_dashboard.png) | ![Lección](docs/capturas/03_leccion.png) |
+
+| Progreso | Panel del profesorado |
+|---|---|
+| ![Progreso](docs/capturas/15_progreso.png) | ![Panel del profesorado](docs/capturas/20_profesor.png) |
+
+**Evaluación y apoyo**
 
 | Quiz | Glosario |
 |---|---|
 | ![Quiz](docs/capturas/05_quiz.png) | ![Glosario](docs/capturas/06_glosario.png) |
+
+| Recursos descargables | Inicio de sesión | Registro |
+|---|---|---|
+| ![Recursos](docs/capturas/07_recursos.png) | ![Inicio de sesión](docs/capturas/16_login.png) | ![Registro](docs/capturas/17_registro.png) |
+
+**Laboratorios interactivos**
+
+| N-gramas | Memoria | Transformer |
+|---|---|---|
+| ![N-gramas](docs/capturas/04_lab_ngram.png) | ![Memoria](docs/capturas/09_lab_memoria.png) | ![Transformer](docs/capturas/10_lab_transformer.png) |
+
+| Atención | Constructor de prompts | Calculadora de coste |
+|---|---|---|
+| ![Atención](docs/capturas/11_lab_attention.png) | ![Prompts](docs/capturas/12_lab_prompt.png) | ![Coste](docs/capturas/13_lab_cost.png) |
+
+**Móvil**
+
+| Lección | Menú lateral |
+|---|---|
+| ![Lección en móvil](docs/capturas/08_movil.png) | ![Menú en móvil](docs/capturas/14_movil_menu.png) |
+
+**Tema oscuro**
+
+![Dashboard en tema oscuro](docs/capturas/19_dark.png)
 
 ### Estructura
 

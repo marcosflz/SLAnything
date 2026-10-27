@@ -1,7 +1,8 @@
-# Capturas de Aula LLM
+# Capturas de SLAnything
 
 Imágenes de referencia de la plataforma, tomadas en Chrome a 1440 × 1000 px y a
-390 × 844 px. Se usan en el README y en la documentación.
+390 × 844 px. El README las muestra todas en la sección *Capturas*; aquí van con
+su descripción.
 
 | Archivo | Pantalla |
 |---|---|

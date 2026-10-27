@@ -4,7 +4,7 @@ title: Diseño y experiencia de SLAnything
 description: Identidad, sistema visual, pantallas, responsive, modo oscuro y accesibilidad.
 tags: [ux, diseno, css, accesibilidad, responsive]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-27T10:30:00Z }
 sources:
   - id: css
     resource: ../../webapp/static/css/app.css
@@ -92,4 +92,5 @@ el botón de la topbar permite cambiarlo.
 
 En `docs/capturas/` hay 21 imágenes de referencia (landing, dashboard, curso,
 lección, labs, quiz, glosario, recursos, progreso, login, registro, móvil y modo
-oscuro).
+oscuro). El README usa `00b_landing_programa.png` como portada y muestra el
+resto agrupado por área; `docs/capturas/README.md` describe cada archivo.

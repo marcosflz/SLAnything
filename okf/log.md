@@ -4,6 +4,7 @@
 
 * **Update**: Primera publicación del repositorio en `origin`: 494 archivos versionados en un commit inicial sobre `main`, que queda configurada como rama de seguimiento. Antes de publicar se auditó el árbol en busca de credenciales y de artefactos locales (claves `sk-*`, tokens de GitHub/AWS/Google, bloques de clave privada, `.env`, `aula.db`, `.venv/`, `frontend/node_modules/` y `frontend/.next/`): sin hallazgos, solo placeholders en `.env.example` y en el secreto de desarrollo de `compose.yaml`.
 * **Update**: La suite se ejecutó antes del commit con `uv run python -m pytest -q`: 111 tests en verde.
+* **Update**: El README estrena portada (`docs/capturas/00b_landing_programa.png`) y una galería agrupada por área con las 21 capturas de `docs/capturas/`: portada, catálogo, dashboard, lección, progreso, profesorado, quiz, glosario, recursos, acceso, seis laboratorios, móvil y tema oscuro. `docs/capturas/README.md` pasa a titularse «Capturas de SLAnything» y `okf/product/ux.md` documenta qué imagen hace de portada.
 
 ## 2026-10-24
 
