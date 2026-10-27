@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+
+{% block title %}{% if query %}{{ t("Buscar: {query}", query=query) }}{% else %}{{ t("Buscar") }}{% endif %} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Buscador") }}{% endblock %}
+{% block page_title %}{{ t("Buscar en la biblioteca") }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ icon("search") }} {{ t("Todos los cursos") }}</span>
+  <h2>{% if query %}{{ t("Resultados para “{query}”", query=query) }}{% else %}{{ t("¿Qué quieres encontrar?") }}{% endif %}</h2>
+  <p>{{ t("Busca una idea, una sigla o un concepto. El buscador recorre títulos, resúmenes y el texto completo de las lecciones.") }}</p>
+</div>
+
+<form class="search-box" method="get" action="/buscar" role="search" style="max-width:680px">
+  {{ icon("search") }}
+  <label class="sr-only" for="buscar-q">{{ t("Buscar") }}</label>
+  <input id="buscar-q" type="search" name="q" value="{{ query }}" placeholder="{{ t('Por ejemplo: atención, temperatura, pretraining…') }}" autofocus>
+  <button class="btn btn-primary btn-sm" type="submit">{{ t("Buscar") }}</button>
+</form>
+
+{% if query and results %}
+<p class="small muted">{{ t("{n} resultado", n=results|length) if results|length == 1 else t("{n} resultados", n=results|length) }}.</p>
+<div class="module-list">
+  {% for result in results %}
+  <a class="lesson-row" href="/leccion/{{ result.lesson.slug }}" style="text-decoration:none;color:inherit">
+    <div class="lesson-num">{{ "%02d"|format(result.lesson.number) }}</div>
+    <div class="lesson-info">
+      <h3>{{ result.lesson.title }}</h3>
+      <p style="white-space:normal;color:var(--muted)">{{ result.snippet }}</p>
+      <div class="lesson-info-meta">
+        <span>{{ icon("clock") }} {{ result.lesson.minutes }} min</span>
+        <span>{{ icon("grid") }} {{ result.course.title }}</span>
+        <span>{{ icon("book") }} {{ t("Capítulo {n}", n=result.chapter.number) }} · {{ t("Lección {n}", n=result.lesson.number) }}</span>
+      </div>
+    </div>
+    <span class="btn btn-secondary btn-sm">{{ icon("arrow-right") }} {{ t("Abrir") }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% elif query %}
+<div class="empty-search">
+  <h3 style="margin-bottom:6px">{{ t("Sin resultados") }}</h3>
+  <p class="mb-0">{{ t("Prueba con una palabra más general, por ejemplo “token”, “atención” o “datos”.") }}</p>
+</div>
+{% else %}
+<div class="empty-search">
+  <h3 style="margin-bottom:6px">{{ t("Empieza a escribir") }}</h3>
+  <p class="mb-0">{{ t("El buscador está disponible también con la tecla") }} <kbd>/</kbd> {{ t("desde cualquier página.") }}</p>
+</div>
+{% endif %}
+{% endblock %}

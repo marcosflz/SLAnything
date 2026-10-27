@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+
+{% block title %}{{ code }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Error {code}", code=code) }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% macro error_body() %}
+<div class="error-page">
+  <div class="error-code">{{ code }}</div>
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  <div class="row" style="justify-content:center">
+    <a class="btn btn-primary" href="/">{{ icon("home") }} {{ t("Volver al inicio") }}</a>
+    {% if user %}<a class="btn btn-secondary" href="/curso">{{ icon("book") }} {{ t("Ir al curso") }}</a>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}{{ error_body() }}{% endblock %}
+{% block public_content %}{{ error_body() }}{% endblock %}

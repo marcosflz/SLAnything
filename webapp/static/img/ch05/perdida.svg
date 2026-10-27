@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" role="img" aria-labelledby="titulo-perdida desc-perdida">
+  <title id="titulo-perdida">De los logits a la pérdida de un token</title>
+  <desc id="desc-perdida">Un modelo reparte probabilidad entre varios tokens. La pérdida compara la probabilidad del token correcto con uno mediante menos logaritmo y después promedia los tokens del lote.</desc>
+  <defs>
+    <marker id="flecha-perdida" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <linearGradient id="fondo-perdida" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f4f7fc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="520" rx="18" fill="url(#fondo-perdida)"/>
+  <text x="48" y="54" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="700" fill="#0f172a">La pérdida mira una sola casilla</text>
+  <text x="48" y="82" font-family="system-ui, sans-serif" font-size="15" fill="#475569">Distribución del siguiente token después del softmax</text>
+
+  <g font-family="system-ui, sans-serif">
+    <line x1="70" y1="390" x2="490" y2="390" stroke="#94a3b8" stroke-width="2"/>
+    <line x1="70" y1="390" x2="70" y2="140" stroke="#94a3b8" stroke-width="2"/>
+    <text x="28" y="152" font-size="12" fill="#64748b" transform="rotate(-90 28 152)">probabilidad</text>
+
+    <g>
+      <rect x="92" y="342" width="46" height="48" rx="6" fill="#cbd5e1"/>
+      <text x="115" y="410" text-anchor="middle" font-size="13" fill="#334155">sol</text>
+      <text x="115" y="332" text-anchor="middle" font-size="12" fill="#64748b">0,04</text>
+    </g>
+    <g>
+      <rect x="158" y="286" width="46" height="104" rx="6" fill="#cbd5e1"/>
+      <text x="181" y="410" text-anchor="middle" font-size="13" fill="#334155">mar</text>
+      <text x="181" y="276" text-anchor="middle" font-size="12" fill="#64748b">0,11</text>
+    </g>
+    <g>
+      <rect x="224" y="202" width="46" height="188" rx="6" fill="#60a5fa"/>
+      <text x="247" y="410" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">cielo</text>
+      <text x="247" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">0,60</text>
+      <path d="M247 168 L247 184" stroke="#1d4ed8" stroke-width="2" marker-end="url(#flecha-perdida)"/>
+      <text x="247" y="152" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">token correcto</text>
+    </g>
+    <g>
+      <rect x="290" y="312" width="46" height="78" rx="6" fill="#cbd5e1"/>
+      <text x="313" y="410" text-anchor="middle" font-size="13" fill="#334155">nube</text>
+      <text x="313" y="302" text-anchor="middle" font-size="12" fill="#64748b">0,16</text>
+    </g>
+    <g>
+      <rect x="356" y="356" width="46" height="34" rx="6" fill="#cbd5e1"/>
+      <text x="379" y="410" text-anchor="middle" font-size="13" fill="#334155">ave</text>
+      <text x="379" y="346" text-anchor="middle" font-size="12" fill="#64748b">0,06</text>
+    </g>
+    <g>
+      <rect x="422" y="370" width="46" height="20" rx="6" fill="#cbd5e1"/>
+      <text x="445" y="410" text-anchor="middle" font-size="13" fill="#334155">pan</text>
+      <text x="445" y="360" text-anchor="middle" font-size="12" fill="#64748b">0,03</text>
+    </g>
+  </g>
+
+  <g stroke="#475569" stroke-width="2" fill="none" marker-end="url(#flecha-perdida)">
+    <path d="M520 260 C560 260 560 260 592 260"/>
+  </g>
+
+  <g font-family="system-ui, sans-serif">
+    <rect x="610" y="145" width="330" height="250" rx="14" fill="#ffffff" stroke="#dbe3ef" stroke-width="1.5"/>
+    <text x="640" y="187" font-family="Georgia, 'Times New Roman', serif" font-size="21" font-weight="700" fill="#0f172a">Pérdida del token</text>
+    <text x="640" y="228" font-size="19" fill="#1d4ed8" font-weight="700">−ln(0,60) = 0,511</text>
+    <text x="640" y="258" font-size="13" fill="#475569">Si p = 1, la pérdida es 0.</text>
+    <text x="640" y="280" font-size="13" fill="#475569">Si p = 0,05, la pérdida es 3,00.</text>
+    <line x1="640" y1="300" x2="910" y2="300" stroke="#e2e8f0" stroke-width="1.5"/>
+    <text x="640" y="328" font-size="13" fill="#475569">Media del lote:</text>
+    <text x="640" y="356" font-size="18" fill="#0f172a" font-weight="700">L = (0,51 + 1,20 + 2,30 + …) / T</text>
+    <text x="640" y="380" font-size="12" fill="#64748b">Cada token aporta una pérdida; el lote promedia.</text>
+  </g>
+
+  <text x="48" y="486" font-family="system-ui, sans-serif" font-size="13" fill="#64748b">Diagrama propio de Aula LLM. Vocabulario reducido con fines didácticos.</text>
+</svg>

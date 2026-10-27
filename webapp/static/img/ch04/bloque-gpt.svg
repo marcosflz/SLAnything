@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">Bloque transformer Pre-LN de GPT-2</title>
+  <desc id="desc">Flujo horizontal desde la entrada x hasta la salida: LayerNorm, atención multi-head, suma residual, LayerNorm, red feed-forward con GELU y segunda suma residual. La forma batch por tokens por 768 se conserva.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="600" fill="#ffffff"/>
+  <text x="48" y="52" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="26" font-weight="750" fill="#0f172a">Dentro de un bloque transformer Pre-LN</text>
+  <text x="48" y="80" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" fill="#64748b">GPT-2 small repite este bloque 12 veces. La forma de entrada y salida es la misma: [batch, tokens, 768].</text>
+
+  <!-- residual arcs -->
+  <path d="M 108 258 C 108 168, 250 168, 470 168 C 510 168, 536 200, 536 274" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#arrow-violet)"/>
+  <rect x="268" y="146" width="112" height="26" rx="13" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="324" y="164" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#6d28d9">x + atención</text>
+
+  <path d="M 568 300 C 568 200, 640 200, 790 200 C 880 200, 922 235, 922 274" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#arrow-violet)"/>
+  <rect x="662" y="186" width="118" height="26" rx="13" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="721" y="204" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#6d28d9">x + FFN</text>
+
+  <!-- main boxes -->
+  <g filter="url(#shadow)">
+    <rect x="42" y="258" width="132" height="84" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6"/>
+    <rect x="204" y="258" width="118" height="84" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6"/>
+    <rect x="352" y="258" width="140" height="84" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6"/>
+    <circle cx="536" cy="300" r="26" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2"/>
+    <rect x="592" y="258" width="118" height="84" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6"/>
+    <rect x="740" y="258" width="140" height="84" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.6"/>
+    <circle cx="922" cy="300" r="26" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2"/>
+    <rect x="986" y="258" width="152" height="84" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6"/>
+  </g>
+
+  <text x="108" y="288" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#334155">Entrada x</text>
+  <text x="108" y="308" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#64748b">[B, T, 768]</text>
+  <text x="108" y="326" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#94a3b8">vectores contextuales</text>
+
+  <text x="263" y="290" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8">LayerNorm 1</text>
+  <text x="263" y="310" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#3b82f6">media 0 · var 1</text>
+  <text x="263" y="327" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#64748b">scale + shift</text>
+
+  <text x="422" y="290" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8">Atención multi-head</text>
+  <text x="422" y="310" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#3b82f6">12 cabezas · 64 dim</text>
+  <text x="422" y="327" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#64748b">mezcla tokens</text>
+
+  <text x="536" y="306" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="26" font-weight="700" fill="#6d28d9">+</text>
+
+  <text x="651" y="290" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8">LayerNorm 2</text>
+  <text x="651" y="310" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#3b82f6">media 0 · var 1</text>
+  <text x="651" y="327" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#64748b">scale + shift</text>
+
+  <text x="810" y="286" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#b45309">Red feed-forward</text>
+  <text x="810" y="306" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#d97706">768 → 3072 → 768</text>
+  <text x="810" y="323" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#64748b">GELU entre proyecciones</text>
+
+  <text x="922" y="306" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="26" font-weight="700" fill="#6d28d9">+</text>
+
+  <text x="1062" y="288" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#334155">Salida x′</text>
+  <text x="1062" y="308" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#64748b">[B, T, 768]</text>
+  <text x="1062" y="326" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#94a3b8">misma forma, más contexto</text>
+
+  <!-- arrows -->
+  <g stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#arrow)">
+    <path d="M 174 300 L 198 300"/>
+    <path d="M 322 300 L 346 300"/>
+    <path d="M 492 300 L 506 300"/>
+    <path d="M 562 300 L 586 300"/>
+    <path d="M 710 300 L 734 300"/>
+    <path d="M 880 300 L 892 300"/>
+    <path d="M 948 300 L 980 300"/>
+  </g>
+
+  <!-- bottom notes -->
+  <rect x="42" y="420" width="1096" height="118" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="64" y="450" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="750" fill="#334155">Lo que hay que retener</text>
+  <text x="64" y="474" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">• La normalización va antes de cada subcapa: es un bloque Pre-LN.</text>
+  <text x="64" y="496" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">• Cada subcapa escribe sobre la corriente residual; no sustituye la entrada.</text>
+  <text x="64" y="518" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">• ⊕ exige que la salida de la subcapa tenga la misma forma que su entrada.</text>
+  <text x="700" y="474" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">Parámetros del bloque: 2,36 M (atención) + 4,72 M (FFN)</text>
+  <text x="700" y="496" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">+ 3 072 (dos LayerNorm) ≈ 7,09 M.</text>
+  <text x="700" y="518" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">Doce bloques ≈ 85,03 M de parámetros.</text>
+</svg>

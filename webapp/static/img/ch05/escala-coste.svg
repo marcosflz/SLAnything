@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 570" role="img" aria-labelledby="titulo-escala desc-escala">
+  <title id="titulo-escala">Escala, cómputo y memoria del pretraining</title>
+  <desc id="desc-escala">La regla seis por N por D estima los FLOPs de entrenamiento. Un modelo de 124 millones de parámetros y mil millones de tokens requiere unos 7,44 por diez a la diecisiete FLOPs. La memoria de pesos, gradientes y estados del optimizador crece con N.</desc>
+  <defs>
+    <linearGradient id="fondo-escala" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="1" stop-color="#f3f6fb"/>
+    </linearGradient>
+    <marker id="flecha-escala" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="570" rx="18" fill="url(#fondo-escala)"/>
+  <text x="48" y="54" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="700" fill="#0f172a">La escala se puede estimar antes de entrenar</text>
+  <text x="48" y="82" font-family="system-ui, sans-serif" font-size="15" fill="#475569">Tres cuentas de orden de magnitud para decidir si un experimento cabe</text>
+
+  <g font-family="system-ui, sans-serif">
+    <rect x="48" y="118" width="286" height="176" rx="14" fill="#ffffff" stroke="#dbe3ef" stroke-width="1.5"/>
+    <text x="72" y="153" font-size="13" font-weight="700" fill="#b45309">CÓMPUTO</text>
+    <text x="72" y="198" font-size="30" font-weight="700" fill="#0f172a">6 · N · D</text>
+    <text x="72" y="230" font-size="13" fill="#334155">N = parámetros</text>
+    <text x="72" y="251" font-size="13" fill="#334155">D = tokens vistos</text>
+    <text x="72" y="274" font-size="12" fill="#64748b">Aproximación, no medición.</text>
+
+    <rect x="357" y="118" width="286" height="176" rx="14" fill="#ffffff" stroke="#dbe3ef" stroke-width="1.5"/>
+    <text x="381" y="153" font-size="13" font-weight="700" fill="#b45309">EJEMPLO DEL LIBRO</text>
+    <text x="381" y="190" font-size="17" font-weight="700" fill="#0f172a">124 M × 1 000 M</text>
+    <text x="381" y="219" font-size="15" fill="#1d4ed8">≈ 7,44 × 10¹⁷ FLOPs</text>
+    <text x="381" y="247" font-size="13" fill="#334155">≈ 5,2 GPU-h a 40 TFLOPS</text>
+    <text x="381" y="269" font-size="12" fill="#64748b">Con utilización efectiva, no pico.</text>
+
+    <rect x="666" y="118" width="286" height="176" rx="14" fill="#ffffff" stroke="#dbe3ef" stroke-width="1.5"/>
+    <text x="690" y="153" font-size="13" font-weight="700" fill="#b45309">MEMORIA</text>
+    <text x="690" y="190" font-size="17" font-weight="700" fill="#0f172a">16 bytes / parámetro</text>
+    <text x="690" y="219" font-size="15" fill="#1d4ed8">124 M → ≈ 2 GB</text>
+    <text x="690" y="247" font-size="13" fill="#334155">pesos + gradientes + AdamW</text>
+    <text x="690" y="269" font-size="12" fill="#64748b">Activaciones y lote, aparte.</text>
+
+    <text x="48" y="352" font-size="14" font-weight="700" fill="#0f172a">Comparación de órdenes de magnitud</text>
+    <line x1="255" y1="382" x2="930" y2="382" stroke="#cbd5e1" stroke-width="1.5"/>
+    <g>
+      <text x="48" y="411" font-size="13" fill="#334155">Modelo del libro · 124 M</text>
+      <rect x="255" y="398" width="7" height="18" rx="3" fill="#60a5fa"/>
+      <text x="272" y="412" font-size="12" fill="#1d4ed8">≈ 5 GPU-h</text>
+    </g>
+    <g>
+      <text x="48" y="449" font-size="13" fill="#334155">Llama 2 · 7 B · 2 T tokens</text>
+      <rect x="255" y="436" width="380" height="18" rx="3" fill="#f59e0b"/>
+      <text x="645" y="450" font-size="12" fill="#92400e">184 320 GPU-h (dato del libro)</text>
+    </g>
+    <g>
+      <text x="48" y="487" font-size="13" fill="#334155">GPT-3 · 175 B · 300 B tokens</text>
+      <rect x="255" y="474" width="660" height="18" rx="3" fill="#b45309"/>
+      <text x="900" y="488" text-anchor="end" font-size="12" font-weight="700" fill="#ffffff">≈ 2,2 millones de GPU-h</text>
+    </g>
+    <path d="M255 530 L930 530" stroke="#b45309" stroke-width="1.5" marker-end="url(#flecha-escala)"/>
+    <text x="930" y="522" text-anchor="end" font-size="11" fill="#92400e">más cómputo</text>
+  </g>
+  <text x="48" y="552" font-family="system-ui, sans-serif" font-size="11" fill="#64748b">Diagrama propio de Aula LLM. Las barras no son lineales; ilustran órdenes de magnitud.</text>
+</svg>

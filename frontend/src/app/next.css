@@ -1,0 +1,34 @@
+/* Ajustes específicos de Next.js. El grueso del sistema visual vive en app.css. */
+
+/* Los botones de cierre de sesión dentro del menú de usuario conservan el
+   aspecto de texto del shell original. */
+.user-menu-panel .user-menu-panel button,
+.user-menu-panel button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* El cargador del laboratorio ya no vive dentro de .lab-body para que React no
+   interfiera con el DOM que monta el módulo JS. */
+.lab + .lab-loading,
+.lab .lab-loading {
+  padding: 24px;
+}
+
+/* Evita el flash de contenido sin tema antes de hidratar. */
+html[data-theme="dark"] body {
+  background: var(--bg);
+}
+
+/* Next inyecta estilos en <head>; el sprite sigue oculto. */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}

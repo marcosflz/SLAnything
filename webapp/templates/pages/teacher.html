@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, stat, badge, progress_bar %}
+
+{% block title %}{{ t("Profesorado") }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Panel del profesorado") }}{% endblock %}
+{% block page_title %}{{ t("Seguimiento del curso") }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ icon("graduation") }} {{ t("Curso completo") }}</span>
+  <h2>{{ t("¿Cómo va la clase?") }}</h2>
+  <p>{{ t("Una vista agregada del avance del estudiantado. Los datos se actualizan con cada lección visitada y cada intento de quiz.") }}</p>
+</div>
+
+<div class="stat-grid stat-grid-4">
+  {{ stat(t("Estudiantes"), stats.students, t("cuentas registradas"), "users", "blue") }}
+  {{ stat(t("Activos (7 días)"), stats.active_week, t("con actividad reciente"), "flame", "amber") }}
+  {{ stat(t("Intentos de quiz"), stats.attempts, t("en total"), "trophy", "violet") }}
+  {{ stat(t("Nota media"), (stats.avg_score ~ " %") if stats.avg_score is not none else "—", t("de todos los intentos"), "chart", "green") }}
+</div>
+
+<section class="card mt-4">
+  <div class="card-head" style="padding:18px 20px 0">
+    <h3 class="card-title">{{ icon("users") }} {{ t("Estudiantes") }}</h3>
+    <span class="small muted">{{ stats.students }} {{ t("en total") }}</span>
+  </div>
+  {% if students %}
+  <div class="table-wrap" style="margin:0;border:0;border-radius:0 0 var(--radius) var(--radius)">
+    <table class="teacher-table">
+      <thead>
+        <tr><th>{{ t("Estudiante") }}</th><th>{{ t("Progreso") }}</th><th>{{ t("Mejor quiz") }}</th><th>{{ t("Intentos") }}</th><th>{{ t("Última actividad") }}</th></tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        {% set p = (student.completed * 100 / stats.total_lessons)|round|int %}
+        <tr>
+          <td>
+            <div class="student-cell">
+              <span class="avatar avatar-sm">{{ student.name|iniciales }}</span>
+              <span><strong>{{ student.name }}</strong><small>{{ student.email }}</small></span>
+            </div>
+          </td>
+          <td>
+            <span class="mini-bar"><span style="width:{{ p }}%"></span></span>
+            <span class="small">{{ student.completed }}/{{ stats.total_lessons }}</span>
+          </td>
+          <td>
+            {% if student.best_score is not none %}
+            <span class="badge {{ 'badge-success' if student.best_score >= 80 else 'badge-warning' }}">{{ student.best_score|round|int }} %</span>
+            {% else %}<span class="muted small">—</span>{% endif %}
+          </td>
+          <td class="small">{{ student.attempts }}</td>
+          <td class="small muted">{{ student.last_seen|fecha }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-search" style="margin:18px">
+    <p class="mb-0">{{ t("Todavía no hay estudiantes registrados.") }}</p>
+  </div>
+  {% endif %}
+</section>
+
+<div class="callout callout-info mt-4">
+  <div class="callout-icon">i</div>
+  <div class="callout-body">
+    <strong class="callout-title">{{ t("Nota sobre privacidad") }}</strong>
+    <div class="callout-text">{{ t("Este panel muestra datos de progreso con fines didácticos. En una instalación real, limita el acceso, informa al estudiantado y aplica una política de retención.") }}</div>
+  </div>
+</div>
+{% endblock %}

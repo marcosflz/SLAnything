@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+
+{% block title %}{{ t("Glosario") }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Vocabulario del capítulo") }}{% endblock %}
+{% block page_title %}{{ t("Glosario") }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ icon("glossary") }} {{ t("Curso completo") }}</span>
+  <h2>{{ t("Las palabras que necesitas") }}</h2>
+  <p>{{ t("Una definición breve para cada término. Si una te resulta opaca, abre la lección enlazada: ahí está el contexto y el ejemplo.") }}</p>
+</div>
+
+<div class="search-box">
+  {{ icon("search") }}
+  <label class="sr-only" for="glosario-busqueda">{{ t("Buscar término") }}</label>
+  <input id="glosario-busqueda" type="search" placeholder="{{ t('Buscar un término o una definición…') }}" data-glossary-search autocomplete="off">
+</div>
+
+<div class="glossary-grid" data-glossary-grid>
+  {% for letter, terms in groups %}
+  <div class="glossary-letter" data-glossary-letter>{{ letter }}</div>
+  {% for term in terms %}
+  <article class="term-card" data-term-card data-term="{{ term.term|lower }} {{ term.definition|lower }}">
+    <h3>{{ term.term }}</h3>
+    <p>{{ term.definition }}</p>
+    {% if term.lesson %}<a href="/leccion/{{ term.lesson }}">{{ t("Ver en la lección →") }}</a>{% endif %}
+  </article>
+  {% endfor %}
+  {% endfor %}
+</div>
+
+<div class="empty-search" data-glossary-empty hidden>
+  <p class="mb-0">{{ t("No hay términos que coincidan con tu búsqueda.") }}</p>
+</div>
+{% endblock %}

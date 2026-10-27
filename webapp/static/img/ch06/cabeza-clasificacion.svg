@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 430" role="img" aria-labelledby="title desc">
+  <title id="title">Classification head over a frozen GPT-2</title>
+  <desc id="desc">A sequence of tokens feeds twelve transformer blocks. The lower eleven are frozen; the last block, the final normalisation, and a new linear head from 768 to 2 classes are trainable. The last token produces two logits, and the highest one is selected.</desc>
+
+  <rect x="0" y="0" width="980" height="430" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
+
+  <text x="32" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#0f172a">From next-token prediction to classification</text>
+  <text x="32" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#475569">GPT-2 small · 124 M parameters · hidden size 768</text>
+
+  <!-- Input tokens -->
+  <text x="32" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#64748b" letter-spacing="1">INPUT TOKENS</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#334155">
+    <rect x="32" y="126" width="58" height="34" rx="7" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="50" y="148">You</text>
+    <rect x="98" y="126" width="66" height="34" rx="7" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="112" y="148">have</text>
+    <rect x="172" y="126" width="58" height="34" rx="7" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="188" y="148">won</text>
+    <rect x="238" y="126" width="42" height="34" rx="7" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="252" y="148">$</text>
+    <rect x="288" y="126" width="62" height="34" rx="7" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="302" y="148" font-weight="700" fill="#166534">last</text>
+  </g>
+  <path d="M358 143 H392" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Transformer blocks -->
+  <text x="410" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#64748b" letter-spacing="1">TRANSFORMER BLOCKS</text>
+  <g>
+    <rect x="410" y="126" width="70" height="26" rx="5" fill="#e2e8f0" stroke="#94a3b8"/>
+    <rect x="410" y="156" width="70" height="26" rx="5" fill="#e2e8f0" stroke="#94a3b8"/>
+    <rect x="410" y="186" width="70" height="26" rx="5" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="493" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#94a3b8">⋮</text>
+    <text x="493" y="226" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#64748b">11 frozen</text>
+    <rect x="560" y="126" width="70" height="26" rx="5" fill="#e2e8f0" stroke="#94a3b8"/>
+    <rect x="560" y="156" width="70" height="26" rx="5" fill="#e2e8f0" stroke="#94a3b8"/>
+    <rect x="560" y="186" width="70" height="26" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="573" y="203" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#166534">block 12</text>
+  </g>
+  <path d="M644 199 H678" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Final norm -->
+  <rect x="692" y="176" width="78" height="46" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="708" y="197" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#166534">final</text>
+  <text x="705" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#166534">norm</text>
+
+  <!-- Old head crossed out -->
+  <g opacity="0.55">
+    <rect x="410" y="276" width="190" height="52" rx="9" fill="#f1f5f9" stroke="#cbd5e1" stroke-dasharray="5 4"/>
+    <text x="425" y="299" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">old out_head</text>
+    <text x="425" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">768 → 50,257 tokens</text>
+    <line x1="412" y1="328" x2="598" y2="276" stroke="#dc2626" stroke-width="3"/>
+  </g>
+
+  <!-- New head -->
+  <rect x="628" y="266" width="196" height="72" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="646" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#166534">new classification head</text>
+  <text x="646" y="311" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#166534">linear · 768 → 2 classes</text>
+  <text x="646" y="328" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#15803d">trainable</text>
+  <path d="M731 222 V254" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrowGreen)"/>
+  <path d="M605 302 H618" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+  <!-- Logits -->
+  <text x="850" y="266" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#64748b" letter-spacing="1">LAST TOKEN</text>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <rect x="850" y="276" width="104" height="34" rx="7" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="862" y="298" font-size="11" fill="#475569">not spam</text>
+    <text x="930" y="298" font-size="11" font-weight="700" fill="#334155">-3.60</text>
+    <rect x="850" y="318" width="104" height="34" rx="7" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="862" y="340" font-size="11" font-weight="700" fill="#166534">spam</text>
+    <text x="930" y="340" font-size="11" font-weight="700" fill="#166534">3.99</text>
+  </g>
+  <path d="M824 302 H840" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="850" y="376" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#166534">argmax → spam</text>
+
+  <!-- Legend -->
+  <rect x="32" y="360" width="14" height="14" rx="3" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="54" y="372" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#475569">trainable</text>
+  <rect x="128" y="360" width="14" height="14" rx="3" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="150" y="372" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#475569">frozen</text>
+  <text x="32" y="400" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#64748b">Only the last block, final normalisation, and new head receive gradients.</text>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+  </defs>
+</svg>

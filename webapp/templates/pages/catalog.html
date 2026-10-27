@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, progress_bar %}
+
+{% block title %}{{ t("Cursos") }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Biblioteca de cursos") }}{% endblock %}
+{% block page_title %}{{ t("Cursos") }}{% endblock %}
+
+{% macro catalog_body() %}
+{% if not user %}<div class="public-page">{% endif %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ icon("grid") }} {{ t("1 curso disponible") if catalog_count == 1 else t("{n} cursos disponibles", n=catalog_count) }}</span>
+  <h2>{{ t("Elige qué quieres aprender") }}</h2>
+  <p>{{ t("Cada curso es un recorrido modular con su propio temario, laboratorios, quizzes y progreso. Puedes entrar en cualquier momento y cambiar de curso sin perder lo avanzado.") }}</p>
+</div>
+
+<div class="catalog-grid catalog-grid-wide">
+  {% for row in catalog_rows %}
+  {% set course = row.course %}
+  <article class="course-card accent-{{ course.accent }}">
+    <div class="course-card-cover">
+      <span class="course-card-icon">{{ icon("book") }}</span>
+      {{ badge(t("Disponible"), "success") }}
+    </div>
+    <div class="course-card-body">
+      <span class="eyebrow-dark">{{ t("{n} capítulos · {m} lecciones", n=course.chapter_count, m=course.lesson_count) }}</span>
+      <h3>{{ course.title }}</h3>
+      <p>{{ course.subtitle }}</p>
+      {% if course.book %}
+      <p class="course-book">{{ t("Basado en") }} <em>{{ course.book.title }}</em> · {{ course.book.author }}{% if course.book.year %} ({{ course.book.year }}){% endif %}</p>
+      {% endif %}
+      <div class="course-card-meta">
+        <span>{{ icon("clock") }} {{ course.total_minutes }} min</span>
+        <span>{{ icon("sparkles") }} {{ t("{n} laboratorios", n=course.lab_count) }}</span>
+        <span>{{ icon("cpu") }} {{ course.level }}</span>
+      </div>
+      {% if user %}
+      <div class="course-card-progress">
+        <div class="row" style="justify-content:space-between">
+          <span class="small muted">{{ t("{completed} de {total} lecciones", completed=row.stats.completed, total=row.stats.total) }}</span>
+          <strong class="small">{{ row.stats.pct }} %</strong>
+        </div>
+        {{ progress_bar(row.stats.pct, t("Progreso del curso"), "success") }}
+      </div>
+      <a class="btn btn-primary btn-block" href="/cursos/{{ course.slug }}">
+        {{ icon("play") }} {{ t("Continuar curso") if row.stats.completed else t("Empezar curso") }}
+      </a>
+      {% else %}
+      <a class="btn btn-primary btn-block" href="/cursos/{{ course.slug }}">{{ icon("arrow-right") }} {{ t("Ver el curso") }}</a>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+
+  <article class="course-card is-coming">
+    <div class="course-card-cover">
+      <span class="course-card-icon">{{ icon("sparkles") }}</span>
+      {{ badge(t("En preparación"), "neutral") }}
+    </div>
+    <div class="course-card-body">
+      <span class="eyebrow-dark">{{ t("Nuevos cursos") }}</span>
+      <h3>{{ t("El próximo libro") }}</h3>
+      <p>{{ t("La biblioteca está preparada para incorporar nuevos libros y temarios sin rehacer la plataforma. Este espacio se irá llenando poco a poco.") }}</p>
+      <div class="course-card-meta">
+        <span>{{ icon("layers") }} {{ t("Mismo formato modular") }}</span>
+      </div>
+    </div>
+  </article>
+</div>
+
+<section class="card card-pad mt-4">
+  <div class="card-head">
+    <h3 class="card-title">{{ icon("info") }} {{ t("Cómo se organiza la biblioteca") }}</h3>
+  </div>
+  <div class="feature-grid">
+    <div>
+      <h3 style="font-size:14px">{{ t("Un curso, un libro") }}</h3>
+      <p class="small muted mb-0">{{ t("Cada curso parte de un libro y mantiene su propio temario, figuras, laboratorios y quizzes.") }}</p>
+    </div>
+    <div>
+      <h3 style="font-size:14px">{{ t("Progreso independiente") }}</h3>
+      <p class="small muted mb-0">{{ t("Tus lecciones, apuntes, marcadores e intentos se guardan por curso. Cambiar de libro no mezcla tu avance.") }}</p>
+    </div>
+    <div>
+      <h3 style="font-size:14px">{{ t("Misma experiencia") }}</h3>
+      <p class="small muted mb-0">{{ t("Todos los cursos comparten navegación, buscador, glosario y panel de progreso.") }}</p>
+    </div>
+  </div>
+</section>
+{% if not user %}</div>{% endif %}
+{% endmacro %}
+
+{% block content %}{{ catalog_body() }}{% endblock %}
+{% block public_content %}{{ catalog_body() }}{% endblock %}

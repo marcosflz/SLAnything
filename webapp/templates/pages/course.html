@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, ring, lesson_status with context %}
+
+{% block title %}{{ course.title }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Programa completo") }}{% endblock %}
+{% block page_title %}{{ t("Programa del curso") }}{% endblock %}
+
+{% macro course_body() %}
+{% if not user %}<div class="public-page">{% endif %}
+<nav class="breadcrumb" aria-label="{{ t('Migas de pan') }}">
+  <a href="/cursos">{{ icon("grid") }} {{ t("Cursos") }}</a>
+  <span>/</span>
+  <span>{{ course.title }}</span>
+</nav>
+
+<section class="course-hero">
+  <div>
+    <span class="eyebrow">{{ course_chapter }}</span>
+    <h2>{{ course.title }}</h2>
+    <p>{{ course.description }}</p>
+    {% if course.book %}
+    <p class="course-book course-book-hero">{{ t("Basado en") }} <em>{{ course.book.title }}</em> · {{ course.book.author }}{% if course.book.year %} ({{ course.book.year }}){% endif %}</p>
+    {% endif %}
+    <div class="course-hero-meta">
+      <span>{{ icon("layers") }} {{ t("{n} capítulos", n=course.chapter_count) }}</span>
+      <span>{{ icon("book") }} {{ t("{n} lecciones", n=course.lesson_count) }}</span>
+      <span>{{ icon("clock") }} {{ t("{n} minutos", n=course.total_minutes) }}</span>
+      <span>{{ icon("sparkles") }} {{ t("{n} laboratorios", n=course.lab_count) }}</span>
+      <span>{{ icon("cpu") }} {{ course.level }}</span>
+    </div>
+    {% if public_course %}
+    <a class="btn btn-primary mt-3" href="/entrar?next={{ ('/cursos/' ~ course.slug)|urlencode }}">{{ icon("lock") }} {{ t("Inicia sesión para empezar") }}</a>
+    {% elif next_lesson %}
+    <a class="btn btn-primary mt-3" href="/leccion/{{ next_lesson.slug }}">{{ icon("play") }} {{ t("Continuar") if stats.completed else t("Empezar") }}: {{ next_lesson.title }}</a>
+    {% endif %}
+  </div>
+  <div class="course-progress-box">
+    {% if public_course %}
+    <div class="course-public-note">
+      <strong>{{ t("Acceso abierto") }}</strong>
+      <small>{{ t("Crea una cuenta para guardar tu progreso, apuntes y resultados.") }}</small>
+      <a class="btn btn-primary btn-block mt-3" href="/registro">{{ icon("arrow-right") }} {{ t("Crear cuenta") }}</a>
+    </div>
+    {% else %}
+    {{ ring(stats.pct, 104, t("completado")) }}
+    <div>
+      <strong>{{ t("{completed} / {total}", completed=stats.completed, total=stats.total) }}</strong>
+      <small>{{ t("lecciones completadas") }}</small>
+      <div class="mt-2"><a class="small" href="/progreso?course={{ course.slug }}" style="color:#bfdbfe">{{ t("Ver mi progreso →") }}</a></div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<div class="row" id="programa" style="justify-content:space-between;margin-bottom:14px">
+  <h3 style="font-size:18px">{{ t("Capítulos y lecciones") }}</h3>
+  <span class="small muted">{{ t("Marca cada lección al terminarla para avanzar") }}</span>
+</div>
+
+{% for chapter in course.chapters %}
+{% set chapter_done = namespace(value=0) %}
+{% for item in chapter.lessons %}
+{% if progress.get(item.slug, {}).get('completed') %}{% set chapter_done.value = chapter_done.value + 1 %}{% endif %}
+{% endfor %}
+<section class="chapter-section" id="capitulo-{{ chapter.number }}">
+  <header class="chapter-head">
+    <div>
+      <span class="eyebrow">{{ t("Capítulo {n}", n=chapter.number) }}</span>
+      <h3>{{ chapter.title }}</h3>
+      <p>{{ chapter.subtitle }}</p>
+    </div>
+    <div class="chapter-meta">
+      <span>{{ icon("book") }} {{ t("{n} lecciones", n=chapter.lesson_count) }}</span>
+      <span>{{ icon("clock") }} {{ chapter.total_minutes }} min</span>
+      <span>{{ icon("check-circle") }} {{ chapter_done.value }}/{{ chapter.lesson_count }}</span>
+    </div>
+  </header>
+  <div class="module-list">
+    {% for lesson in chapter.lessons %}
+    {% set row = progress.get(lesson.slug) %}
+    <article class="lesson-row {% if row and row.completed %}is-done{% endif %} {% if next_lesson and lesson.slug == next_lesson.slug %}is-active{% endif %}">
+      <div class="lesson-num">{% if row and row.completed %}{{ icon("check") }}{% else %}{{ "%02d"|format(lesson.number) }}{% endif %}</div>
+      <div class="lesson-info">
+        <h3>
+          {% if public_course %}
+          <a href="/entrar?next={{ ('/leccion/' ~ lesson.slug)|urlencode }}" style="color:inherit">{{ lesson.title }}</a>
+          {% else %}
+          <a href="/leccion/{{ lesson.slug }}" style="color:inherit">{{ lesson.title }}</a>
+          {% endif %}
+        </h3>
+        <p>{{ lesson.summary }}</p>
+        <div class="lesson-info-meta">
+          <span>{{ icon("clock") }} {{ lesson.minutes }} min</span>
+          <span>{{ icon("target") }} {{ t("{n} objetivos", n=lesson.objectives|length) }}</span>
+          {% if lesson.labs %}<span>{{ icon("sparkles") }} {{ t("{n} laboratorio", n=lesson.labs|length) if lesson.labs|length == 1 else t("{n} laboratorios", n=lesson.labs|length) }}</span>{% endif %}
+          {% if lesson.quiz_id %}<span>{{ icon("trophy") }} {{ t("Quiz") }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        {% if public_course %}
+        <span class="lesson-state">{{ t("Inicia sesión") }}</span>
+        <a class="btn btn-secondary btn-sm" href="/entrar?next={{ ('/leccion/' ~ lesson.slug)|urlencode }}">{{ icon("lock") }} {{ t("Abrir") }}</a>
+        {% else %}
+        {{ lesson_status(row) }}
+        <a class="btn btn-secondary btn-sm" href="/leccion/{{ lesson.slug }}">{{ icon("arrow-right") }} {{ t("Repasar") if row and row.completed else t("Entrar a la lección") }}</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<section class="card card-pad mt-4">
+  <div class="card-head">
+    <h3 class="card-title">{{ icon("info") }} {{ t("Cómo aprovechar el curso") }}</h3>
+  </div>
+  <div class="feature-grid">
+    <div>
+      <h3 style="font-size:14px">{{ t("1 · Lee y predice") }}</h3>
+      <p class="small muted mb-0">{{ t("Antes de seguir, intenta anticipar la respuesta. El cerebro aprende más cuando se equivoca y corrige.") }}</p>
+    </div>
+    <div>
+      <h3 style="font-size:14px">{{ t("2 · Toca los laboratorios") }}</h3>
+      <p class="small muted mb-0">{{ t("Mueve la temperatura, cambia el contexto, prueba otra precisión. Cada control enseña algo.") }}</p>
+    </div>
+    <div>
+      <h3 style="font-size:14px">{{ t("3 · Cierra con el quiz") }}</h3>
+      <p class="small muted mb-0">{{ t("El quiz no es un examen: es una forma de detectar qué idea necesita otra pasada.") }}</p>
+    </div>
+  </div>
+</section>
+{% if not user %}</div>{% endif %}
+{% endmacro %}
+
+{% block content %}{{ course_body() }}{% endblock %}
+{% block public_content %}{{ course_body() }}{% endblock %}

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge %}
+
+{% block title %}{{ t("Estudio") }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Estudio de autoría") }}{% endblock %}
+{% block page_title %}{{ t("Convierte documentos en unidades") }}{% endblock %}
+
+{% block content %}
+{% set published_slugs = courses|selectattr('status', 'equalto', 'published')|map(attribute='slug')|list %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ icon("sparkles") }} {{ t("OpenCode · autoría asistida") }}</span>
+  <h2>{{ t("Del documento a una unidad publicable") }}</h2>
+  <p>{{ t("Sube un PDF, DOCX, EPUB, Markdown o TXT y OpenCode lo convierte en una unidad didáctica revisable antes de publicarla.") }}</p>
+</div>
+
+<div class="studio-grid">
+  <section class="card card-pad studio-panel">
+    <div class="card-head">
+      <h3 class="card-title">{{ icon("cpu") }} {{ t("Motor de generación") }}</h3>
+    </div>
+    <div class="studio-engine {% if engine.available %}is-ok{% else %}is-warn{% endif %}">
+      <span class="studio-engine-dot"></span>
+      <div>
+        <strong>{{ t("OpenCode") }}{% if engine.version %} · {{ engine.version }}{% endif %}</strong>
+        <p class="mb-0 small">{{ engine.message }}</p>
+      </div>
+    </div>
+    <div class="studio-key-row">
+      <span class="small muted">{{ t("Proveedor configurado") }}:</span>
+      <strong>{{ settings.provider }}</strong>
+      {% if settings.key_configured %}
+        <span class="badge badge-success">{{ settings.key_hint }}</span>
+      {% else %}
+        <span class="badge badge-warning">{{ t("Falta la API key") }}</span>
+      {% endif %}
+    </div>
+
+    <form method="post" action="/estudio/settings" class="studio-form">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <div class="form-grid">
+        <label class="field">
+          <span>{{ t("Proveedor") }}</span>
+          <select name="provider">
+            {% for provider in providers %}
+            <option value="{{ provider.id }}" {% if provider.id == settings.provider %}selected{% endif %}>{{ provider.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          <span>{{ t("Modelo") }}</span>
+          <input name="model" value="{{ settings.model }}" list="studio-models" required>
+        </label>
+      </div>
+      <datalist id="studio-models">
+        {% for provider in providers %}{% for model in provider.models %}<option value="{{ model }}"></option>{% endfor %}{% endfor %}
+      </datalist>
+      <label class="field">
+        <span>{{ t("Base URL") }}</span>
+        <input name="base_url" value="{{ settings.base_url }}" placeholder="https://…/v1" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>{{ t("API key") }}</span>
+        <input name="api_key" type="password" autocomplete="new-password" placeholder="{% if settings.key_configured %}{{ settings.key_hint }} · {{ t('deja en blanco para conservarla') }}{% else %}sk-…{% endif %}">
+      </label>
+      <label class="checkbox-row small">
+        <input type="checkbox" name="clear_key" value="1">
+        {{ t("Borrar la clave guardada") }}
+      </label>
+      <p class="small muted">{{ t("La clave se guarda en el servidor y nunca se devuelve al navegador.") }}</p>
+      <button class="btn btn-primary" type="submit">{{ icon("shield") }} {{ t("Guardar configuración") }}</button>
+    </form>
+  </section>
+
+  <section class="card card-pad studio-panel">
+    <div class="card-head">
+      <h3 class="card-title">{{ icon("sparkles") }} {{ t("Nueva unidad a partir de documentos") }}</h3>
+    </div>
+    <form method="post" action="/estudio/jobs" enctype="multipart/form-data" class="studio-form">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <div class="form-grid">
+        <label class="field">
+          <span>{{ t("Título de trabajo") }}</span>
+          <input name="title" required maxlength="200" placeholder="Redes neuronales en 4 lecciones">
+        </label>
+        <label class="field">
+          <span>{{ t("Slug (opcional)") }}</span>
+          <input name="slug" maxlength="72" placeholder="redes-neuronales" pattern="[a-z0-9-]*">
+        </label>
+      </div>
+      <div class="field">
+        <span>{{ t("Idiomas") }}</span>
+        <div class="checkbox-row">
+          <label><input type="checkbox" name="languages" value="es" checked> {{ t("Español") }}</label>
+          <label><input type="checkbox" name="languages" value="en" checked> {{ t("English") }}</label>
+        </div>
+        <p class="small muted mb-0">{{ t("Si marcas los dos, el agente genera el mismo temario en ambos idiomas y la navegación no pierde el progreso.") }}</p>
+      </div>
+      <label class="field">
+        <span>{{ t("Notas para el agente (opcional)") }}</span>
+        <textarea name="notes" rows="2" maxlength="2000" placeholder="{{ t('Enfoca la unidad en el capítulo 3; nivel intermedio.') }}"></textarea>
+      </label>
+      <label class="field studio-upload">
+        <span>{{ t("Documentos") }}</span>
+        <input type="file" name="files" multiple required accept=".pdf,.docx,.epub,.odt,.md,.markdown,.txt,.html,.htm">
+        <small class="muted">{{ t("Formatos: PDF, DOCX, EPUB, ODT, Markdown, HTML o TXT. Varios archivos se combinan en una sola unidad.") }}</small>
+      </label>
+      <p class="small muted">{{ t("Máximo {n} MB por archivo y {m} archivos. El texto se recorta si supera el límite de contexto.", n=limits.max_upload_mb, m=limits.max_files) }}</p>
+      <button class="btn btn-primary" type="submit">{{ icon("sparkles") }} {{ t("Generar unidad") }}</button>
+    </form>
+  </section>
+</div>
+
+<div class="callout callout-info mt-4">
+  <div class="callout-icon">i</div>
+  <div class="callout-body">
+    <strong class="callout-title">{{ t("Qué ocurre al generar") }}</strong>
+    <div class="callout-text">{{ t("El resultado se valida y se sanea antes de entrar en el catálogo. Nada del documento se ejecuta. La unidad queda en borrador hasta que la publiques.") }}</div>
+  </div>
+</div>
+
+<section class="card mt-4">
+  <div class="card-head" style="padding:18px 20px 0">
+    <h3 class="card-title">{{ icon("clock") }} {{ t("Trabajos recientes") }}</h3>
+    <a class="btn btn-ghost btn-sm" href="/estudio">{{ icon("refresh") }} {{ t("Actualizar") }}</a>
+  </div>
+  {% if jobs %}
+  <div class="studio-jobs">
+    {% for job in jobs %}
+    <article class="studio-job">
+      <div class="studio-job-head">
+        <div>
+          <strong>{{ job.title }}</strong>
+          <p class="small muted mb-0">{{ job.provider }} · {{ job.model }} · {{ job.created_at|fecha }}</p>
+        </div>
+        <span class="badge {% if job.status == 'ready' %}badge-success{% elif job.status == 'failed' %}badge-danger{% elif job.status == 'cancelled' %}badge-neutral{% elif job.active %}badge-warning{% else %}badge-info{% endif %}">{{ t(job.status_label) }}</span>
+      </div>
+      {% if job.error %}<p class="studio-error small">{{ job.error }}</p>{% endif %}
+      <div class="row">
+        {% if job.course_slug and job.course_slug in published_slugs %}
+        <a class="btn btn-secondary btn-sm" href="/cursos/{{ job.course_slug }}">{{ icon("book") }} {{ t("Abrir en el catálogo") }}</a>
+        {% endif %}
+        {% if job.active %}
+        <form method="post" action="/estudio/jobs/{{ job.id }}/cancelar" onsubmit="return confirm('{{ t('¿Cancelar este trabajo?') }}')">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+          <button class="btn btn-ghost btn-sm" type="submit">{{ icon("x-circle") }} {{ t("Cancelar") }}</button>
+        </form>
+        {% endif %}
+        {% if job.log %}
+        <details class="studio-log">
+          <summary class="small">{{ t("Ver registro") }}</summary>
+          <pre>{{ job.log }}</pre>
+        </details>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-search" style="margin:18px">
+    <p class="mb-0">{{ t("Todavía no hay trabajos.") }}</p>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card mt-4">
+  <div class="card-head" style="padding:18px 20px 0">
+    <h3 class="card-title">{{ icon("book") }} {{ t("Unidades generadas") }}</h3>
+    <span class="small muted">{{ courses|length }} {{ t("en total") }}</span>
+  </div>
+  {% if courses %}
+  <div class="studio-courses">
+    {% for course in courses %}
+    {% set title = course.summary.titles.get(lang) or course.summary.titles.get('es') or course.title %}
+    <article class="studio-course">
+      <div>
+        <strong>{{ title }}</strong>
+        <p class="small muted mb-0">{{ course.slug }} · {{ course.summary.lesson_count }} {{ t("lecciones") }} · {{ course.summary.languages|join(' / ') }}</p>
+        <span class="badge {% if course.status == 'published' %}badge-success{% else %}badge-neutral{% endif %}">{{ t("Publicada") if course.status == 'published' else t("Borrador") }}</span>
+      </div>
+      <div class="row">
+        {% if course.status == 'published' %}
+        <a class="btn btn-secondary btn-sm" href="/cursos/{{ course.slug }}">{{ icon("eye") }} {{ t("Abrir en el catálogo") }}</a>
+        <form method="post" action="/estudio/courses/{{ course.slug }}/despublicar">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+          <button class="btn btn-ghost btn-sm" type="submit">{{ t("Despublicar") }}</button>
+        </form>
+        {% else %}
+        <form method="post" action="/estudio/courses/{{ course.slug }}/publicar">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+          <button class="btn btn-primary btn-sm" type="submit">{{ icon("check-circle") }} {{ t("Publicar") }}</button>
+        </form>
+        {% endif %}
+        <form method="post" action="/estudio/courses/{{ course.slug }}/eliminar" onsubmit="return confirm('{{ t('¿Eliminar esta unidad generada?') }}')">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+          <button class="btn btn-ghost btn-sm" type="submit">{{ t("Eliminar") }}</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-search" style="margin:18px">
+    <p class="mb-0">{{ t("Todavía no hay unidades generadas.") }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

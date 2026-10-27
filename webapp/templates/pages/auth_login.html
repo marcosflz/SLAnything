@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+
+{% block title %}{{ t("Entrar") }} · {{ site_name }}{% endblock %}
+
+{% block public_content %}
+<div class="auth-wrap">
+  <section class="auth-art">
+    <div>
+      <span class="eyebrow">{{ t("Aula LLM · Curso completo") }}</span>
+      <h2>{{ t("Vuelve a donde lo dejaste.") }}</h2>
+      <p>{{ t("Tu progreso, tus apuntes y tus intentos de quiz te esperan. Entra y continúa construyendo intuición sobre los LLM.") }}</p>
+    </div>
+    <div class="auth-quote">{{ t("“Un LLM no devuelve una única palabra: devuelve una probabilidad para cada token posible y elige una.”") }}</div>
+  </section>
+
+  <section class="auth-card">
+    <h2>{{ t("Entrar") }}</h2>
+    <p>{{ t("Accede con tu correo y contraseña.") }}</p>
+    {% if error %}<div class="flash flash-danger" role="alert">{{ icon("alert") }} <span>{{ error }}</span></div>{% endif %}
+    <form class="auth-form" method="post" action="/entrar">
+      <input type="hidden" name="next" value="{{ next or '/curso' }}">
+      <div class="field">
+        <label for="email">{{ t("Correo electrónico") }}</label>
+        <input id="email" type="email" name="email" autocomplete="email" required placeholder="you@example.com" value="{{ values.email if values else '' }}">
+      </div>
+      <div class="field">
+        <label for="password">{{ t("Contraseña") }}</label>
+        <input id="password" type="password" name="password" autocomplete="current-password" required placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">{{ icon("lock") }} {{ t("Entrar al aula") }}</button>
+    </form>
+    <p class="auth-alt">{{ t("¿No tienes cuenta?") }} <a href="/registro">{{ t("Crear una cuenta gratis") }}</a></p>
+    <div class="demo-box">
+      <strong>{{ t("Cuenta de demostración") }}</strong><br>
+      {{ t("Correo") }}: <code>demo@aulallm.local</code><br>
+      {{ t("Contraseña") }}: <code>demo1234</code>
+    </div>
+  </section>
+</div>
+{% endblock %}

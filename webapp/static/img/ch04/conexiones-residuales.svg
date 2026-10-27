@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">Gradientes con y sin conexiones residuales</title>
+  <desc id="desc">Dos paneles comparan la media absoluta del gradiente en cinco capas. Sin residual, el gradiente cae de 0,00505 en la última capa a 0,00020 en la primera. Con residual, se mantiene entre 0,20 y 1,33, y los atajos ofrecen un camino directo.</desc>
+  <defs>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 0 L 5 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-skip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect width="1100" height="620" fill="#ffffff"/>
+  <text x="42" y="48" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="26" font-weight="750" fill="#0f172a">El gradiente encuentra un camino directo</text>
+  <text x="42" y="76" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" fill="#64748b">Media absoluta del gradiente en una red de cinco capas. Experimento ilustrativo del libro; cada panel usa su propio máximo.</text>
+
+  <!-- LEFT PANEL -->
+  <rect x="30" y="106" width="500" height="400" rx="14" fill="#fffafa" stroke="#fecaca"/>
+  <text x="54" y="138" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="16" font-weight="750" fill="#b91c1c">Sin conexión residual</text>
+  <text x="54" y="160" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11.5" fill="#7f1d1d">El gradiente se multiplica por cada capa y se desvanece.</text>
+
+  <!-- loss arrow -->
+  <text x="78" y="190" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#64748b">pérdida</text>
+  <line x1="78" y1="198" x2="78" y2="444" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="62" y="462" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#94a3b8">entrada</text>
+
+  <!-- rows: layer 4 to 0 -->
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+    <text x="112" y="214" font-size="12" font-weight="700" fill="#334155">capa 4</text>
+    <rect x="190" y="200" width="280" height="20" rx="5" fill="#fca5a5"/>
+    <text x="480" y="215" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#7f1d1d">0,00505</text>
+
+    <text x="112" y="269" font-size="12" font-weight="700" fill="#334155">capa 3</text>
+    <rect x="190" y="255" width="78" height="20" rx="5" fill="#fca5a5"/>
+    <text x="278" y="270" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#7f1d1d">0,00140</text>
+
+    <text x="112" y="324" font-size="12" font-weight="700" fill="#334155">capa 2</text>
+    <rect x="190" y="310" width="40" height="20" rx="5" fill="#fca5a5"/>
+    <text x="240" y="325" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#7f1d1d">0,00072</text>
+
+    <text x="112" y="379" font-size="12" font-weight="700" fill="#334155">capa 1</text>
+    <rect x="190" y="365" width="12" height="20" rx="5" fill="#fca5a5"/>
+    <text x="212" y="380" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#7f1d1d">0,00012</text>
+
+    <text x="112" y="434" font-size="12" font-weight="700" fill="#334155">capa 0</text>
+    <rect x="190" y="420" width="16" height="20" rx="5" fill="#fca5a5"/>
+    <text x="216" y="435" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#7f1d1d">0,00020</text>
+  </g>
+  <text x="54" y="486" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11.5" fill="#b91c1c">La primera capa recibe una señal casi nula.</text>
+
+  <!-- RIGHT PANEL -->
+  <rect x="570" y="106" width="500" height="400" rx="14" fill="#f7fdfa" stroke="#a7f3d0"/>
+  <text x="594" y="138" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="16" font-weight="750" fill="#047857">Con conexión residual</text>
+  <text x="594" y="160" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11.5" fill="#065f46">La identidad mantiene abierto un camino para el gradiente.</text>
+
+  <text x="618" y="190" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#64748b">pérdida</text>
+  <line x1="618" y1="198" x2="618" y2="444" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="602" y="462" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#94a3b8">entrada</text>
+
+  <!-- skip arcs on right side of bars -->
+  <g fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrow-skip)">
+    <path d="M 1014 210 C 1054 210, 1054 265, 1014 265"/>
+    <path d="M 1014 265 C 1054 265, 1054 320, 1014 320"/>
+    <path d="M 1014 320 C 1054 320, 1054 375, 1014 375"/>
+    <path d="M 1014 375 C 1054 375, 1054 430, 1014 430"/>
+  </g>
+
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+    <text x="652" y="214" font-size="12" font-weight="700" fill="#334155">capa 4</text>
+    <rect x="730" y="200" width="280" height="20" rx="5" fill="#6ee7b7"/>
+    <text x="920" y="215" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#065f46">1,32585</text>
+
+    <text x="652" y="269" font-size="12" font-weight="700" fill="#334155">capa 3</text>
+    <rect x="730" y="255" width="56" height="20" rx="5" fill="#6ee7b7"/>
+    <text x="794" y="270" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#065f46">0,26657</text>
+
+    <text x="652" y="324" font-size="12" font-weight="700" fill="#334155">capa 2</text>
+    <rect x="730" y="310" width="69" height="20" rx="5" fill="#6ee7b7"/>
+    <text x="807" y="325" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#065f46">0,32897</text>
+
+    <text x="652" y="379" font-size="12" font-weight="700" fill="#334155">capa 1</text>
+    <rect x="730" y="365" width="44" height="20" rx="5" fill="#6ee7b7"/>
+    <text x="782" y="380" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#065f46">0,20694</text>
+
+    <text x="652" y="434" font-size="12" font-weight="700" fill="#334155">capa 0</text>
+    <rect x="730" y="420" width="47" height="20" rx="5" fill="#6ee7b7"/>
+    <text x="785" y="435" font-size="11.5" font-family="ui-monospace, Consolas, monospace" fill="#065f46">0,22170</text>
+  </g>
+  <text x="594" y="486" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11.5" fill="#047857">Las primeras capas conservan una señal mucho mayor.</text>
+
+  <!-- bottom note -->
+  <rect x="30" y="532" width="1040" height="58" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="50" y="556" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">Los atajos punteados no son conexiones nuevas en el grafo de cómputo: representan la suma de la entrada a la salida de cada capa, que deja un camino de identidad.</text>
+  <text x="50" y="576" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12.5" fill="#475569">Cifras del experimento del libro con una semilla concreta; sirven para comparar el orden de magnitud, no como valores universales.</text>
+</svg>

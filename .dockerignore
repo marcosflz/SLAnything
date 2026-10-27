@@ -1,0 +1,38 @@
+# Contexto del backend: no enviar al daemon lo que no necesita.
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
+aula.db
+aula.db-wal
+aula.db-shm
+.env
+.env.*
+!.env.example
+Build a Large Language Model (From Scratch).pdf
+book_extract
+.openchamber
+authoring-data
+.aula_authoring
+
+# El frontend tiene su propio contexto/Dockerfile.
+frontend
+
+# Documentación y memoria que no se sirven en runtime.
+okf
+tools
+docs/*
+!docs/PLAN_PLATAFORMA_WEB.md
+notebooks/*
+!notebooks/capitulo_01_entender_los_llms.ipynb
+webapp/tests
+webapp/**/__pycache__
+
+# Artefactos locales.
+docs/capturas
+*.log
+*.tsbuildinfo

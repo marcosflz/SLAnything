@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, progress_bar %}
+
+{% block title %}{{ quiz.title }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Autoevaluación") }}{% endblock %}
+{% block page_title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="quiz-layout">
+  <header class="quiz-header">
+    <span class="eyebrow-dark">{{ icon("trophy") }} {{ t("Capítulo {n}", n=chapter.number) }} · {{ chapter.title }}</span>
+    <h2>{{ quiz.title }}</h2>
+    <p>{{ quiz.description }}</p>
+    <div class="quiz-meta">
+      <span>{{ icon("list") }} {{ t("{n} preguntas", n=quiz.total) }}</span>
+      <span>{{ icon("target") }} {{ t("{pct} % para aprobar", pct=quiz.pass_score) }}</span>
+      <span>{{ icon("refresh") }} {{ t("Intentos ilimitados") }}</span>
+    </div>
+  </header>
+
+  {% if best_attempt %}
+  {% set best_pct = (best_attempt.score * 100 / best_attempt.total)|round|int %}
+  <div class="callout callout-{{ 'success' if best_pct >= quiz.pass_score else 'info' }}">
+    <div class="callout-icon">{{ "✓" if best_pct >= quiz.pass_score else "i" }}</div>
+    <div class="callout-body">
+      <strong class="callout-title">{{ t("Tu mejor resultado hasta ahora: {pct} %", pct=best_pct) }}</strong>
+      <div class="callout-text">{{ t("{score} de {total} correctas.", score=best_attempt.score, total=best_attempt.total) }} {{ t("Ya has superado el quiz; puedes repetirlo para consolidar.") if best_pct >= quiz.pass_score else t("Sigue practicando: cada intento te muestra qué repasar.") }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="quiz-progress">
+    <div class="quiz-progress-row">
+      <span data-quiz-answered data-quiz-label="{{ t('{answered} de {total} respondidas', answered='{n}', total=quiz.total) }}">{{ t("{answered} de {total} respondidas", answered=0, total=quiz.total) }}</span>
+      <span>{{ t("Sin límite de tiempo") }}</span>
+    </div>
+    <div class="progress" role="progressbar" aria-label="{{ t('Progreso del quiz') }}" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+      <span class="progress-bar" data-quiz-bar style="width:0%"></span>
+    </div>
+  </div>
+
+  <form class="quiz-form" method="post" action="/quiz/{{ quiz.id }}">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+    {% for q in quiz.questions %}
+    <section class="quiz-card" id="pregunta-{{ loop.index }}">
+      <div class="quiz-question">
+        <span class="quiz-qnum">{{ loop.index }}</span>
+        <h3>{{ q.prompt }}</h3>
+      </div>
+      <div class="quiz-options">
+        {% for option in q.options %}
+        <label class="quiz-option">
+          <input type="radio" name="q_{{ q.id }}" value="{{ loop.index0 }}">
+          <span>{{ option }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+
+    <div class="quiz-actions">
+      <button class="btn btn-primary btn-lg" type="submit">{{ icon("send") }} {{ t("Enviar respuestas") }}</button>
+      <span class="small muted">{{ t("Puedes cambiar tus respuestas antes de enviar.") }}</span>
+    </div>
+  </form>
+
+  {% if attempts %}
+  <section class="card card-pad mt-4">
+    <div class="card-head">
+      <h3 class="card-title">{{ icon("clock") }} {{ t("Intentos anteriores") }}</h3>
+      <span class="small muted">{{ t("{n} intento", n=attempts|length) if attempts|length == 1 else t("{n} intentos", n=attempts|length) }}</span>
+    </div>
+    <div class="attempt-list">
+      {% for attempt in attempts %}
+      {% set p = (attempt.score * 100 / attempt.total)|round|int %}
+      <a class="attempt-row" href="/quiz/intento/{{ attempt.id }}">
+        <span class="attempt-score {% if p >= quiz.pass_score %}is-pass{% else %}is-fail{% endif %}">{{ p }}%</span>
+        <span><strong>{{ attempt.score }}/{{ attempt.total }}</strong><span class="attempt-meta">{{ attempt.created_at|fecha }}</span></span>
+        <span class="spacer"></span>
+        <span class="small" style="color:var(--brand)">{{ t("Revisar →") }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

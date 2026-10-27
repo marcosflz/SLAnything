@@ -1,0 +1,89 @@
+name: aula-llm
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aula-llm-backend:local
+    init: true
+    restart: unless-stopped
+    environment:
+      AULA_ENV: production
+      AULA_DB: /data/aula.db
+      AULA_SECRET: ${AULA_SECRET:-aula-llm-cambia-este-secreto}
+      AULA_SECURE_COOKIES: ${AULA_SECURE_COOKIES:-0}
+      AULA_EXEC_ENABLED: ${AULA_EXEC_ENABLED:-1}
+      AULA_EXEC_TIMEOUT: ${AULA_EXEC_TIMEOUT:-10}
+      AULA_EXEC_MEMORY_MB: ${AULA_EXEC_MEMORY_MB:-1024}
+      AULA_EXEC_CONCURRENT: ${AULA_EXEC_CONCURRENT:-2}
+      AULA_EXEC_RUNS_PER_MINUTE: ${AULA_EXEC_RUNS_PER_MINUTE:-12}
+      AULA_AUTHORING_ENABLED: ${AULA_AUTHORING_ENABLED:-1}
+      AULA_AUTHORING_DIR: /data/authoring
+      AULA_AUTHORING_TIMEOUT: ${AULA_AUTHORING_TIMEOUT:-1800}
+      AULA_AUTHORING_MAX_UPLOAD_MB: ${AULA_AUTHORING_MAX_UPLOAD_MB:-25}
+      AULA_AUTHORING_MAX_FILES: ${AULA_AUTHORING_MAX_FILES:-5}
+      AULA_AUTHORING_MAX_CHARS: ${AULA_AUTHORING_MAX_CHARS:-300000}
+      AULA_AUTHORING_MAX_JOBS: ${AULA_AUTHORING_MAX_JOBS:-3}
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+      - aula-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "8000"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    stop_grace_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_INTERNAL_URL: http://backend:8000
+    image: aula-llm-frontend:local
+    init: true
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://backend:8000
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      TZ: ${TZ:-Europe/Madrid}
+    ports:
+      - "${AULA_HTTP_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/salud').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    stop_grace_period: 10s
+
+volumes:
+  aula-data:
+    name: aula-llm-data

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge %}
+
+{% block title %}{{ site_name }} · {{ t("Aprende IA desde los libros que la explican") }}{% endblock %}
+
+{% block public_content %}
+<section class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow-dark">{{ icon("grid") }} {{ t("Biblioteca de cursos · 1 curso disponible") if catalog_count == 1 else t("Biblioteca de cursos · {n} cursos disponibles", n=catalog_count) }}</span>
+    <h1>{{ t("Aprende IA desde los libros que") }} <em>{{ t("la explican") }}</em>.</h1>
+    <p class="hero-lead">
+      {{ t("Un aula online con cursos guiados, laboratorios que se ejecutan en el navegador y evaluación integrada. Empieza por el libro que quieras y continúa donde lo dejaste.") }}
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary btn-lg" href="/cursos">{{ icon("grid") }} {{ t("Explorar cursos") }}</a>
+      <a class="btn btn-secondary btn-lg" href="/entrar">{{ icon("lock") }} {{ t("Ya tengo cuenta") }}</a>
+    </div>
+    <div class="hero-meta">
+      <span>{{ icon("grid") }} {{ t("1 curso") if catalog_count == 1 else t("{n} cursos", n=catalog_count) }}</span>
+      <span>{{ icon("layers") }} {{ t("{n} capítulos", n=featured.chapter_count) }}</span>
+      <span>{{ icon("book") }} {{ t("{n} lecciones", n=total_lessons) }}</span>
+      <span>{{ icon("clock") }} {{ t("{n} minutos", n=total_minutes) }}</span>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="hero-card">
+      <div class="hero-card-top"><span class="dot"></span> {{ t("Aula LLM · predicción en vivo") }}</div>
+      <p class="hero-prompt">
+        {% if lang == "en" %}<strong>The knight</strong> looked at the plain and saw…{% else %}<strong>El caballero</strong> miró hacia la llanura y vio…{% endif %}
+      </p>
+      <div class="hero-tokens">
+        {% if lang == "en" %}
+        <span class="hero-token">The</span>
+        <span class="hero-token">knight</span>
+        <span class="hero-token">looked</span>
+        <span class="hero-token">at</span>
+        <span class="hero-token">the</span>
+        <span class="hero-token">plain</span>
+        <span class="hero-token">and</span>
+        <span class="hero-token">saw</span>
+        <span class="hero-token is-next">…</span>
+        {% else %}
+        <span class="hero-token">El</span>
+        <span class="hero-token">caballero</span>
+        <span class="hero-token">miró</span>
+        <span class="hero-token">hacia</span>
+        <span class="hero-token">la</span>
+        <span class="hero-token">llanura</span>
+        <span class="hero-token">y</span>
+        <span class="hero-token">vio</span>
+        <span class="hero-token is-next">…</span>
+        {% endif %}
+      </div>
+      <div class="hero-bars">
+        {% if lang == "en" %}
+        <div class="hero-bar"><span>a</span><div class="hero-bar-track"><span style="width:74%"></span></div><span>34 %</span></div>
+        <div class="hero-bar"><span>the</span><div class="hero-bar-track"><span style="width:52%"></span></div><span>24 %</span></div>
+        <div class="hero-bar"><span>that</span><div class="hero-bar-track"><span style="width:38%"></span></div><span>17 %</span></div>
+        <div class="hero-bar"><span>in</span><div class="hero-bar-track"><span style="width:21%"></span></div><span>9 %</span></div>
+        {% else %}
+        <div class="hero-bar"><span>un</span><div class="hero-bar-track"><span style="width:74%"></span></div><span>34 %</span></div>
+        <div class="hero-bar"><span>una</span><div class="hero-bar-track"><span style="width:52%"></span></div><span>24 %</span></div>
+        <div class="hero-bar"><span>que</span><div class="hero-bar-track"><span style="width:38%"></span></div><span>17 %</span></div>
+        <div class="hero-bar"><span>en</span><div class="hero-bar-track"><span style="width:21%"></span></div><span>9 %</span></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hero-float">{{ icon("check-circle") }} <span><strong>{{ t("Progreso guardado") }}</strong><br>{{ t("Continúa donde lo dejaste") }}</span></div>
+  </div>
+</section>
+
+<section class="landing-section" id="cursos">
+  <span class="eyebrow-dark">{{ t("Cursos") }}</span>
+  <h2 class="section-title">{{ t("Elige tu próximo libro") }}</h2>
+  <p class="section-sub">{{ t("Cada curso es un recorrido completo con lecciones, laboratorios y quizzes. La biblioteca crecerá con nuevos libros.") }}</p>
+  <div class="catalog-grid">
+    {% for course in catalog %}
+    <article class="course-card accent-{{ course.accent }}">
+      <div class="course-card-cover">
+        <span class="course-card-icon">{{ icon("book") }}</span>
+        {{ badge(t("Disponible"), "success") }}
+      </div>
+      <div class="course-card-body">
+        <span class="eyebrow-dark">{{ t("{n} capítulos · {m} lecciones", n=course.chapter_count, m=course.lesson_count) }}</span>
+        <h3>{{ course.title }}</h3>
+        <p>{{ course.subtitle }}</p>
+        {% if course.book %}
+        <p class="course-book">{{ t("Basado en") }} <em>{{ course.book.title }}</em> · {{ course.book.author }}</p>
+        {% endif %}
+        <div class="course-card-meta">
+          <span>{{ icon("clock") }} {{ course.total_minutes }} min</span>
+          <span>{{ icon("sparkles") }} {{ t("{n} laboratorios", n=course.lab_count) }}</span>
+          <span>{{ icon("cpu") }} {{ course.level }}</span>
+        </div>
+        <a class="btn btn-primary btn-block" href="/cursos/{{ course.slug }}">{{ icon("arrow-right") }} {{ t("Ver el curso") }}</a>
+      </div>
+    </article>
+    {% endfor %}
+    <article class="course-card is-coming">
+      <div class="course-card-cover">
+        <span class="course-card-icon">{{ icon("sparkles") }}</span>
+        {{ badge(t("En preparación"), "neutral") }}
+      </div>
+      <div class="course-card-body">
+        <span class="eyebrow-dark">{{ t("Nuevos cursos") }}</span>
+        <h3>{{ t("El próximo libro") }}</h3>
+        <p>{{ t("Estamos preparando nuevos recorridos. La plataforma ya está lista para incorporarlos sin cambiar la experiencia.") }}</p>
+        <div class="course-card-meta">
+          <span>{{ icon("layers") }} {{ t("Mismo formato modular") }}</span>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="landing-section" id="como-funciona">
+  <span class="eyebrow-dark">{{ t("Cómo funciona") }}</span>
+  <h2 class="section-title">{{ t("Menos vídeos. Más entender haciendo.") }}</h2>
+  <p class="section-sub">{{ t("Cada lección combina una idea, una imagen o una demo, y una comprobación. Si algo no queda claro, vuelves al laboratorio y cambias un parámetro.") }}</p>
+  <div class="feature-grid">
+    <article class="feature">
+      <div class="feature-icon">{{ icon("book") }}</div>
+      <h3>{{ t("Lecciones con hilo") }}</h3>
+      <p>{{ t("Capítulos breves que construyen intuición: del texto tokenizado a la atención, el pretraining y las instrucciones.") }}</p>
+    </article>
+    <article class="feature">
+      <div class="feature-icon">{{ icon("sparkles") }}</div>
+      <h3>{{ t("Laboratorios reales") }}</h3>
+      <p>{{ t("Entrena un modelo de n-gramas con El Quijote, ajusta la temperatura, explora la atención y calcula el coste de entrenar a escala.") }}</p>
+    </article>
+    <article class="feature">
+      <div class="feature-icon">{{ icon("target") }}</div>
+      <h3>{{ t("Progreso y quiz") }}</h3>
+      <p>{{ t("Marca lecciones, guarda apuntes y comprueba tu comprensión con preguntas corregidas en el servidor.") }}</p>
+    </article>
+  </div>
+</section>
+
+<section class="landing-section" id="programa">
+  <span class="eyebrow-dark">{{ t("Dentro del curso") }}</span>
+  <h2 class="section-title">{{ t("Entiende cómo funciona ChatGPT. Luego constrúyelo.") }}</h2>
+  <p class="section-sub">{{ t("El curso de referencia recorre el libro en {n} capítulos. Del texto tokenizado a la atención, el pretraining y las instrucciones.", n=featured.chapter_count) }}</p>
+  <div class="program-grid">
+    {% for chapter in featured.chapters %}
+    <article class="program-item">
+      <span class="program-num">{{ "%02d"|format(chapter.number) }}</span>
+      <div>
+        <h3>{{ chapter.title }}</h3>
+        <p>{{ chapter.subtitle }}</p>
+      </div>
+      <span class="minutes">{{ t("{n} lecciones", n=chapter.lesson_count) }} · {{ chapter.total_minutes }} min</span>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="steps">
+    <article class="step">
+      <h3>{{ t("Elige un curso") }}</h3>
+      <p>{{ t("Explora la biblioteca y abre el libro que quieras estudiar. Cada curso tiene su propio temario y progreso.") }}</p>
+    </article>
+    <article class="step">
+      <h3>{{ t("Estudia y experimenta") }}</h3>
+      <p>{{ t("Lee, mueve los controles de los laboratorios y marca cada lección al terminarla.") }}</p>
+    </article>
+    <article class="step">
+      <h3>{{ t("Demuéstralo") }}</h3>
+      <p>{{ t("Haz el quiz final. Con un 80 % superas el capítulo y consolidas lo aprendido.") }}</p>
+    </article>
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="cta-band">
+    <div>
+      <h2>{{ t("Tu próximo tema empieza por el libro adecuado.") }}</h2>
+      <p>{{ t("Sin GPU, sin instalar Python y sin perderte en terminología. Solo tú, el texto y un navegador.") }}</p>
+    </div>
+    <a class="btn btn-primary btn-lg" href="/registro">{{ icon("arrow-right") }} {{ t("Entrar al aula") }}</a>
+  </div>
+</section>
+{% endblock %}

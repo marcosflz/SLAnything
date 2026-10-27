@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+
+{% block title %}{{ t("Crear cuenta") }} · {{ site_name }}{% endblock %}
+
+{% block public_content %}
+<div class="auth-wrap">
+  <section class="auth-art">
+    <div>
+      <span class="eyebrow">{{ t("Aula LLM · Curso completo") }}</span>
+      <h2>{{ t("Empieza por entender. Termina construyendo.") }}</h2>
+      <p>{{ t("Ocho lecciones, siete laboratorios y un quiz. Sin instalar nada y sin GPU. Tu progreso se guarda automáticamente.") }}</p>
+    </div>
+    <div class="auth-quote">{{ t("“Predecir la siguiente palabra parece simple. De esa tarea emergen la gramática, el estilo y buena parte del razonamiento.”") }}</div>
+  </section>
+
+  <section class="auth-card">
+    <h2>{{ t("Crear cuenta") }}</h2>
+    <p>{{ t("Gratis, sin tarjeta. Solo necesitas un correo y una contraseña.") }}</p>
+    {% if error %}<div class="flash flash-danger" role="alert">{{ icon("alert") }} <span>{{ error }}</span></div>{% endif %}
+    <form class="auth-form" method="post" action="/registro">
+      <input type="hidden" name="next" value="{{ next or '/curso' }}">
+      <div class="field">
+        <label for="name">{{ t("Nombre") }}</label>
+        <input id="name" type="text" name="name" autocomplete="name" required minlength="2" maxlength="80" value="{{ values.name if values else '' }}" placeholder="{{ t('Cómo quieres que te llamemos') }}">
+      </div>
+      <div class="field">
+        <label for="email">{{ t("Correo electrónico") }}</label>
+        <input id="email" type="email" name="email" autocomplete="email" required value="{{ values.email if values else '' }}" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="password">{{ t("Contraseña") }}</label>
+        <input id="password" type="password" name="password" autocomplete="new-password" required minlength="8" placeholder="{{ t('Al menos 8 caracteres') }}">
+      </div>
+      <div class="field">
+        <label for="password2">{{ t("Repite la contraseña") }}</label>
+        <input id="password2" type="password" name="password2" autocomplete="new-password" required minlength="8" placeholder="{{ t('Otra vez, para evitar erratas') }}">
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">{{ icon("arrow-right") }} {{ t("Crear mi cuenta") }}</button>
+    </form>
+    <p class="auth-alt">{{ t("¿Ya tienes cuenta?") }} <a href="/entrar">{{ t("Entrar") }}</a></p>
+  </section>
+</div>
+{% endblock %}

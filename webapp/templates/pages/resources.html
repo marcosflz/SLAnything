@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon %}
+
+{% block title %}{{ t("Recursos") }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Material de apoyo") }}{% endblock %}
+{% block page_title %}{{ t("Recursos") }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ icon("folder") }} {{ t("Curso completo") }}</span>
+  <h2>{{ t("Para seguir explorando") }}</h2>
+  <p>{{ t("Descargas, datos y material complementario. Todo lo que necesitas para reproducir las demos o profundizar.") }}</p>
+</div>
+
+<div class="resource-grid">
+  {% for item in resources %}
+  <article class="resource-card">
+    <span class="resource-icon">{{ icon(item.icon or "folder") }}</span>
+    <div style="min-width:0">
+      <h3>{{ item.title }}</h3>
+      <p>{{ item.description }}</p>
+      <div class="row">
+        <a class="btn btn-secondary" href="{{ item.href }}" {% if item.href.startswith('http') %}target="_blank" rel="noopener"{% endif %}>
+          {{ icon("download" if item.href.startswith('/') else "external") }} {{ item.cta or t("Abrir") }}
+        </a>
+        {% if item.meta %}<span class="small muted">{{ item.meta }}</span>{% endif %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+
+<section class="card card-pad mt-4" id="creditos">
+  <div class="card-head">
+    <h3 class="card-title">{{ icon("shield") }} {{ t("Créditos y licencias") }}</h3>
+  </div>
+  <div class="prose" style="max-width:none;font-size:13.5px">
+    <p>
+      {{ t("Este material es de") }} <strong>{{ t("uso educativo personal") }}</strong> {{ t("y está basado en") }}
+      <em>Build a Large Language Model (From Scratch)</em> {{ t("de Sebastian Raschka (Manning, 2024). Las figuras 1.1–1.9 pertenecen a Manning Publications y al autor; se incluyen únicamente como apoyo al estudio. No las redistribuyas fuera de este contexto.") }}
+    </p>
+    <p>
+      {{ t("Los diagramas") }} <code>fig_es_*.png</code> {{ t("son elaboración propia. El fragmento de") }}
+      <em>Don Quijote</em> {{ t("procede de Project Gutenberg y es de dominio público; se usa como corpus didáctico para el laboratorio de n-gramas.") }}
+    </p>
+    <p class="mb-0">
+      {{ t("Las estimaciones de tokens, memoria y coste son aproximadas y de orden de magnitud. No sustituyen una medición sobre hardware real.") }}
+    </p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" role="img" aria-labelledby="titulo descripcion">
+  <title id="titulo">Espacio de embeddings en dos dimensiones</title>
+  <desc id="descripcion">Proyección bidimensional ilustrativa con tres grupos de vectores: animales, vehículos y comida.</desc>
+  <rect width="900" height="500" fill="#f8fafc"/>
+  <text x="44" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Espacio de embeddings</text>
+  <text x="44" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#64748b">proyección 2D de vectores ilustrativos · la cercanía indica contextos parecidos</text>
+
+  <rect x="72" y="96" width="760" height="330" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+  <g stroke="#e2e8f0" stroke-width="1">
+    <path d="M72 178 H832"/>
+    <path d="M72 260 H832"/>
+    <path d="M72 342 H832"/>
+    <path d="M224 96 V426"/>
+    <path d="M376 96 V426"/>
+    <path d="M528 96 V426"/>
+    <path d="M680 96 V426"/>
+  </g>
+  <g stroke="#94a3b8" stroke-width="1.5">
+    <path d="M100 400 H820"/>
+    <path d="M100 400 V120"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#94a3b8">
+    <text x="800" y="420">dimensión 1</text>
+    <text x="80" y="116">dimensión 2</text>
+  </g>
+
+  <ellipse cx="250" cy="190" rx="106" ry="74" fill="#dbeafe" opacity="0.55"/>
+  <ellipse cx="600" cy="180" rx="108" ry="70" fill="#ede9fe" opacity="0.55"/>
+  <ellipse cx="420" cy="340" rx="110" ry="62" fill="#ccfbf1" opacity="0.6"/>
+
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle">
+    <g fill="#1d4ed8">
+      <circle cx="210" cy="176" r="7"/>
+      <text x="210" y="158">gato</text>
+      <circle cx="286" cy="206" r="7"/>
+      <text x="286" y="188">perro</text>
+    </g>
+    <g fill="#6d28d9">
+      <circle cx="566" cy="166" r="7"/>
+      <text x="566" y="148">coche</text>
+      <circle cx="640" cy="196" r="7"/>
+      <text x="640" y="178">autobús</text>
+    </g>
+    <g fill="#0f766e">
+      <circle cx="378" cy="332" r="7"/>
+      <text x="378" y="314">pizza</text>
+      <circle cx="462" cy="350" r="7"/>
+      <text x="462" y="332">paella</text>
+    </g>
+  </g>
+
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#64748b">
+    <text x="164" y="266">animales</text>
+    <text x="570" y="258">vehículos</text>
+    <text x="378" y="406">comida</text>
+  </g>
+
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#475569">
+    <text x="44" y="458">La posición resume el uso en el corpus, no una definición: dos antónimos pueden quedar cerca.</text>
+    <text x="44" y="480">La similitud coseno compara direcciones; ignora la longitud de los vectores.</text>
+  </g>
+</svg>

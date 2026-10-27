@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge %}
+
+{% block title %}{{ t("Resultado del quiz") }} · {{ quiz.title }}{% endblock %}
+{% block page_kicker %}{{ t("Revisión del intento") }}{% endblock %}
+{% block page_title %}{{ t("Resultado del quiz") }}{% endblock %}
+
+{% block content %}
+{% set percent = (attempt.score * 100 / attempt.total)|round|int %}
+{% set passed = percent >= quiz.pass_score %}
+<div class="quiz-layout">
+  <section class="result-banner {{ 'is-pass' if passed else 'is-fail' }}">
+    <div class="result-score">{{ percent }}<small>%</small></div>
+    <div style="flex:1;min-width:220px">
+      <h2>{{ t("¡Capítulo superado!") if passed else t("Todavía no, pero vas por buen camino") }}</h2>
+      <p>{{ t("{score} de {total} respuestas correctas", score=attempt.score, total=attempt.total) }} · {{ attempt.created_at|fecha }}. {{ t("Puedes seguir con el siguiente capítulo del programa.") if passed else t("Repasa las explicaciones y vuelve a intentarlo: no hay límite de intentos.") }}</p>
+    </div>
+    <div class="row">
+      <a class="btn btn-primary" href="/quiz/{{ quiz.id }}">{{ icon("refresh") }} {{ t("Repetir quiz") }}</a>
+      <a class="btn btn-secondary" href="/cursos/{{ course.slug }}" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff">{{ icon("book") }} {{ t("Volver al curso") }}</a>
+    </div>
+  </section>
+
+  <div class="card card-pad mb-3" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1">
+      <strong style="font-size:14px">{{ t("Revisión pregunta a pregunta") }}</strong>
+      <p class="small muted mb-0">{{ t("Cada explicación te dice por qué la respuesta correcta lo es. Úsala para volver a la lección correspondiente.") }}</p>
+    </div>
+    <a class="btn btn-secondary btn-sm" href="/progreso">{{ icon("chart") }} {{ t("Mi progreso") }}</a>
+  </div>
+
+  <div class="result-list">
+    {% for item in review %}
+    <article class="result-item {{ 'is-correct' if item.is_correct else 'is-wrong' }}">
+      <div class="result-item-head">
+        {{ icon("check-circle" if item.is_correct else "x-circle") }}
+        <span><strong>{{ item.number }}.</strong> {{ item.question.prompt }}</span>
+      </div>
+      <div class="result-answer">
+        {% if item.selected is none %}
+          <span style="color:var(--warning)">{{ t("Sin responder.") }}</span>
+        {% else %}
+          {{ t("Tu respuesta:") }} <strong>{{ item.selected_text }}</strong>
+        {% endif %}
+        {% if not item.is_correct %}
+          <br>{{ t("Respuesta correcta:") }} <strong>{{ item.correct_text }}</strong>
+        {% endif %}
+      </div>
+      <div class="result-explanation">{{ item.explanation }}</div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="quiz-actions">
+    <a class="btn btn-primary" href="/quiz/{{ quiz.id }}">{{ icon("refresh") }} {{ t("Intentar de nuevo") }}</a>
+    <a class="btn btn-secondary" href="/leccion/repaso">{{ icon("book") }} {{ t("Volver al repaso") }}</a>
+    <a class="btn btn-ghost" href="/progreso">{{ icon("chart") }} {{ t("Ver evolución") }}</a>
+  </div>
+</div>
+{% endblock %}

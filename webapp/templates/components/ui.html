@@ -1,0 +1,47 @@
+{% macro icon(name, cls="icon") -%}
+<svg class="{{ cls }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"></use></svg>
+{%- endmacro %}
+
+{% macro badge(text, tone="neutral") -%}
+<span class="badge badge-{{ tone }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro progress_bar(value, label=None, tone="brand") -%}
+<div class="progress" role="progressbar" aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="100"{% if label %} aria-label="{{ label }}"{% endif %}>
+  <span class="progress-bar progress-{{ tone }}" style="width: {{ value }}%"></span>
+</div>
+{%- endmacro %}
+
+{% macro ring(value, size=92, label=None) -%}
+{% set radius = (size / 2) - 7 %}
+{% set circumference = 2 * 3.14159265 * radius %}
+<div class="ring" style="--ring-circumference: {{ circumference }}; --ring-value: {{ circumference - (circumference * value / 100) }}">
+  <svg viewBox="0 0 {{ size }} {{ size }}" width="{{ size }}" height="{{ size }}" aria-hidden="true">
+    <circle class="ring-track" cx="{{ size / 2 }}" cy="{{ size / 2 }}" r="{{ radius }}"></circle>
+    <circle class="ring-fill" cx="{{ size / 2 }}" cy="{{ size / 2 }}" r="{{ radius }}"></circle>
+  </svg>
+  <span class="ring-label">{{ value }}<small>%</small></span>
+  {% if label %}<span class="ring-caption">{{ label }}</span>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro stat(label, value, hint=None, icon_name="chart", tone="blue") -%}
+<div class="stat-card stat-{{ tone }}">
+  <div class="stat-icon">{{ icon(icon_name) }}</div>
+  <div class="stat-body">
+    <span class="stat-label">{{ label }}</span>
+    <strong class="stat-value">{{ value }}</strong>
+    {% if hint %}<span class="stat-hint">{{ hint }}</span>{% endif %}
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro lesson_status(progress_row) -%}
+{% if progress_row and progress_row.completed %}
+<span class="lesson-state is-done">{{ icon("check") }} {{ t("Completada") }}</span>
+{% elif progress_row %}
+<span class="lesson-state is-progress">{{ t("En curso") }}</span>
+{% else %}
+<span class="lesson-state">{{ t("Pendiente") }}</span>
+{% endif %}
+{%- endmacro %}

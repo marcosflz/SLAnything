@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, ring, stat, progress_bar, lesson_status with context %}
+
+{% block title %}{{ t("Mi progreso") }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Tu recorrido") }}{% endblock %}
+{% block page_title %}{{ t("Mi progreso") }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="eyebrow-dark">{{ t("{n} capítulos", n=course.chapter_count) }} · {{ course.title }}</span>
+  <h2>{{ t("Así va tu aprendizaje") }}</h2>
+  <p>{{ t("Todo tu progreso se guarda en el aula: lecciones completadas, apuntes, intentos de quiz y actividad diaria.") }}</p>
+  <a class="btn btn-ghost btn-sm" href="/cursos">{{ icon("grid") }} {{ t("Cambiar de curso") }}</a>
+</div>
+
+<div class="stat-grid stat-grid-4">
+  {{ stat(t("Lecciones"), stats.completed ~ " / " ~ stats.total, t("completadas"), "check-circle", "green") }}
+  {{ stat(t("Progreso"), stats.pct ~ " %", t("del curso"), "chart", "blue") }}
+  {{ stat(t("Nota media"), (avg_score ~ " %") if avg_score is not none else "—", t("en los quizzes"), "trophy", "violet") }}
+  {{ stat(t("Racha"), t("{n} día", n=streak) if streak == 1 else t("{n} días", n=streak), t("consecutivos"), "flame", "amber") }}
+</div>
+
+<div class="progress-grid mt-4">
+  <section class="card card-pad">
+    <div class="card-head">
+      <h3 class="card-title">{{ icon("list") }} {{ t("Lecciones del curso") }}</h3>
+      <span class="small muted">{{ t("{n} completada", n=stats.completed) if stats.completed == 1 else t("{n} completadas", n=stats.completed) }}</span>
+    </div>
+    <div class="table-wrap" style="margin:0;border:0">
+      <table class="progress-table">
+        <thead><tr><th>{{ t("Lección") }}</th><th>{{ t("Estado") }}</th><th>{{ t("Última visita") }}</th><th></th></tr></thead>
+        <tbody>
+          {% for chapter in course.chapters %}
+          {% set chapter_slugs = chapter.lessons|map(attribute='slug')|list %}
+          <tr class="chapter-row"><td colspan="4"><strong>{{ t("Capítulo {n}", n=chapter.number) }}</strong> · {{ chapter.title }}</td></tr>
+          {% for row in progress_rows %}
+          {% if row.lesson.slug in chapter_slugs %}
+          {% set p = row.progress %}
+          <tr>
+            <td><strong>{{ row.lesson.number }}.</strong> {{ row.lesson.title }}</td>
+            <td>{{ lesson_status(p) }}</td>
+            <td class="muted">{{ p.last_seen_at|fecha if p else "—" }}</td>
+            <td><a class="small" href="/leccion/{{ row.lesson.slug }}">{{ t("Abrir →") }}</a></td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="stack">
+    <section class="card card-pad center">
+      <span class="eyebrow-dark">{{ t("Progreso total") }}</span>
+      <div class="mt-3">{{ ring(stats.pct, 126, t("del curso")) }}</div>
+      {{ progress_bar(stats.pct, t("Progreso del curso"), "success") }}
+      <p class="small muted mt-3 mb-0">{{ t("{completed} de {total} lecciones completadas", completed=stats.completed, total=stats.total) }}</p>
+    </section>
+
+    <section class="card card-pad">
+      <div class="card-head">
+        <h3 class="card-title">{{ icon("chart") }} {{ t("Actividad · 28 días") }}</h3>
+      </div>
+      {% set max_act = (activity|map(attribute='count')|max) or 1 %}
+      <div class="activity-bars" style="height:86px">
+        {% for day in activity %}
+        <div class="activity-day" title="{{ day.label }}: {{ t('{n} acciones', n=day.count) }}">
+          <div class="activity-bar {% if day.count %}has-activity{% endif %} {% if day.is_today %}is-today{% endif %}" style="height: {{ 6 + (day.count / max_act) * 62 }}px"></div>
+          <span class="activity-label">{{ day.label if loop.index % 4 == 0 else "" }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+</div>
+
+<section class="card card-pad mt-4">
+  <div class="card-head">
+    <h3 class="card-title">{{ icon("trophy") }} {{ t("Intentos de quiz") }}</h3>
+    {% if quiz_id %}<a class="small" href="/quiz/{{ quiz_id }}">{{ t("Hacer el quiz →") }}</a>{% endif %}
+  </div>
+  {% if attempts %}
+  <div class="attempt-list">
+    {% for attempt in attempts %}
+    {% set p = (attempt.score * 100 / attempt.total)|round|int %}
+    <a class="attempt-row" href="/quiz/intento/{{ attempt.id }}">
+      <span class="attempt-score {% if p >= 80 %}is-pass{% else %}is-fail{% endif %}">{{ p }}%</span>
+      <span><strong>{{ attempt.score }}/{{ attempt.total }}</strong><span class="attempt-meta">{{ attempt.created_at|fecha }}</span></span>
+      <span class="spacer"></span>
+      <span class="badge {{ 'badge-success' if p >= 80 else 'badge-warning' }}">{{ t("Aprobado") if p >= 80 else t("A repasar") }}</span>
+      <span class="small" style="color:var(--brand)">{{ t("Revisar →") }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-search">
+    <p class="mb-0">{{ t("Aún no hay intentos. Cuando termines el capítulo, el quiz te dará una medida de lo aprendido.") }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

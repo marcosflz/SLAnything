@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" role="img" aria-labelledby="maskTitle maskDesc">
+  <title id="maskTitle">Máscara causal sobre una matriz de atención 3 × 3</title>
+  <desc id="maskDesc">Las puntuaciones de la parte superior derecha se sustituyen por menos infinito antes de softmax. La matriz resultante tiene ceros en el futuro y cada fila suma uno.</desc>
+  <defs>
+    <marker id="maskArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="960" height="430" rx="18" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="40" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="21" font-weight="700" fill="#0f172a">Causal mask · 3 × 3</text>
+  <text x="40" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">−∞ antes de softmax: el futuro deja de contribuir y cada fila se renormaliza.</text>
+
+  <text x="60" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">scores QKᵀ</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="13">
+    <text x="40" y="153" fill="#64748b">t1</text>
+    <text x="40" y="217" fill="#64748b">t2</text>
+    <text x="40" y="281" fill="#64748b">t3</text>
+    <text x="90" y="133" text-anchor="middle" fill="#64748b">t1</text>
+    <text x="154" y="133" text-anchor="middle" fill="#64748b">t2</text>
+    <text x="218" y="133" text-anchor="middle" fill="#64748b">t3</text>
+  </g>
+
+  <rect x="60" y="142" width="64" height="64" fill="#eff6ff" stroke="#cbd5e1"/>
+  <text x="92" y="181" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#1e3a8a">2.0</text>
+  <rect x="124" y="142" width="64" height="64" fill="#fee2e2" stroke="#fca5a5"/>
+  <text x="156" y="181" text-anchor="middle" font-family="Consolas, monospace" font-size="15" font-weight="700" fill="#b91c1c">−∞</text>
+  <rect x="188" y="142" width="64" height="64" fill="#fee2e2" stroke="#fca5a5"/>
+  <text x="220" y="181" text-anchor="middle" font-family="Consolas, monospace" font-size="15" font-weight="700" fill="#b91c1c">−∞</text>
+
+  <rect x="60" y="206" width="64" height="64" fill="#eff6ff" stroke="#cbd5e1"/>
+  <text x="92" y="245" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#1e3a8a">1.5</text>
+  <rect x="124" y="206" width="64" height="64" fill="#eff6ff" stroke="#cbd5e1"/>
+  <text x="156" y="245" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#1e3a8a">2.5</text>
+  <rect x="188" y="206" width="64" height="64" fill="#fee2e2" stroke="#fca5a5"/>
+  <text x="220" y="245" text-anchor="middle" font-family="Consolas, monospace" font-size="15" font-weight="700" fill="#b91c1c">−∞</text>
+
+  <rect x="60" y="270" width="64" height="64" fill="#eff6ff" stroke="#cbd5e1"/>
+  <text x="92" y="309" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#1e3a8a">0.7</text>
+  <rect x="124" y="270" width="64" height="64" fill="#eff6ff" stroke="#cbd5e1"/>
+  <text x="156" y="309" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#1e3a8a">1.2</text>
+  <rect x="188" y="270" width="64" height="64" fill="#eff6ff" stroke="#cbd5e1"/>
+  <text x="220" y="309" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#1e3a8a">3.0</text>
+
+  <line x1="270" y1="238" x2="386" y2="238" stroke="#64748b" stroke-width="1.8" marker-end="url(#maskArrow)"/>
+  <rect x="395" y="200" width="130" height="76" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="460" y="232" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#1e3a8a">softmax</text>
+  <text x="460" y="253" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1e40af">por filas</text>
+  <line x1="525" y1="238" x2="548" y2="238" stroke="#64748b" stroke-width="1.8" marker-end="url(#maskArrow)"/>
+
+  <text x="560" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">weights α</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="13">
+    <text x="540" y="153" fill="#64748b">t1</text>
+    <text x="540" y="217" fill="#64748b">t2</text>
+    <text x="540" y="281" fill="#64748b">t3</text>
+    <text x="590" y="133" text-anchor="middle" fill="#64748b">t1</text>
+    <text x="654" y="133" text-anchor="middle" fill="#64748b">t2</text>
+    <text x="718" y="133" text-anchor="middle" fill="#64748b">t3</text>
+  </g>
+
+  <rect x="560" y="142" width="64" height="64" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="592" y="181" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#047857">1.00</text>
+  <rect x="624" y="142" width="64" height="64" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="656" y="181" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#94a3b8">0</text>
+  <rect x="688" y="142" width="64" height="64" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="720" y="181" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#94a3b8">0</text>
+
+  <rect x="560" y="206" width="64" height="64" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="592" y="245" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#047857">0.27</text>
+  <rect x="624" y="206" width="64" height="64" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="656" y="245" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#047857">0.73</text>
+  <rect x="688" y="206" width="64" height="64" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="720" y="245" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#94a3b8">0</text>
+
+  <rect x="560" y="270" width="64" height="64" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="592" y="309" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#047857">0.08</text>
+  <rect x="624" y="270" width="64" height="64" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="656" y="309" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#047857">0.13</text>
+  <rect x="688" y="270" width="64" height="64" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="720" y="309" text-anchor="middle" font-family="Consolas, monospace" font-size="14" fill="#047857">0.79</text>
+
+  <rect x="800" y="142" width="120" height="192" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="860" y="174" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#334155">Cada fila</text>
+  <text x="860" y="194" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#334155">suma 1</text>
+  <text x="860" y="228" text-anchor="middle" font-family="Consolas, monospace" font-size="15" fill="#047857">Σ α = 1</text>
+  <text x="860" y="260" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#64748b">exp(−∞) = 0</text>
+  <text x="860" y="284" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#64748b">cero exacto</text>
+
+  <line x1="40" y1="370" x2="920" y2="370" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="40" y="397" font-family="Consolas, monospace" font-size="13" fill="#334155">α = softmax(QKᵀ / √d_k + M)</text>
+  <text x="390" y="397" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">M = 0 en el pasado y el presente; M = −∞ en el futuro.</text>
+</svg>

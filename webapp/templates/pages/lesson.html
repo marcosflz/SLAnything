@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import icon, badge, progress_bar %}
+{% from "components/blocks.html" import render_block with context %}
+
+{% block title %}{{ lesson.title }} · {{ site_name }}{% endblock %}
+{% block page_kicker %}{{ t("Lección {n} de {total}", n=lesson.number, total=chapter.lesson_count) }}{% endblock %}
+{% block page_title %}{{ lesson.title }}{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="{{ t('Migas de pan') }}">
+  <a href="/cursos">{{ icon("grid") }} {{ t("Cursos") }}</a>
+  <span>/</span>
+  <a href="/cursos/{{ course.slug }}">{{ course.title }}</a>
+  <span>/</span>
+  <span>{{ lesson.title }}</span>
+</nav>
+<div class="lesson-layout">
+  <article class="lesson-main">
+    <header class="lesson-header">
+      <span class="eyebrow-dark">{{ icon("book") }} {{ t("Capítulo {n}", n=chapter.number) }} · {{ chapter.title }}</span>
+      <h2>{{ lesson.title }}</h2>
+      <p>{{ lesson.summary }}</p>
+      <div class="lesson-header-meta">
+        <span>{{ icon("clock") }} {{ t("{n} minutos", n=lesson.minutes) }}</span>
+        <span>{{ icon("target") }} {{ t("{n} objetivos", n=lesson.objectives|length) }}</span>
+        {% if lesson.labs %}<span>{{ icon("sparkles") }} {{ t("{n} laboratorio", n=lesson.labs|length) if lesson.labs|length == 1 else t("{n} laboratorios", n=lesson.labs|length) }}</span>{% endif %}
+        {% if progress and progress.completed %}<span style="color:var(--success)">{{ icon("check-circle") }} {{ t("Completada") }}</span>{% endif %}
+      </div>
+      {% if lesson.python_blocks %}
+      <a class="btn btn-secondary btn-sm" href="/leccion/{{ lesson.slug }}/codigo">{{ icon("download") }} {{ t("Descargar los ejemplos de esta lección (.py)") }}</a>
+      {% endif %}
+    </header>
+
+    <section class="objectives" aria-label="{{ t('Objetivos de la lección') }}">
+      <h3>{{ t("Al terminar sabrás…") }}</h3>
+      <ul>
+        {% for objective in lesson.objectives %}<li>{{ objective }}</li>{% endfor %}
+      </ul>
+    </section>
+
+    <div class="prose">
+      {% for block in lesson.blocks %}
+        {{ render_block(block, loop.index, lesson) }}
+      {% endfor %}
+    </div>
+
+    {% if quiz %}
+    <section class="card card-pad mt-4">
+      <div class="card-head">
+        <h3 class="card-title">{{ icon("trophy") }} {{ t("Comprueba lo aprendido") }}</h3>
+        {% if best_attempt %}
+        {% set best_pct = (best_attempt.score * 100 / best_attempt.total)|round|int %}
+        {{ badge(best_pct ~ " % · " ~ t("mejor intento"), "success" if best_pct >= quiz.pass_score else "warning") }}
+        {% endif %}
+      </div>
+      <p class="small muted">{{ quiz.description }}</p>
+      <div class="row">
+        <a class="btn btn-primary" href="/quiz/{{ quiz.id }}">{{ icon("play") }} {{ t("Repetir quiz") if best_attempt else t("Empezar quiz") }}</a>
+        <span class="small muted">{{ t("{n} preguntas · necesitas {pct} % para aprobar", n=quiz.total, pct=quiz.pass_score) }}</span>
+      </div>
+    </section>
+    {% endif %}
+
+    <nav class="lesson-nav" aria-label="{{ t('Navegación entre lecciones') }}">
+      {% if prev_lesson %}
+      <a class="lesson-nav-link" href="/leccion/{{ prev_lesson.slug }}">
+        <small>{{ t("← Anterior") }}</small>
+        <strong>{{ prev_lesson.title }}</strong>
+      </a>
+      {% else %}<span></span>{% endif %}
+      {% if next_lesson %}
+      <a class="lesson-nav-link next" href="/leccion/{{ next_lesson.slug }}">
+        <small>{{ t("Siguiente →") }}</small>
+        <strong>{{ next_lesson.title }}</strong>
+      </a>
+      {% else %}
+      <a class="lesson-nav-link next" href="/cursos/{{ course.slug }}">
+        <small>{{ t("Fin del curso") }}</small>
+        <strong>{{ t("Volver al curso") }}</strong>
+      </a>
+      {% endif %}
+    </nav>
+  </article>
+
+  <aside class="lesson-aside">
+    <section class="card aside-card">
+      <h3>{{ icon("chart") }} {{ t("Tu progreso") }}</h3>
+      <div class="aside-progress">
+        <div style="flex:1">
+          <strong>{{ t("Lección completada") if progress and progress.completed else t("Aún en curso") }}</strong>
+          <small>{{ t("Lección {n} de {total}", n=lesson.number, total=chapter.lesson_count) }}</small>
+        </div>
+      </div>
+      {% set completed_count = namespace(value=0) %}
+      {% for item in chapter.lessons %}
+      {% if sidebar_progress and sidebar_progress.get(item.slug, {}).get('completed') %}{% set completed_count.value = completed_count.value + 1 %}{% endif %}
+      {% endfor %}
+      {% set course_completed = sidebar_progress.values()|selectattr('completed')|list|length if sidebar_progress else 0 %}
+      {{ progress_bar((completed_count.value * 100 / (chapter.lesson_count))|round|int, t("Progreso del capítulo"), "success") }}
+      <p class="small muted" style="margin:7px 0 0">{{ t("{completed} de {total} lecciones completadas", completed=completed_count.value, total=chapter.lesson_count) }}</p>
+      <p class="small muted" style="margin:3px 0 0">{{ t("{completed} de {total} lecciones del curso", completed=course_completed, total=course.lesson_count) }}</p>
+      <form method="post" action="/leccion/{{ lesson.slug }}/completar" class="mt-3">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <input type="hidden" name="completed" value="{{ 0 if progress and progress.completed else 1 }}">
+        <button class="btn {{ 'btn-secondary' if progress and progress.completed else 'btn-success' }} btn-block" type="submit">
+          {{ icon("check") }} {{ t("Marcar como pendiente") if progress and progress.completed else t("Marcar como completada") }}
+        </button>
+      </form>
+    </section>
+
+    <section class="card aside-card">
+      <h3>{{ icon("notebook") }} {{ t("Tus apuntes") }}</h3>
+      <form method="post" action="/leccion/{{ lesson.slug }}/nota">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <label class="sr-only" for="nota">{{ t("Apuntes de la lección") }}</label>
+        <textarea class="note-area" id="nota" name="body" maxlength="20000" data-note data-note-label="{{ t('{n} caracteres') }}" placeholder="{{ t('Escribe una idea, una duda o un ejemplo…') }}">{{ note }}</textarea>
+        <div class="note-meta"><span data-note-count></span><button class="btn btn-secondary btn-sm" type="submit">{{ t("Guardar") }}</button></div>
+      </form>
+    </section>
+
+    <section class="card aside-card">
+      <h3>{{ icon("bookmark") }} {{ t("Marcador") }}</h3>
+      <p>{{ t("Guarda esta lección para volver más tarde.") }}</p>
+      <form method="post" action="/leccion/{{ lesson.slug }}/marcador">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <button class="btn {{ 'btn-primary' if bookmarked else 'btn-secondary' }} btn-block" type="submit">
+          {{ icon("bookmark") }} {{ t("Quitar marcador") if bookmarked else t("Guardar en marcadores") }}
+        </button>
+      </form>
+    </section>
+
+    {% if quiz %}
+    <section class="card aside-card">
+      <h3>{{ icon("trophy") }} {{ t("Quiz del capítulo") }}</h3>
+      {% if best_attempt %}
+      {% set best_pct = (best_attempt.score * 100 / best_attempt.total)|round|int %}
+      <p>{{ t("Mejor resultado: {pct} % ({score}/{total}).", pct=best_pct, score=best_attempt.score, total=best_attempt.total) }}</p>
+      <a class="btn btn-primary btn-block" href="/quiz/{{ quiz.id }}">{{ icon("refresh") }} {{ t("Repetir quiz") }}</a>
+      {% else %}
+      <p>{{ t("Diez preguntas para comprobar las ideas del capítulo.") }}</p>
+      <a class="btn btn-primary btn-block" href="/quiz/{{ quiz.id }}">{{ icon("play") }} {{ t("Hacer el quiz") }}</a>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="card aside-card">
+      <h3>{{ icon("lightbulb") }} {{ t("Consejo de estudio") }}</h3>
+      <p class="mb-0">{{ t("Si una idea no queda clara, vuelve al laboratorio y cambia un parámetro. Aprender LLMs es construir intuición, no memorizar siglas.") }}</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{
+  "name": "slanything-frontend",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 3000",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1 -p 3000",
+    "typecheck": "tsc --noEmit",
+    "e2e": "node e2e-smoke.mjs",
+    "e2e:labs": "node e2e-labs.mjs",
+    "export:messages": "uv run python ../tools/export_messages.py",
+    "sync:assets": "uv run python ../tools/sync_frontend_assets.py"
+  },
+  "dependencies": {
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,119 @@
+{% from "components/ui.html" import icon %}
+{% macro render_block(block, index=0, lesson=None) -%}
+{% set kind = block.type %}
+{% if kind == "lead" %}
+  <p class="lesson-lead">{{ block.html|safe }}</p>
+{% elif kind == "p" %}
+  <p>{{ block.html|safe }}</p>
+{% elif kind == "h2" %}
+  <h2 id="{{ block.anchor }}">{{ block.text }}</h2>
+{% elif kind == "h3" %}
+  <h3 id="{{ block.anchor }}">{{ block.text }}</h3>
+{% elif kind == "callout" %}
+  <aside class="callout callout-{{ block.tone }}">
+    <div class="callout-icon">
+      {% if block.tone == "warning" or block.tone == "danger" %}!{% elif block.tone == "success" %}✓{% elif block.tone == "tip" %}★{% else %}i{% endif %}
+    </div>
+    <div class="callout-body">
+      <strong class="callout-title">{{ block.title }}</strong>
+      <div class="callout-text">{{ block.html|safe }}</div>
+    </div>
+  </aside>
+{% elif kind == "figure" %}
+  <figure class="figure{% if block.wide %} figure-wide{% endif %}">
+    <button class="figure-zoom" type="button" data-lightbox="/static/{{ block.src }}" aria-label="Ampliar imagen: {{ block.alt }}">
+      <img src="/static/{{ block.src }}" alt="{{ block.alt }}" loading="lazy" decoding="async">
+    </button>
+    <figcaption>
+      <span>{{ block.caption }}</span>
+      {% if block.credit %}<small class="figure-credit">{{ block.credit }}</small>{% endif %}
+    </figcaption>
+  </figure>
+{% elif kind == "code" %}
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-lang">{{ block.language }}</span>
+      {% if block.caption %}<span class="code-caption">{{ block.caption }}</span>{% endif %}
+      <button class="code-copy" type="button" data-copy-target="code-{{ index }}">{{ t("Copiar") }}</button>
+    </div>
+    <pre id="code-{{ index }}"><code class="language-{{ block.language }}">{{ block.code }}</code></pre>
+  </div>
+{% elif kind == "python" %}
+  <div class="py-runner" data-python-runner data-filename="ejemplo-{{ index }}.py" data-lesson="{{ lesson.slug if lesson else '' }}">
+    <div class="code-head py-head">
+      <span class="code-lang">{{ t("Python · ejecutable") }}</span>
+      {% if block.caption %}<span class="code-caption">{{ block.caption }}</span>{% endif %}
+      <div class="py-actions">
+        <button class="btn btn-primary btn-sm" type="button" data-py-run>{{ icon("play") }} {{ t("Ejecutar") }}</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-py-reset>{{ icon("refresh") }} {{ t("Restablecer") }}</button>
+        {% if lesson %}<a class="btn btn-secondary btn-sm" href="/leccion/{{ lesson.slug }}/codigo/{{ index }}" data-py-download>{{ icon("download") }} {{ t("Descargar") }}</a>{% endif %}
+      </div>
+    </div>
+    <div class="py-editor">
+      <div class="py-gutter" data-py-gutter aria-hidden="true"></div>
+      <textarea class="py-source" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="{{ t('Código Python editable') }}">{{ block.code }}</textarea>
+    </div>
+    <div class="py-meta">
+      <span>{{ icon("server") }} {{ t("Se ejecuta en el servidor, en un proceso aislado y con límite de tiempo y memoria.") }}</span>
+      <span>{{ t("También puedes descargarlo y ejecutarlo en tu equipo.") }}</span>
+    </div>
+    <div class="py-output" data-py-output hidden>
+      <div class="py-output-head">
+        <span data-py-status>{{ t("Salida") }}</span>
+        <span class="py-duration" data-py-duration></span>
+        <button class="code-copy" type="button" data-py-clear>{{ t("Limpiar") }}</button>
+      </div>
+      <pre class="py-stdout" data-py-stdout></pre>
+      <div class="py-error" data-py-error hidden></div>
+      <div class="py-results" data-py-results></div>
+    </div>
+  </div>
+{% elif kind == "table" %}
+  <div class="table-wrap">
+    <table>
+      {% if block.caption %}<caption>{{ block.caption }}</caption>{% endif %}
+      <thead><tr>{% for header in block.headers %}<th scope="col">{{ header|safe }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in block.rows %}<tr>{% for cell in row %}<td>{{ cell|safe }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table>
+    {% if block.note %}<p class="table-note">{{ block.note|safe }}</p>{% endif %}
+  </div>
+{% elif kind == "quote" %}
+  <blockquote class="quote">
+    <p>{{ block.text|safe }}</p>
+    {% if block.source %}<cite>{{ block.source }}</cite>{% endif %}
+  </blockquote>
+{% elif kind == "list" %}
+  <{{ "ol" if block.ordered else "ul" }} class="lesson-list-text">
+    {% for item in block["items"] %}<li>{{ item|safe }}</li>{% endfor %}
+  </{{ "ol" if block.ordered else "ul" }}>
+{% elif kind == "lab" %}
+  {% set meta = lab_meta.get(block.lab, {}) %}
+  <section class="lab lab-{{ meta.get('accent', 'blue') }}" data-lab="{{ block.lab }}">
+    <header class="lab-head">
+      <div class="lab-title">
+        <span class="lab-icon">{{ icon(meta.get("icon", "sparkles")) }}</span>
+        <div>
+          <span class="lab-kicker">{{ t("Laboratorio interactivo") }}</span>
+          <h3>{{ meta.get("title", block.lab|capitalize) }}</h3>
+        </div>
+      </div>
+      <p>{{ meta.get("description", "") }}</p>
+    </header>
+    <div class="lab-body" data-lab-body>
+      <div class="lab-loading"><span class="spinner"></span> {{ t("Cargando laboratorio…") }}</div>
+    </div>
+  </section>
+{% elif kind == "keypoints" %}
+  <div class="keypoints">
+    <h3>{{ icon("target") }} {{ t("Ideas clave") }}</h3>
+    <ul>{% for item in block["items"] %}<li>{{ item|safe }}</li>{% endfor %}</ul>
+  </div>
+{% elif kind == "check" %}
+  <details class="self-check">
+    <summary>{{ icon("circle-help") }} {{ block.question }}</summary>
+    <div class="self-check-answer">{{ block.answer|safe }}</div>
+  </details>
+{% elif kind == "divider" %}
+  <hr class="divider">
+{% endif %}
+{%- endmacro %}

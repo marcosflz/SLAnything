@@ -1,0 +1,34 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+book_extract/
+.openchamber/
+notebooks/_test_*
+Build a Large Language Model (From Scratch).pdf
+
+# Base de datos y secretos locales del aula
+aula.db
+aula.db-wal
+aula.db-shm
+.aula_secret
+authoring-data/
+.aula_authoring/
+
+# Configuración local de Docker Compose
+.env
+.env.local
+*.db.backup
+
+# Artefactos de pruebas y capturas temporales
+.pytest_cache/
+htmlcov/
+.coverage
+docs/capturas/_tmp/
+
+# Frontend Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/*.tsbuildinfo
+
