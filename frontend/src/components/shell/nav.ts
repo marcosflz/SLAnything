@@ -90,6 +90,11 @@ export function navSections(user: User, lang: Lang, hasCourse = true): NavSectio
       { href: "/analitica", label: pick(lang, "Analítica", "Analytics"), icon: "analytics" },
       { href: "/profesor", label: pick(lang, "Estudiantes", "Students"), icon: "teacher" }
     );
+    // El profesorado invita a su alumnado (ADR-022); la administración lo hace
+    // desde «Administrar academia».
+    if (!perms?.manage) {
+      create.push({ href: "/admin/invitaciones", label: pick(lang, "Invitar alumnos", "Invite students"), icon: "invites" });
+    }
   }
   if (create.length) {
     sections.push({
@@ -115,6 +120,7 @@ export function navSections(user: User, lang: Lang, hasCourse = true): NavSectio
       items: [
         { href: "/plataforma", label: pick(lang, "Resumen", "Overview"), icon: "gauge" },
         { href: "/plataforma/usuarios", label: pick(lang, "Usuarios", "Users"), icon: "members" },
+        { href: "/plataforma/invitaciones", label: pick(lang, "Invitaciones", "Invitations"), icon: "invites" },
         { href: "/plataforma/espacios", label: pick(lang, "Espacios", "Spaces"), icon: "spaces" },
         { href: "/plataforma/cursos", label: pick(lang, "Cursos", "Courses"), icon: "catalog" },
         { href: "/plataforma/ia", label: pick(lang, "Proveedor de IA", "AI provider"), icon: "ai" },

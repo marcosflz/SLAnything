@@ -4,7 +4,7 @@ title: API JSON v1
 description: Contrato entre FastAPI y Next.js para sesión, curso, progreso, quiz, recursos y profesor.
 tags: [api, json, nextjs, fastapi, contrato]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: api
     resource: ../../webapp/routers/api.py
@@ -116,7 +116,9 @@ metadatos, sin duplicar el contenido completo.
   recursos, búsqueda, profesorado y analítica devuelven `course: null`;
   `/course`, lecciones y quizzes devuelven 404.
 - La biblioteca es la del **espacio activo** (más cursos públicos y ejemplos).
-- `/public` añade `demo_accounts` (solo con siembra demo) y `formats`.
+- `/public` añade `demo_accounts` (solo con siembra demo) y `formats`; `site`
+  lleva `signup_open` (ADR-022). Sin registro abierto, `/auth/register` exige
+  `invite`.
 - El usuario serializado lleva `profile`, `is_platform_admin` y `permissions`
   (`learn`, `author`, `teach`, `manage`, `admin`, `owner`, `platform`); ya no
   lleva `role`.

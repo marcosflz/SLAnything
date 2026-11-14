@@ -4,7 +4,7 @@ title: Problemas conocidos y limitaciones
 description: Bugs, deudas técnicas y limitaciones conscientes de SLAnything, con impacto y workaround.
 tags: [bugs, deuda-tecnica, limitaciones, operaciones]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: qa
     resource: ../../docs/QA.md
@@ -168,6 +168,15 @@ superadmin), y los 15 labs del ejemplo montan sin errores.
 - Los ajustes del proveedor siguen siendo globales de plataforma (no por
   espacio) y la API key sigue en `settings.json`. La cuota mensual sí se puede
   fijar por espacio desde `/plataforma/espacios`.
+
+# Registro por invitación (2026-11-14)
+
+- **Sin correo saliente.** Las invitaciones son enlaces que se copian y se
+  envían a mano; no hay aviso por correo ni reenvío.
+- **Cambio de rol fuera de invitaciones.** Un owner puede ascender a un alumno a
+  profesorado desde `/admin/usuarios`; el registro cerrado solo limita las altas.
+- **Código de clase.** Sigue funcionando para usuarios ya registrados (los
+  administra la academia); no crea cuentas nuevas.
 
 # Tras la plataforma genérica (2026-11-14)
 

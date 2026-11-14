@@ -313,10 +313,45 @@ def _m0006_account_profiles(conn: sqlite3.Connection) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# v7 · Invitaciones de plataforma (ADR-022)
+# ---------------------------------------------------------------------------
+
+def _m0007_platform_invitations(conn: sqlite3.Connection) -> None:
+    """Invitaciones que emite la superadministración.
+
+    ``individual`` abre una cuenta individual; ``teacher`` incorpora a un
+    profesor a una academia existente (``workspace_id``) o le crea una academia
+    nueva de la que será propietario (``academy_name`` opcional, se puede
+    escribir al aceptar).
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS platform_invitations (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind         TEXT NOT NULL CHECK (kind IN ('individual', 'teacher')),
+            email        TEXT,
+            workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
+            academy_name TEXT,
+            token_hash   TEXT NOT NULL UNIQUE,
+            created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at   TEXT NOT NULL,
+            expires_at   TEXT NOT NULL,
+            accepted_at  TEXT,
+            accepted_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            revoked_at   TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_platform_invitations_created
+            ON platform_invitations(created_at DESC);
+        """
+    )
+
+
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (4, _m0004_workspaces_and_events),
     (5, _m0005_staged_generation),
     (6, _m0006_account_profiles),
+    (7, _m0007_platform_invitations),
 ]
 
 LATEST_VERSION = MIGRATIONS[-1][0]

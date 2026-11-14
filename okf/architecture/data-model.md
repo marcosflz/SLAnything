@@ -4,7 +4,7 @@ title: Modelo de datos SQLite
 description: Tablas, columnas y relaciones que sostienen usuarios, progreso y evaluación.
 tags: [datos, sqlite, esquema, progreso, quiz]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: db
     resource: ../../webapp/db.py
@@ -80,7 +80,7 @@ una base v2 se actualiza sin tocar sus datos. La operación es idempotente.
   `webapp/migrations.py`.
 - Copia de seguridad: parar el servidor y copiar `aula.db` (o usar `sqlite3 .backup`).
 
-# Migraciones versionadas (v4, v5, v6)
+# Migraciones versionadas (v4, v5, v6, v7)
 
 Desde 2026-11-13 el esquema evoluciona con `webapp/migrations.py`
 ([ADR-015](/decisions/adr-015-versioned-migrations.md)). v4 añade espacios,
@@ -93,5 +93,9 @@ estados y añade `engine`, `stage`, `progress_json`, `config_json`, tokens y
 `users.last_course_slug` (curso activo por defecto), borra el espacio personal
 vacío de quien solo es alumno, crea la cuenta individual de usuarios sin
 espacio y renombra las cuentas demo `@aulallm.local`. `workspaces.settings_json`
-guarda `gen_monthly` (cuota fijada por la superadministración). Detalle de uso
+guarda `gen_monthly` (cuota fijada por la superadministración). v7
+([ADR-022](/decisions/adr-022-invite-only-signup.md)) añade
+`platform_invitations` (`kind` individual|teacher, `email`, `workspace_id`,
+`academy_name`, `token_hash`, fechas de creación, caducidad, aceptación y
+revocación). Detalle de uso
 en [tenancy-analytics](/architecture/tenancy-analytics.md).

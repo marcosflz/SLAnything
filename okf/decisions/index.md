@@ -23,3 +23,4 @@ Registro de decisiones que conviene no reabrir sin contexto.
 * [ADR-019 · Cola de generación persistente y reanudable](/decisions/adr-019-generation-queue.md) - Estado en authoring_jobs y artefactos en disco; pool en proceso con reanudación al arrancar y worker opcional aparte.
 * [ADR-020 · Plataforma genérica y curso LLM como ejemplo opcional](/decisions/adr-020-generic-platform.md) - La app funciona con la biblioteca vacía; el curso LLM solo aparece con AULA_SAMPLE_COURSES=1; curso activo, glosario y recursos por curso.
 * [ADR-021 · Perfiles de cuenta - individual, academia y superadmin](/decisions/adr-021-account-profiles.md) - Alta individual o academia, matriz learn/author/teach/manage/platform, alumnado sin Estudio y panel /plataforma.
+* [ADR-022 · Registro solo por invitación](/decisions/adr-022-invite-only-signup.md) - Sin registro abierto; la superadministración invita a cuentas individuales y profesorado y el profesorado invita a su alumnado.

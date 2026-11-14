@@ -439,6 +439,7 @@ def _site_payload(lang: str, course: Course | None, catalog_count: int) -> dict:
         if course
         else None,
         "catalog_count": catalog_count,
+        "signup_open": config.OPEN_SIGNUP,
         "year": date.today().year,
     }
 
@@ -766,6 +767,12 @@ def api_register(
     code = (body.join_code or "").strip()
     account = "invite" if invite else body.account
     academy_name = (body.academy_name or "").strip()
+    # Registro cerrado (ADR-022): solo se crean cuentas con una invitación.
+    if account != "invite" and not config.OPEN_SIGNUP:
+        return JSONResponse(
+            {"detail": translate("El registro es solo por invitación.", lang)},
+            status_code=403,
+        )
     if account == "academy" and not 2 <= len(academy_name) <= 80:
         return error("El nombre de la academia debe tener entre 2 y 80 caracteres.")
     if account == "join" and not code:
@@ -780,11 +787,12 @@ def api_register(
     # Comprobaciones previas: no se crea la cuenta si el acceso no es válido.
     try:
         if account == "invite":
-            row = workspaces.usable_invitation(conn, invite)
-            if row["email"] and row["email"] != clean_email.lower():
+            info = workspaces.describe_invitation(conn, invite)
+            workspaces.check_invitation_email(info, clean_email)
+            if info["needs_academy_name"] and not 2 <= len(academy_name) <= 80:
                 raise HTTPException(
-                    status_code=403,
-                    detail="Esta invitación es para otra dirección de correo.",
+                    status_code=400,
+                    detail="El nombre de la academia debe tener entre 2 y 80 caracteres.",
                 )
         elif account == "join":
             target = workspaces.get_workspace_by_join_code(conn, code)
@@ -808,7 +816,9 @@ def api_register(
     user_id = int(user["id"])
     try:
         if account == "invite":
-            workspace_id = workspaces.accept_invitation(conn, invite, user_id, clean_email)
+            workspace_id = workspaces.accept_any_invitation(
+                conn, invite, user_id, clean_email, clean_name, academy_name or None
+            )
             audit.record(conn, actor_id=user_id, action="invite.accept",
                          workspace_id=workspace_id, target=clean_email, request=request)
         elif account == "join":

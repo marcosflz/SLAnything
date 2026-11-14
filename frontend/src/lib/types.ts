@@ -51,7 +51,22 @@ export interface Site {
   course_title: string | null;
   course_chapter: string | null;
   catalog_count: number;
+  /** Registro abierto. Si es false, solo se entra por invitación (ADR-022). */
+  signup_open: boolean;
   year: number;
+}
+
+/** Invitación pendiente (de academia o de plataforma). */
+export interface InvitationInfo {
+  source: "academy" | "platform";
+  /** member: entra en una academia; individual: cuenta individual; academy_owner: crea su academia. */
+  kind: "member" | "individual" | "academy_owner";
+  workspace: string | null;
+  role: string;
+  email: string | null;
+  expires_at: string;
+  academy_name: string | null;
+  needs_academy_name: boolean;
 }
 
 export interface DemoAccount {
@@ -764,4 +779,17 @@ export interface PlatformWorkspace {
   courses: number;
   jobs_month: number;
   created_at: string;
+}
+
+export interface PlatformInvitation {
+  id: number;
+  kind: "individual" | "teacher";
+  email: string | null;
+  workspace_id: number | null;
+  workspace_name: string | null;
+  academy_name: string | null;
+  accepted_email: string | null;
+  state: "pending" | "accepted" | "expired" | "revoked";
+  created_at: string;
+  expires_at: string;
 }

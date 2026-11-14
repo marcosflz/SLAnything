@@ -15,7 +15,7 @@ export default async function InvitationsPage() {
   const shell = await getShell("/admin/invitaciones");
   const { lang } = shell;
   const [data, groups] = await Promise.all([
-    allowForbidden(apiGet<{ invitations: Invitation[] }>("/api/v1/admin/invitations")),
+    allowForbidden(apiGet<{ invitations: Invitation[]; roles: string[] }>("/api/v1/admin/invitations")),
     allowForbidden(apiGet<GroupsData>("/api/v1/admin/groups")),
   ]);
   return (
@@ -23,14 +23,22 @@ export default async function InvitationsPage() {
       shell={shell}
       path="/admin/invitaciones"
       title={pick(lang, "Invitaciones", "Invitations")}
-      description={pick(lang, "Enlaces de un solo uso para incorporar profesorado y estudiantes.", "Single-use links to bring in teachers and students.")}
+      description={
+        data?.roles.length === 1
+          ? pick(
+              lang,
+              "Enlaces de un solo uso para incorporar alumnado. El profesorado lo invita la administración de la plataforma.",
+              "Single-use links to bring in students. Teachers are invited by the platform administrators."
+            )
+          : pick(lang, "Enlaces de un solo uso para incorporar profesorado y estudiantes.", "Single-use links to bring in teachers and students.")
+      }
       allowed={Boolean(data)}
     >
       {data ? (
         <InvitesPanel
           invitations={data.invitations}
           groups={(groups?.groups ?? []).map((g) => ({ id: g.id, name: g.name }))}
-          canInviteAdmins={shell.user.ws_role === "owner"}
+          roles={data.roles}
           csrf={shell.user.csrf_token}
           lang={lang}
         />

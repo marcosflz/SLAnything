@@ -4,7 +4,7 @@ title: Pruebas de SLAnything
 description: Suite pytest de 111 tests, cobertura por área y comprobaciones manuales.
 tags: [testing, pytest, qa, cobertura]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: qa
     resource: ../../docs/QA.md
@@ -113,9 +113,21 @@ completa.
 - Si añades una ruta o contenido, amplía la suite y actualiza
   [testing](/operations/testing.md) y [status](/project/status.md).
 
+# Actualización 2026-11-14 (tarde)
+
+**196 tests**. `db_path` activa además el registro abierto
+(`config.OPEN_SIGNUP = True`) porque muchos tests crean cuentas libremente; el
+modo por defecto (solo invitación) se prueba con la fixture `closed_signup` en
+`test_invite_only.py`: registro rechazado sin invitación, invitaciones de
+plataforma (individual, profesor con academia nueva o existente), profesorado
+que solo invita alumnado y ve sus invitaciones, creación de espacios restringida
+y aceptación por usuarios ya registrados. `smoke_next.py` y `npm run e2e`
+detectan el modo con `site.signup_open`; en modo cerrado el E2E crea la
+invitación como superadmin y comprueba que el profesorado solo ofrece «alumno».
+
 # Actualización 2026-11-14
 
-La suite tiene **181 tests**. La fixture `db_path` activa los cursos de ejemplo
+Entonces la suite tenía **181 tests**. La fixture `db_path` activa los cursos de ejemplo
 (`config.SAMPLE_COURSES = True`) porque gran parte de la suite ejercita el curso
 LLM; `no_samples` los desactiva. Helpers nuevos: `admin_login` y
 `self_learner_login`. Ficheros nuevos:

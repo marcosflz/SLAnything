@@ -4,7 +4,7 @@ import { KeyRound, LogOut, MonitorSmartphone, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { roleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
@@ -23,7 +23,18 @@ export interface AccountData {
   sessions: { created_at: string; expires_at: string; current: boolean }[];
 }
 
-export function AccountPanel({ data, csrf, lang }: { data: AccountData; csrf: string; lang: Lang }) {
+export function AccountPanel({
+  data,
+  csrf,
+  lang,
+  canOpenPersonal = true,
+}: {
+  data: AccountData;
+  csrf: string;
+  lang: Lang;
+  /** Con el registro cerrado la cuenta individual se abre por invitación (ADR-022). */
+  canOpenPersonal?: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState(data.name);
   const [current, setCurrent] = useState("");
@@ -127,7 +138,7 @@ export function AccountPanel({ data, csrf, lang }: { data: AccountData; csrf: st
               <li className="text-sm text-muted-foreground">{pick(lang, "No perteneces a ningún espacio.", "You don't belong to any space.")}</li>
             ) : null}
           </ul>
-          {!data.workspaces.some((ws) => ws.kind === "personal") ? (
+          {canOpenPersonal && !data.workspaces.some((ws) => ws.kind === "personal") ? (
             <div className="mt-4 rounded-lg border border-dashed border-border p-3 text-sm">
               <p className="m-0 font-medium">{pick(lang, "¿Quieres crear unidades para ti?", "Want to create units for yourself?")}</p>
               <p className="m-0 mt-1 text-muted-foreground">
@@ -188,29 +199,57 @@ export function AccountPanel({ data, csrf, lang }: { data: AccountData; csrf: st
   );
 }
 
-export function AcceptInvite({ token, csrf, lang }: { token: string; csrf: string; lang: Lang }) {
+export function AcceptInvite({
+  token,
+  csrf,
+  lang,
+  askAcademyName = false,
+}: {
+  token: string;
+  csrf: string;
+  lang: Lang;
+  /** Invitación de profesor con academia nueva sin nombre (ADR-022). */
+  askAcademyName?: boolean;
+}) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [academyName, setAcademyName] = useState("");
   return (
-    <div className="grid gap-2">
+    <form
+      className="grid gap-2"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setBusy(true);
+        setError("");
+        try {
+          const result = await apiPost<{ workspace_id: number }>(
+            `/api/v1/invitations/${token}/accept`,
+            askAcademyName ? { academy_name: academyName } : {},
+            csrf
+          );
+          await apiPost("/api/v1/workspaces/switch", { workspace_id: result.workspace_id }, csrf);
+          window.location.href = "/";
+        } catch (err) {
+          setError(err instanceof Error ? err.message : String(err));
+          setBusy(false);
+        }
+      }}
+    >
+      {askAcademyName ? (
+        <Input
+          required
+          minLength={2}
+          maxLength={80}
+          value={academyName}
+          onChange={(event) => setAcademyName(event.target.value)}
+          placeholder={pick(lang, "Nombre de la academia", "Academy name")}
+          aria-label={pick(lang, "Nombre de la academia", "Academy name")}
+        />
+      ) : null}
       {error ? <p className="m-0 text-sm text-destructive">{error}</p> : null}
-      <Button
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          setError("");
-          try {
-            const result = await apiPost<{ workspace_id: number }>(`/api/v1/invitations/${token}/accept`, {}, csrf);
-            await apiPost("/api/v1/workspaces/switch", { workspace_id: result.workspace_id }, csrf);
-            window.location.href = "/";
-          } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
-            setBusy(false);
-          }
-        }}
-      >
+      <Button type="submit" disabled={busy}>
         {pick(lang, "Aceptar invitación", "Accept invitation")}
       </Button>
-    </div>
+    </form>
   );
 }

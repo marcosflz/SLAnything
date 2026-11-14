@@ -93,6 +93,11 @@ ADMIN_PASSWORD = "admin1234"
 # Siembra de cuentas y academia de demostración. Desactívala en producción.
 SEED_DEMO = os.environ.get("AULA_SEED_DEMO", "1") == "1"
 
+# Registro abierto. Con 0 (por defecto) solo se entra por invitación: la
+# superadministración invita a cuentas individuales y profesorado, y el
+# profesorado invita a su alumnado (ADR-022). Se lee en cada petición.
+OPEN_SIGNUP = os.environ.get("AULA_OPEN_SIGNUP", "0") == "1"
+
 # Correos con rol de superadministración de la plataforma (separados por comas).
 PLATFORM_ADMINS = tuple(
     email.strip().lower()

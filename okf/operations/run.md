@@ -4,7 +4,7 @@ title: Arranque local de SLAnything
 description: Comandos para instalar, arrancar, comprobar y reiniciar la plataforma en local.
 tags: [runbook, arranque, uv, fastapi, local]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -167,6 +167,7 @@ progreso es importante.
 |---|---|---|
 | `AULA_SEED_DEMO` | `1` | Crea cuentas y academia demo; pon `0` en producción |
 | `AULA_SAMPLE_COURSES` | `0` | Muestra el curso de ejemplo «Construye un LLM desde cero» (ADR-020) |
+| `AULA_OPEN_SIGNUP` | `0` | Registro abierto; con `0` solo se entra por invitación (ADR-022) |
 | `AULA_PLATFORM_ADMINS` | — | Correos con superadministración (coma) |
 | `AULA_GEN_ENGINE` | `direct` | Motor por defecto del Estudio |
 | `AULA_GEN_WORKERS` | `2` | Hilos del pool de generación |

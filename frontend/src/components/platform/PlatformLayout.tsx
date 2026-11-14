@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   ["/plataforma", "Resumen", "Overview"],
   ["/plataforma/usuarios", "Usuarios", "Users"],
+  ["/plataforma/invitaciones", "Invitaciones", "Invitations"],
   ["/plataforma/espacios", "Espacios", "Spaces"],
   ["/plataforma/cursos", "Cursos", "Courses"],
   ["/plataforma/ia", "Proveedor de IA", "AI provider"],

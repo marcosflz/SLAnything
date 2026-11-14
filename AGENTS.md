@@ -93,7 +93,7 @@ Además, **siempre**:
 ```powershell
 uv sync
 uv run python aula.py                 # backend FastAPI · http://127.0.0.1:8000
-uv run python -m pytest -q           # suite del proyecto (181 tests)
+uv run python -m pytest -q           # suite del proyecto (196 tests)
 uv run python tools/check_chapter.py ch02   # valida un paquete de capítulo
 uv run python tools/validate_all_chapters.py
 uv run python tools/check_okf.py     # conformidad y enlaces del OKF
@@ -141,7 +141,9 @@ individual** (aprende y crea sus unidades, sin gestión de aula) o **academia**
 (owner/admin, profesorado y alumnado; el alumnado solo consume), más una
 **superadministración** de plataforma (`/plataforma`). La biblioteca empieza
 vacía; el curso «Construye un LLM desde cero» (56 lecciones, 15 labs) es solo un
-**ejemplo opcional** (`AULA_SAMPLE_COURSES=1`). Ver ADR-020 y ADR-021. La única interfaz es
+**ejemplo opcional** (`AULA_SAMPLE_COURSES=1`). El registro es **solo por
+invitación** (`AULA_OPEN_SIGNUP=0`): el superadmin invita a cuentas individuales y
+profesorado, y el profesorado a su alumnado. Ver ADR-020, ADR-021 y ADR-022. La única interfaz es
 **Next.js 16 + React 19** (Tailwind v4); el backend es **FastAPI + SQLite** y
 solo expone API. Los identificadores internos `aula_*` se mantienen por
 compatibilidad.

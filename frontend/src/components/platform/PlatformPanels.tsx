@@ -1,19 +1,19 @@
 "use client";
 
-import { Ban, Eye, EyeOff, Search, ShieldCheck, ShieldOff, Trash2, Undo2 } from "lucide-react";
+import { Ban, Check, Copy, Eye, EyeOff, Link2, Search, ShieldCheck, ShieldOff, Trash2, Undo2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/charts/Kpi";
-import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { roleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Input, NativeSelect } from "@/components/ui/form";
 import { Pill } from "@/components/ui/pill";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
 import { apiDelete, apiPost, apiSendPatch } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
-import type { AuthoringCourse, PlatformUser, PlatformWorkspace } from "@/lib/types";
+import type { AuthoringCourse, PlatformInvitation, PlatformUser, PlatformWorkspace } from "@/lib/types";
 import { formatDate, relativeDays } from "@/lib/utils";
 
 function useAction() {
@@ -352,5 +352,202 @@ export function PlatformCoursesPanel({
         </Table>
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invitaciones de plataforma (ADR-022)
+// ---------------------------------------------------------------------------
+
+type InviteChoice = "individual" | "teacher_new" | "teacher_existing";
+
+function CopyLink({ value, lang }: { value: string; lang: Lang }) {
+  const [done, setDone] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={async () => {
+        await navigator.clipboard.writeText(value);
+        setDone(true);
+        setTimeout(() => setDone(false), 1500);
+      }}
+    >
+      {done ? <Check /> : <Copy />} {done ? pick(lang, "Copiado", "Copied") : pick(lang, "Copiar", "Copy")}
+    </Button>
+  );
+}
+
+function inviteKindLabel(invite: PlatformInvitation, lang: Lang): string {
+  if (invite.kind === "individual") return pick(lang, "Cuenta individual", "Individual account");
+  if (invite.workspace_id) {
+    return pick(lang, "Profesor en {a}", "Teacher in {a}").replace("{a}", invite.workspace_name ?? "—");
+  }
+  return invite.academy_name
+    ? pick(lang, "Profesor · academia nueva «{a}»", "Teacher · new academy “{a}”").replace("{a}", invite.academy_name)
+    : pick(lang, "Profesor · academia nueva", "Teacher · new academy");
+}
+
+export function PlatformInvitationsPanel({
+  invitations,
+  academies,
+  csrf,
+  lang,
+}: {
+  invitations: PlatformInvitation[];
+  academies: { id: number; name: string }[];
+  csrf: string;
+  lang: Lang;
+}) {
+  const { run, error, busy } = useAction();
+  const [choice, setChoice] = useState<InviteChoice>("individual");
+  const [email, setEmail] = useState("");
+  const [academyName, setAcademyName] = useState("");
+  const [academyId, setAcademyId] = useState(academies[0] ? String(academies[0].id) : "");
+  const [link, setLink] = useState("");
+  const state = {
+    pending: ["Pendiente", "Pending", "warning"],
+    accepted: ["Aceptada", "Accepted", "success"],
+    expired: ["Caducada", "Expired", "secondary"],
+    revoked: ["Revocada", "Revoked", "secondary"],
+  } as const;
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const body =
+      choice === "individual"
+        ? { kind: "individual", email: email || null }
+        : choice === "teacher_new"
+          ? { kind: "teacher", email: email || null, academy_name: academyName || null }
+          : { kind: "teacher", email: email || null, workspace_id: Number(academyId) };
+    void run(async () => {
+      const result = await apiPost<{ path: string }>("/api/v1/platform/invitations", body, csrf);
+      setLink(`${window.location.origin}${result.path}`);
+      setEmail("");
+      setAcademyName("");
+    });
+  }
+
+  return (
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>{pick(lang, "Invitar a la plataforma", "Invite to the platform")}</CardTitle>
+            <CardDescription>
+              {pick(
+                lang,
+                "El registro es solo por invitación. Genera un enlace de un solo uso (14 días) para una cuenta individual o para un profesor; el profesorado invita después a su alumnado. Si indicas un correo, solo esa dirección podrá usarlo.",
+                "Sign-up is by invitation only. Create a single-use link (14 days) for an individual account or a teacher; teachers then invite their students. If you enter an email, only that address can use it."
+              )}
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
+            <Field label={pick(lang, "Tipo", "Type")} htmlFor="pinv-kind">
+              <NativeSelect id="pinv-kind" value={choice} onChange={(e) => setChoice(e.target.value as InviteChoice)}>
+                <option value="individual">{pick(lang, "Cuenta individual (autónomo)", "Individual account (self-learner)")}</option>
+                <option value="teacher_new">{pick(lang, "Profesor · academia nueva", "Teacher · new academy")}</option>
+                <option value="teacher_existing" disabled={!academies.length}>
+                  {pick(lang, "Profesor · academia existente", "Teacher · existing academy")}
+                </option>
+              </NativeSelect>
+            </Field>
+            <Field label={pick(lang, "Correo (opcional)", "Email (optional)")} htmlFor="pinv-email" className="min-w-56 flex-1">
+              <Input id="pinv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
+            {choice === "teacher_new" ? (
+              <Field label={pick(lang, "Academia (opcional)", "Academy (optional)")} htmlFor="pinv-academy" className="min-w-56">
+                <Input
+                  id="pinv-academy"
+                  maxLength={80}
+                  value={academyName}
+                  onChange={(e) => setAcademyName(e.target.value)}
+                  placeholder={pick(lang, "Si lo dejas vacío, lo elige el profesor", "Leave empty to let the teacher choose")}
+                />
+              </Field>
+            ) : null}
+            {choice === "teacher_existing" ? (
+              <Field label={pick(lang, "Academia", "Academy")} htmlFor="pinv-ws">
+                <NativeSelect id="pinv-ws" value={academyId} onChange={(e) => setAcademyId(e.target.value)}>
+                  {academies.map((academy) => (
+                    <option key={academy.id} value={academy.id}>
+                      {academy.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            ) : null}
+            <Button type="submit" disabled={busy}>
+              <Link2 /> {pick(lang, "Crear enlace", "Create link")}
+            </Button>
+          </form>
+          <ErrorLine error={error} />
+          {link ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg bg-success-soft p-3">
+              <code className="min-w-0 flex-1 truncate text-sm">{link}</code>
+              <CopyLink value={link} lang={lang} />
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-5">
+          {invitations.length ? (
+            <Table>
+              <THead>
+                <TR>
+                  <TH>{pick(lang, "Tipo", "Type")}</TH>
+                  <TH>{pick(lang, "Destinatario", "Recipient")}</TH>
+                  <TH>{pick(lang, "Estado", "Status")}</TH>
+                  <TH>{pick(lang, "Caduca", "Expires")}</TH>
+                  <TH />
+                </TR>
+              </THead>
+              <TBody>
+                {invitations.map((invite) => {
+                  const [es, en, tone] = state[invite.state];
+                  return (
+                    <TR key={invite.id}>
+                      <TD className="text-sm">{inviteKindLabel(invite, lang)}</TD>
+                      <TD className="text-sm">
+                        {invite.email ?? pick(lang, "Cualquiera con el enlace", "Anyone with the link")}
+                        {invite.accepted_email ? (
+                          <span className="block text-xs text-muted-foreground">→ {invite.accepted_email}</span>
+                        ) : null}
+                      </TD>
+                      <TD>
+                        <Pill variant={tone}>{pick(lang, es, en)}</Pill>
+                      </TD>
+                      <TD className="text-sm text-muted-foreground">{formatDate(invite.expires_at, lang)}</TD>
+                      <TD className="text-right">
+                        {invite.state === "pending" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy}
+                            title={pick(lang, "Revocar", "Revoke")}
+                            onClick={() => run(() => apiDelete(`/api/v1/platform/invitations/${invite.id}`, csrf))}
+                          >
+                            <Ban />
+                          </Button>
+                        ) : null}
+                      </TD>
+                    </TR>
+                  );
+                })}
+              </TBody>
+            </Table>
+          ) : (
+            <EmptyState
+              title={pick(lang, "Aún no hay invitaciones", "No invitations yet")}
+              description={pick(lang, "Las invitaciones que crees aparecerán aquí con su estado.", "Invitations you create will appear here with their status.")}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

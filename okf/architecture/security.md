@@ -4,7 +4,7 @@ title: Seguridad de la plataforma
 description: Controles de autenticación, sesión, CSRF, autorización y cabeceras, con sus límites.
 tags: [seguridad, auth, csrf, sesiones, privacidad]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: security
     resource: ../../webapp/security.py
@@ -51,8 +51,14 @@ sources:
 - `require_admin` → 403 sin `manage` (admin/owner de una academia).
 - `require_platform_admin` → 403 sin `users.is_platform_admin`. Un superadmin no
   puede desactivarse ni retirarse el flag, y siempre queda al menos uno.
+- **Registro solo por invitación** por defecto (`AULA_OPEN_SIGNUP=0`,
+  [ADR-022](/decisions/adr-022-invite-only-signup.md)): sin `invite` el alta da
+  403 y crear academias o cuentas individuales exige superadmin. Las
+  invitaciones de academia solo pueden ser de alumnado.
 - El registro con `invite` o `join_code` valida el acceso **antes** de crear la
-  cuenta; si falla, no queda usuario huérfano.
+  cuenta; si falla, no queda usuario huérfano. Los tokens se guardan como hash
+  (`invitations` y `platform_invitations`), son de un solo uso y caducan a los 14
+  días.
 - Los intentos de quiz se consultan filtrando `user_id`; un intento ajeno da 404.
 - Las notas y marcadores se consultan siempre por `user_id`.
 

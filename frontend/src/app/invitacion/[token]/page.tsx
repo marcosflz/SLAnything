@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AcceptInvite } from "@/components/admin/AccountPanel";
-import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { invitationLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ApiError, apiGet, getLang, getSession } from "@/lib/api";
 import { pick } from "@/lib/messages";
+import type { InvitationInfo } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
@@ -19,7 +20,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
   const { token } = await params;
   const lang = await getLang();
   const session = await getSession();
-  let invite: { workspace: string; role: string; email: string | null } | null = null;
+  let invite: InvitationInfo | null = null;
   try {
     invite = await apiGet(`/api/v1/invitations/${encodeURIComponent(token)}`);
   } catch (error) {
@@ -34,13 +35,22 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
         </span>
         {invite ? (
           <>
-            <h1 className="text-xl font-semibold">{pick(lang, "Te han invitado a {w}", "You are invited to {w}").replace("{w}", invite.workspace)}</h1>
+            <h1 className="text-xl font-semibold">
+              {invite.workspace
+                ? pick(lang, "Te han invitado a {w}", "You are invited to {w}").replace("{w}", invite.workspace)
+                : pick(lang, "Te han invitado a SLAnything", "You are invited to SLAnything")}
+            </h1>
             <p className="m-0 mt-2 mb-5 text-sm text-muted-foreground">
-              {pick(lang, "Rol", "Role")}: {roleLabel(invite.role, lang)}
+              {invitationLabel(invite, lang)}
               {invite.email ? ` · ${invite.email}` : ""}
             </p>
             {session.user ? (
-              <AcceptInvite token={token} csrf={session.csrf_token} lang={lang} />
+              <AcceptInvite
+                token={token}
+                csrf={session.csrf_token}
+                lang={lang}
+                askAcademyName={invite.needs_academy_name}
+              />
             ) : (
               <div className="grid gap-2">
                 <Button asChild>

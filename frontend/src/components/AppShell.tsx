@@ -73,7 +73,11 @@ export function AppShell({
   const sidebar = (
     <>
       <div className="border-b border-border p-3 pr-12 lg:pr-3">
-        <WorkspaceSwitcher user={user} lang={lang} />
+        <WorkspaceSwitcher
+          user={user}
+          lang={lang}
+          canCreateSpaces={site.signup_open || Boolean(user.permissions?.platform)}
+        />
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin" aria-label={t(lang, "Navegación principal")}>
         {sections.map((section) => (

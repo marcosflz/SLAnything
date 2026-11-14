@@ -14,9 +14,9 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from webapp import audit, repositories, workspaces
+from webapp import audit, config, repositories, workspaces
 from webapp.db import get_db, utcnow
-from webapp.deps import ensure_csrf, require_admin, require_user
+from webapp.deps import ensure_csrf, require_admin, require_teaching, require_user
 from webapp.migrations import new_join_code
 from webapp.security import hash_password, new_token, token_hash, verify_password
 
@@ -248,21 +248,54 @@ def _invite_payload(row: sqlite3.Row) -> dict:
     return data
 
 
+def _invite_roles(user: dict) -> tuple[str, ...]:
+    """Roles que el usuario puede invitar a su academia (ADR-022).
+
+    Con el registro cerrado (por defecto) el profesorado y la administración
+    solo invitan alumnado: incorporar profesorado o cuentas individuales es cosa
+    de la superadministración. Con registro abierto se mantiene lo anterior
+    (la administración invita profesorado; el owner, además, admins).
+    """
+    perms = user.get("permissions") or {}
+    if not config.OPEN_SIGNUP or not perms.get("manage"):
+        return ("student",)
+    if user.get("ws_role") == "owner":
+        return ("student", "teacher", "admin")
+    return ("student", "teacher")
+
+
+def _sees_all_invitations(user: dict) -> bool:
+    return bool((user.get("permissions") or {}).get("manage"))
+
+
 @router.get("/admin/invitations")
-def list_invitations(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
+def list_invitations(user: dict = Depends(require_teaching), conn: sqlite3.Connection = Depends(get_db, scope="function")):
+    """La administración ve todas; el profesorado, solo las que ha creado."""
     ws = _org(user)
-    rows = conn.execute(
-        "SELECT * FROM invitations WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 200", (ws,)
-    ).fetchall()
-    return {"invitations": [_invite_payload(row) for row in rows]}
+    if _sees_all_invitations(user):
+        rows = conn.execute(
+            "SELECT * FROM invitations WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 200", (ws,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT * FROM invitations WHERE workspace_id = ? AND created_by = ?
+               ORDER BY created_at DESC LIMIT 200""",
+            (ws, user["id"]),
+        ).fetchall()
+    return {"invitations": [_invite_payload(row) for row in rows], "roles": list(_invite_roles(user))}
 
 
 @router.post("/admin/invitations")
-def create_invitation(body: InviteBody, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
+def create_invitation(body: InviteBody, request: Request, user: dict = Depends(require_teaching), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
-    if body.role == "admin" and user["ws_role"] != "owner":
-        raise HTTPException(status_code=403, detail="Solo el propietario invita administradores.")
+    if body.role not in _invite_roles(user):
+        detail = (
+            "Solo el propietario invita administradores."
+            if body.role == "admin" and config.OPEN_SIGNUP and (user.get("permissions") or {}).get("manage")
+            else "Solo puedes invitar alumnado. El profesorado lo invita la administración de la plataforma."
+        )
+        raise HTTPException(status_code=403, detail=detail)
     if body.group_id is not None:
         _group(conn, ws, body.group_id)
     token = new_token()
@@ -280,13 +313,15 @@ def create_invitation(body: InviteBody, request: Request, user: dict = Depends(r
 
 
 @router.delete("/admin/invitations/{invite_id}")
-def revoke_invitation(invite_id: int, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
+def revoke_invitation(invite_id: int, request: Request, user: dict = Depends(require_teaching), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
-    cursor = conn.execute(
-        "UPDATE invitations SET revoked_at = ? WHERE id = ? AND workspace_id = ? AND accepted_at IS NULL",
-        (utcnow(), invite_id, ws),
-    )
+    query = "UPDATE invitations SET revoked_at = ? WHERE id = ? AND workspace_id = ? AND accepted_at IS NULL"
+    params: tuple = (utcnow(), invite_id, ws)
+    if not _sees_all_invitations(user):
+        query += " AND created_by = ?"
+        params += (user["id"],)
+    cursor = conn.execute(query, params)
     if not cursor.rowcount:
         raise HTTPException(status_code=404, detail="Invitación no encontrada.")
     audit.record(conn, actor_id=user["id"], action="invite.revoke", workspace_id=ws, target=str(invite_id), request=request)
@@ -295,14 +330,26 @@ def revoke_invitation(invite_id: int, request: Request, user: dict = Depends(req
 
 @router.get("/invitations/{token}")
 def invitation_info(token: str, conn: sqlite3.Connection = Depends(get_db, scope="function")):
-    row = workspaces.usable_invitation(conn, token)
-    return {"workspace": row["workspace_name"], "role": row["role"], "email": row["email"], "expires_at": row["expires_at"]}
+    """Invitación pendiente de academia o de plataforma (ADR-022)."""
+    return workspaces.describe_invitation(conn, token)
+
+
+class AcceptBody(BaseModel):
+    academy_name: str | None = Field(default=None, max_length=80)
 
 
 @router.post("/invitations/{token}/accept")
-def accept_invitation(token: str, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db, scope="function")):
+def accept_invitation(
+    token: str,
+    request: Request,
+    body: AcceptBody | None = None,
+    user: dict = Depends(require_user),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
     ensure_csrf(request, user)
-    ws = workspaces.accept_invitation(conn, token, user["id"], user["email"])
+    ws = workspaces.accept_any_invitation(
+        conn, token, user["id"], user["email"], user["name"], (body or AcceptBody()).academy_name
+    )
     audit.record(conn, actor_id=user["id"], action="invite.accept", workspace_id=ws, target=user["email"], request=request)
     return {"ok": True, "workspace_id": ws}
 

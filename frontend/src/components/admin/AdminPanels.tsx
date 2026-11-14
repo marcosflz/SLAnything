@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/charts/Kpi";
-import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { roleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, NativeSelect } from "@/components/ui/form";
@@ -367,13 +367,14 @@ export interface Invitation {
 export function InvitesPanel({
   invitations,
   groups,
-  canInviteAdmins,
+  roles,
   csrf,
   lang,
 }: {
   invitations: Invitation[];
   groups: { id: number; name: string }[];
-  canInviteAdmins: boolean;
+  /** Roles que la API permite invitar (con registro cerrado, solo alumnado). */
+  roles: string[];
   csrf: string;
   lang: Lang;
 }) {
@@ -394,7 +395,11 @@ export function InvitesPanel({
       <Card>
         <CardHeader>
           <div>
-            <CardTitle>{pick(lang, "Invitar a la academia", "Invite to the academy")}</CardTitle>
+            <CardTitle>
+              {roles.length === 1
+                ? pick(lang, "Invitar alumnado", "Invite students")
+                : pick(lang, "Invitar a la academia", "Invite to the academy")}
+            </CardTitle>
             <CardDescription>
               {pick(
                 lang,
@@ -425,7 +430,7 @@ export function InvitesPanel({
             </Field>
             <Field label={pick(lang, "Rol", "Role")} htmlFor="inv-role">
               <NativeSelect id="inv-role" value={role} onChange={(e) => setRole(e.target.value)}>
-                {(canInviteAdmins ? ["student", "teacher", "admin"] : ["student", "teacher"]).map((r) => (
+                {roles.map((r) => (
                   <option key={r} value={r}>
                     {roleLabel(r, lang)}
                   </option>

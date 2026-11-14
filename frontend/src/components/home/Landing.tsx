@@ -29,6 +29,7 @@ const AUDIENCES = [
       "Create an individual account, upload your notes or a book and study with lessons, quizzes and your own progress.",
     ],
     cta: ["Crear cuenta individual", "Create an individual account"],
+    invite: ["Por invitación de la plataforma", "By platform invitation"],
   },
   {
     key: "academia",
@@ -39,6 +40,7 @@ const AUDIENCES = [
       "Create an academy, invite teachers and students, assign courses by group and follow class analytics.",
     ],
     cta: ["Crear una academia", "Create an academy"],
+    invite: ["El profesorado entra por invitación de la plataforma", "Teachers join by platform invitation"],
   },
   {
     key: "codigo",
@@ -49,6 +51,7 @@ const AUDIENCES = [
       "Join your class with the code or invitation link from your teacher. You will see the courses assigned to you.",
     ],
     cta: ["Tengo un código de clase", "I have a class code"],
+    invite: ["Tu profesor te envía el enlace de invitación", "Your teacher sends you the invitation link"],
   },
 ] as const;
 
@@ -56,10 +59,13 @@ export function Landing({
   catalog,
   formats,
   lang,
+  signupOpen,
 }: {
   catalog: CourseSummary[];
   formats: string[];
   lang: Lang;
+  /** Con el registro cerrado (ADR-022) no se ofrece crear cuenta. */
+  signupOpen: boolean;
 }) {
   const doc = SAMPLE_DOC[lang];
   const p = (pair: readonly [string, string]) => pick(lang, pair[0], pair[1]);
@@ -83,13 +89,30 @@ export function Landing({
             )}
           </p>
           <div className="hero-actions">
-            <Link className="btn btn-primary btn-lg" href="/registro">
-              <Icon name="arrow-right" /> {pick(lang, "Empezar gratis", "Start for free")}
-            </Link>
-            <Link className="btn btn-secondary btn-lg" href="/entrar">
-              <Icon name="lock" /> {pick(lang, "Ya tengo cuenta", "I have an account")}
-            </Link>
+            {signupOpen ? (
+              <>
+                <Link className="btn btn-primary btn-lg" href="/registro">
+                  <Icon name="arrow-right" /> {pick(lang, "Empezar gratis", "Start for free")}
+                </Link>
+                <Link className="btn btn-secondary btn-lg" href="/entrar">
+                  <Icon name="lock" /> {pick(lang, "Ya tengo cuenta", "I have an account")}
+                </Link>
+              </>
+            ) : (
+              <Link className="btn btn-primary btn-lg" href="/entrar">
+                <Icon name="lock" /> {pick(lang, "Entrar", "Log in")}
+              </Link>
+            )}
           </div>
+          {signupOpen ? null : (
+            <p className="hero-lead" style={{ fontSize: 14, marginTop: 14 }}>
+              {pick(
+                lang,
+                "El acceso es por invitación: la administración de la plataforma invita a cuentas individuales y profesorado, y el profesorado invita a su alumnado.",
+                "Access is by invitation: platform administrators invite individual accounts and teachers, and teachers invite their students."
+              )}
+            </p>
+          )}
           <div className="hero-meta">
             <span>
               <Icon name="folder" /> {formats.join(" · ")}
@@ -191,11 +214,17 @@ export function Landing({
         <span className="eyebrow-dark">{pick(lang, "Para quién", "Who it's for")}</span>
         <h2 className="section-title">{pick(lang, "Una cuenta individual o una academia.", "An individual account or an academy.")}</h2>
         <p className="section-sub">
-          {pick(
-            lang,
-            "Elige cómo vas a usar SLAnything. Siempre puedes unirte más tarde a una clase o abrir tu cuenta individual.",
-            "Choose how you will use SLAnything. You can always join a class later or open your individual account."
-          )}
+          {signupOpen
+            ? pick(
+                lang,
+                "Elige cómo vas a usar SLAnything. Siempre puedes unirte más tarde a una clase o abrir tu cuenta individual.",
+                "Choose how you will use SLAnything. You can always join a class later or open your individual account."
+              )
+            : pick(
+                lang,
+                "Tres formas de usar SLAnything. En todas se entra con un enlace de invitación.",
+                "Three ways to use SLAnything. All of them start with an invitation link."
+              )}
         </p>
         <div className="feature-grid">
           {AUDIENCES.map((audience) => (
@@ -205,9 +234,15 @@ export function Landing({
               </div>
               <h3>{p(audience.title)}</h3>
               <p>{p(audience.text)}</p>
-              <Link className="btn btn-secondary" style={{ marginTop: 14 }} href={`/registro?tipo=${audience.key}`}>
-                <Icon name="arrow-right" /> {p(audience.cta)}
-              </Link>
+              {signupOpen ? (
+                <Link className="btn btn-secondary" style={{ marginTop: 14 }} href={`/registro?tipo=${audience.key}`}>
+                  <Icon name="arrow-right" /> {p(audience.cta)}
+                </Link>
+              ) : (
+                <p style={{ marginTop: 14, fontWeight: 600 }}>
+                  <Icon name="key" /> {p(audience.invite)}
+                </p>
+              )}
             </article>
           ))}
         </div>
@@ -283,8 +318,9 @@ export function Landing({
               )}
             </p>
           </div>
-          <Link className="btn btn-primary btn-lg" href="/registro">
-            <Icon name="arrow-right" /> {pick(lang, "Crear mi cuenta", "Create my account")}
+          <Link className="btn btn-primary btn-lg" href={signupOpen ? "/registro" : "/entrar"}>
+            <Icon name="arrow-right" />{" "}
+            {signupOpen ? pick(lang, "Crear mi cuenta", "Create my account") : pick(lang, "Entrar", "Log in")}
           </Link>
         </div>
       </section>

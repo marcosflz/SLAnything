@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -18,8 +19,11 @@ from pydantic import BaseModel, Field
 from webapp import analytics, audit, workspaces
 from webapp.authoring import settings as authoring_settings
 from webapp.authoring import store
-from webapp.db import get_db
+from webapp.db import get_db, utcnow
 from webapp.deps import ensure_csrf, require_platform_admin
+from webapp.security import new_token, token_hash
+
+INVITE_DAYS = 14
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
 
@@ -323,4 +327,102 @@ def unpublish(
     if not store.set_course_status(slug, "draft"):
         raise HTTPException(status_code=404, detail="Curso generado no encontrado.")
     audit.record(None, actor_id=user["id"], action="platform.course.unpublish", target=slug, request=request)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Invitaciones de plataforma (ADR-022)
+# ---------------------------------------------------------------------------
+
+class PlatformInviteBody(BaseModel):
+    """``individual``: cuenta individual. ``teacher``: profesorado de una
+    academia existente (``workspace_id``) o propietario de una academia nueva
+    (``academy_name`` opcional; si falta, lo escribe al aceptar)."""
+
+    kind: Literal["individual", "teacher"]
+    email: str | None = Field(default=None, max_length=200)
+    workspace_id: int | None = None
+    academy_name: str | None = Field(default=None, max_length=80)
+
+
+def _platform_invite_payload(row: sqlite3.Row) -> dict:
+    data = dict(row)
+    data.pop("token_hash", None)
+    data["state"] = workspaces.invitation_state(row)
+    return data
+
+
+@router.get("/invitations")
+def list_platform_invitations(
+    user: dict = Depends(require_platform_admin),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
+    rows = conn.execute(
+        """SELECT p.*, w.name AS workspace_name, u.email AS accepted_email
+           FROM platform_invitations p
+           LEFT JOIN workspaces w ON w.id = p.workspace_id
+           LEFT JOIN users u ON u.id = p.accepted_by
+           ORDER BY p.created_at DESC, p.id DESC LIMIT 300"""
+    ).fetchall()
+    academies = [
+        {"id": int(row["id"]), "name": row["name"]}
+        for row in conn.execute(
+            "SELECT id, name FROM workspaces WHERE kind = 'organization' ORDER BY name COLLATE NOCASE"
+        )
+    ]
+    return {"invitations": [_platform_invite_payload(row) for row in rows], "academies": academies}
+
+
+@router.post("/invitations")
+def create_platform_invitation(
+    body: PlatformInviteBody,
+    request: Request,
+    user: dict = Depends(require_platform_admin),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
+    ensure_csrf(request, user)
+    workspace_id = body.workspace_id if body.kind == "teacher" else None
+    academy_name = (body.academy_name or "").strip() or None
+    if workspace_id is not None:
+        workspace = workspaces.get_workspace(conn, workspace_id)
+        if workspace is None or workspace["kind"] != "organization":
+            raise HTTPException(status_code=404, detail="Academia no encontrada.")
+        academy_name = None
+    if body.kind != "teacher":
+        academy_name = None
+    if academy_name is not None and len(academy_name) < 2:
+        raise HTTPException(status_code=400, detail="El nombre de la academia debe tener entre 2 y 80 caracteres.")
+    token = new_token()
+    expires = (datetime.now(timezone.utc) + timedelta(days=INVITE_DAYS)).isoformat(timespec="seconds")
+    email = (body.email or "").strip().lower() or None
+    cursor = conn.execute(
+        """INSERT INTO platform_invitations
+               (kind, email, workspace_id, academy_name, token_hash, created_by, created_at, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (body.kind, email, workspace_id, academy_name, token_hash(token), user["id"], utcnow(), expires),
+    )
+    audit.record(
+        conn, actor_id=user["id"], action="platform.invite.create", workspace_id=workspace_id,
+        target=email or "(enlace)", request=request,
+        meta={"kind": body.kind, "new_academy": body.kind == "teacher" and workspace_id is None},
+    )
+    # El token solo se muestra una vez; en la base se guarda su hash.
+    return {"id": cursor.lastrowid, "path": f"/invitacion/{token}", "expires_at": expires}
+
+
+@router.delete("/invitations/{invite_id}")
+def revoke_platform_invitation(
+    invite_id: int,
+    request: Request,
+    user: dict = Depends(require_platform_admin),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
+    ensure_csrf(request, user)
+    cursor = conn.execute(
+        "UPDATE platform_invitations SET revoked_at = ? WHERE id = ? AND accepted_at IS NULL AND revoked_at IS NULL",
+        (utcnow(), invite_id),
+    )
+    if not cursor.rowcount:
+        raise HTTPException(status_code=404, detail="Invitación no encontrada.")
+    audit.record(conn, actor_id=user["id"], action="platform.invite.revoke", target=str(invite_id), request=request)
     return {"ok": True}

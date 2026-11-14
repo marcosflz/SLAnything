@@ -5,7 +5,7 @@ description: Backlog priorizado de SLAnything tras convertirla en plataforma gen
 tags: [backlog, roadmap, calidad, accesibilidad, producto]
 status: stable
 stale_after: 2026-12-31T00:00:00Z
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: roadmap
     resource: /project/roadmap.md
@@ -16,6 +16,11 @@ sources:
 ---
 
 # Prioridad 0 · Tras la plataforma genérica (2026-11-14)
+
+- Envío de invitaciones por correo (SMTP/Resend) y reenvío desde
+  `/plataforma/invitaciones` y `/admin/invitaciones`.
+- Decidir si el owner debe poder ascender alumnado a profesorado con el
+  registro cerrado (hoy sí puede desde `/admin/usuarios`).
 
 - Generar unidades reales con un proveedor y documentos de materias no técnicas
   (historia, derecho, idiomas) y revisar que lecciones, quiz y glosario no

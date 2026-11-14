@@ -4,7 +4,7 @@ title: Diseño y experiencia de SLAnything
 description: Identidad, sistema visual, pantallas, responsive, modo oscuro y accesibilidad.
 tags: [ux, diseno, css, accesibilidad, responsive]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: css
     resource: ../../webapp/static/css/app.css
@@ -38,9 +38,16 @@ sources:
   documento → temario → curso, «Cómo funciona» en tres pasos, «Para quién»
   (cuenta individual, academia, alumno con código → `/registro?tipo=…`),
   funciones, biblioteca abierta (solo si hay cursos públicos), CTA y footer.
-- **Registro:** elección de cuenta individual, academia (pide el nombre) o
-  código de clase; con `?invite=` muestra la academia y el rol de la invitación.
-  Login con las cuatro cuentas demo si la siembra está activa.
+- **Registro:** con el registro cerrado (por defecto, ADR-022) `/registro` sin
+  invitación muestra el aviso «solo por invitación»; la portada y la cabecera no
+  ofrecen «Empezar gratis» y «Para quién» explica quién invita a quién. Con
+  `?invite=` el formulario explica qué se obtiene, bloquea el correo invitado y
+  pide el nombre de la academia si la invitación lo deja abierto. Con registro
+  abierto: cuenta individual, academia o código de clase. Login con las cuatro
+  cuentas demo si la siembra está activa.
+- **Invitaciones:** `/plataforma/invitaciones` (superadmin: individual,
+  profesor con academia nueva o existente); `/admin/invitaciones` (profesorado:
+  solo alumnado, solo esa pestaña y entrada «Invitar alumnos» en el menú).
 - **Catálogo:** `/cursos` agrupa «Asignados por tu academia», el resto y «Cursos
   de ejemplo»; las tarjetas muestran fuente, nivel, labs (solo si hay) y la
   insignia «Asignado · fecha» o «Curso de ejemplo». Estado vacío por perfil.

@@ -46,7 +46,16 @@ def db_path(tmp_path, monkeypatch):
     # La mayoría de la suite ejercita el curso de ejemplo (lecciones, quiz,
     # labs). Los tests de biblioteca vacía lo desactivan con ``no_samples``.
     monkeypatch.setattr(config, "SAMPLE_COURSES", True)
+    # Muchos tests crean cuentas con el registro abierto. El modo por defecto
+    # (solo invitación, ADR-022) se prueba con la fixture ``closed_signup``.
+    monkeypatch.setattr(config, "OPEN_SIGNUP", True)
     return path
+
+
+@pytest.fixture
+def closed_signup(db_path, monkeypatch):
+    """Registro solo por invitación (valor por defecto de la plataforma)."""
+    monkeypatch.setattr(config, "OPEN_SIGNUP", False)
 
 
 @pytest.fixture

@@ -71,8 +71,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <p>{t(lang, "Accede con tu correo y contraseña.")}</p>
           <LoginForm lang={lang} next={next} />
           <p className="auth-alt">
-            {t(lang, "¿No tienes cuenta?")}{" "}
-            <Link href="/registro">{t(lang, "Crear una cuenta gratis")}</Link>
+            {site.signup_open ? (
+              <>
+                {t(lang, "¿No tienes cuenta?")}{" "}
+                <Link href="/registro">{t(lang, "Crear una cuenta gratis")}</Link>
+              </>
+            ) : (
+              pick(
+                lang,
+                "¿No tienes cuenta? El acceso es por invitación: abre el enlace que te hayan enviado.",
+                "No account? Access is by invitation: open the link you were sent."
+              )
+            )}
           </p>
           {publicData.demo_accounts.length ? (
             <div className="demo-box">

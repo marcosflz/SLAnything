@@ -2,7 +2,7 @@ import { Activity, BookOpen, Sparkles, Users } from "lucide-react";
 import type { Metadata } from "next";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { roleLabel } from "@/lib/roles";
 import { AreaTrend } from "@/components/charts/Charts";
 import { KpiCard } from "@/components/charts/Kpi";
 import { allowForbidden } from "@/components/shell/ShellPage";

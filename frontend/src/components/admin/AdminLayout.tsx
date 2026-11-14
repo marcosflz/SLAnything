@@ -32,6 +32,8 @@ export function AdminLayout({
 }) {
   const lang: Lang = shell.lang;
   const workspace = shell.user.workspace;
+  // El profesorado sin gestión solo ve sus invitaciones de alumnado (ADR-022).
+  const tabs = shell.user.permissions?.manage ? TABS : TABS.filter(([href]) => href === "/admin/invitaciones");
   return (
     <ShellPage shell={shell} path={path} title={title} kicker={pick(lang, "Administración", "Management")}>
       {allowed && workspace?.kind === "organization" ? (
@@ -39,7 +41,7 @@ export function AdminLayout({
           <PageHeader eyebrow={workspace.name} title={title} description={description} />
           <nav aria-label={pick(lang, "Secciones de administración", "Management sections")} className="mb-6 overflow-x-auto border-b border-border scrollbar-thin">
             <ul className="m-0 flex min-w-max list-none gap-1 p-0">
-              {TABS.map(([href, es, en]) => (
+              {tabs.map(([href, es, en]) => (
                 <li key={href}>
                   <Link
                     href={href}

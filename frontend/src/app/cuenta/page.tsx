@@ -18,7 +18,12 @@ export default async function AccountPage() {
   return (
     <ShellPage shell={shell} path="/cuenta" title={pick(lang, "Mi cuenta", "My account")} kicker={shell.user.name}>
       <PageHeader title={pick(lang, "Mi cuenta", "My account")} description={pick(lang, "Perfil, seguridad y espacios.", "Profile, security and workspaces.")} />
-      <AccountPanel data={data} csrf={shell.user.csrf_token} lang={lang} />
+      <AccountPanel
+        data={data}
+        csrf={shell.user.csrf_token}
+        lang={lang}
+        canOpenPersonal={shell.site.signup_open || Boolean(shell.user.permissions?.platform)}
+      />
     </ShellPage>
   );
 }

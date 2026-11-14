@@ -3,10 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PublicShell } from "@/components/PublicShell";
+import { Icon } from "@/components/ui";
 import { RegisterForm, type AccountType } from "@/components/auth/RegisterForm";
-import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { invitationLabel } from "@/lib/roles";
 import { ApiError, apiGet, getPublic, getSession } from "@/lib/api";
 import { pick, t } from "@/lib/messages";
+import type { InvitationInfo } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Crear cuenta" };
 
@@ -43,7 +45,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   const next = safeNext(params.next);
   const initialType = TYPE_PARAM[first(params.tipo) ?? ""] ?? "individual";
   const invite = first(params.invite);
-  let inviteInfo: { workspace: string; role: string; email: string | null } | null = null;
+  let inviteInfo: InvitationInfo | null = null;
   if (invite) {
     try {
       inviteInfo = await apiGet(`/api/v1/invitations/${encodeURIComponent(invite)}`);
@@ -83,30 +85,43 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
 
         <section className="auth-card">
           <h2>{t(lang, "Crear cuenta")}</h2>
-          <p>
-            {t(
-              lang,
-              "Gratis, sin tarjeta. Solo necesitas un correo y una contraseña."
-            )}
-          </p>
           {invite && !inviteInfo ? (
             <div className="flash flash-danger" role="alert">
-              {pick(lang, "La invitación ha caducado o ya se usó. Puedes crear una cuenta normal.", "The invitation expired or was already used. You can create a regular account.")}
+              {site.signup_open
+                ? pick(lang, "La invitación ha caducado o ya se usó. Puedes crear una cuenta normal.", "The invitation expired or was already used. You can create a regular account.")
+                : pick(lang, "La invitación ha caducado, ya se usó o fue revocada. Pide un enlace nuevo.", "The invitation expired, was already used or was revoked. Ask for a new link.")}
             </div>
           ) : null}
-          <RegisterForm
-            lang={lang}
-            next={next}
-            initialType={initialType}
-            invite={inviteInfo ? invite : undefined}
-            inviteLabel={
-              inviteInfo
-                ? pick(lang, "Te unirás a {w} como {r}.", "You will join {w} as {r}.")
-                    .replace("{w}", inviteInfo.workspace)
-                    .replace("{r}", roleLabel(inviteInfo.role, lang).toLowerCase())
-                : undefined
-            }
-          />
+          {inviteInfo || site.signup_open ? (
+            <>
+              <p>
+                {t(
+                  lang,
+                  "Gratis, sin tarjeta. Solo necesitas un correo y una contraseña."
+                )}
+              </p>
+              <RegisterForm
+                lang={lang}
+                next={next}
+                initialType={initialType}
+                invite={inviteInfo ? invite : undefined}
+                inviteLabel={inviteInfo ? invitationLabel(inviteInfo, lang) : undefined}
+                inviteEmail={inviteInfo?.email ?? undefined}
+                askAcademyName={Boolean(inviteInfo?.needs_academy_name)}
+              />
+            </>
+          ) : (
+            <div className="flash flash-warning" role="status">
+              <Icon name="key" />{" "}
+              <span>
+                {pick(
+                  lang,
+                  "El registro es solo por invitación. Si te han invitado, abre el enlace que recibiste. La administración de la plataforma invita a cuentas individuales y profesorado; el profesorado invita a su alumnado.",
+                  "Sign-up is by invitation only. If you were invited, open the link you received. Platform administrators invite individual accounts and teachers; teachers invite their students."
+                )}
+              </span>
+            </div>
+          )}
           <p className="auth-alt">
             {t(lang, "¿Ya tienes cuenta?")}{" "}
             <Link href="/entrar">{t(lang, "Entrar")}</Link>

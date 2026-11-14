@@ -31,6 +31,8 @@ Cuentas de demostración:
 | Cuenta individual | `autodidacta@slanything.local` | `auto1234` |
 | Superadmin | `admin@slanything.local` | `admin1234` |
 
+El registro es solo por invitación (`AULA_OPEN_SIGNUP=0`): entra como
+`admin@slanything.local` y crea las invitaciones en `/plataforma/invitaciones`.
 La biblioteca empieza vacía. Para incluir el curso de ejemplo «Construye un LLM
 desde cero», pon `AULA_SAMPLE_COURSES=1` en `.env`. En producción usa
 `AULA_SEED_DEMO=0` y define `AULA_PLATFORM_ADMINS`. El proyecto de Compose se

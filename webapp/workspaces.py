@@ -267,6 +267,113 @@ def join_with_code(conn: sqlite3.Connection, code: str, user_id: int) -> tuple[d
 
 
 # ---------------------------------------------------------------------------
+# Invitaciones de plataforma (ADR-022) y resolución común
+# ---------------------------------------------------------------------------
+
+PLATFORM_INVITE_KINDS = ("individual", "teacher")
+
+
+def _usable_platform_invitation(conn: sqlite3.Connection, token: str) -> sqlite3.Row | None:
+    row = conn.execute(
+        """SELECT p.*, w.name AS workspace_name, w.kind AS workspace_kind
+           FROM platform_invitations p LEFT JOIN workspaces w ON w.id = p.workspace_id
+           WHERE p.token_hash = ?""",
+        (token_hash(token),),
+    ).fetchone()
+    if row is None or invitation_state(row) != "pending":
+        return None
+    return row
+
+
+def describe_invitation(conn: sqlite3.Connection, token: str) -> dict:
+    """Datos públicos de una invitación pendiente, sea de academia o de plataforma.
+
+    ``kind``: ``member`` (entra en una academia con ``role``), ``individual``
+    (abre una cuenta individual) o ``academy_owner`` (crea su academia).
+    """
+    row = conn.execute(
+        """SELECT i.*, w.name AS workspace_name FROM invitations i
+           JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?""",
+        (token_hash(token),),
+    ).fetchone()
+    if row is not None and invitation_state(row) == "pending":
+        return {
+            "source": "academy",
+            "kind": "member",
+            "workspace": row["workspace_name"],
+            "role": row["role"],
+            "email": row["email"],
+            "expires_at": row["expires_at"],
+            "academy_name": None,
+            "needs_academy_name": False,
+        }
+    platform = _usable_platform_invitation(conn, token)
+    if platform is None:
+        raise HTTPException(status_code=404, detail="La invitación no existe o ya no es válida.")
+    if platform["kind"] == "individual":
+        kind, role, workspace = "individual", "owner", None
+    elif platform["workspace_id"] is not None:
+        kind, role, workspace = "member", "teacher", platform["workspace_name"]
+    else:
+        kind, role, workspace = "academy_owner", "owner", None
+    return {
+        "source": "platform",
+        "kind": kind,
+        "workspace": workspace,
+        "role": role,
+        "email": platform["email"],
+        "expires_at": platform["expires_at"],
+        "academy_name": platform["academy_name"],
+        "needs_academy_name": kind == "academy_owner" and not platform["academy_name"],
+    }
+
+
+def check_invitation_email(info: dict, email: str) -> None:
+    if info["email"] and info["email"] != email.strip().lower():
+        raise HTTPException(status_code=403, detail="Esta invitación es para otra dirección de correo.")
+
+
+def accept_any_invitation(
+    conn: sqlite3.Connection,
+    token: str,
+    user_id: int,
+    email: str,
+    user_name: str,
+    academy_name: str | None = None,
+) -> int:
+    """Acepta una invitación de academia o de plataforma. Devuelve el espacio."""
+    info = describe_invitation(conn, token)
+    check_invitation_email(info, email)
+    if info["source"] == "academy":
+        return accept_invitation(conn, token, user_id, email)
+
+    row = _usable_platform_invitation(conn, token)
+    assert row is not None
+    if row["kind"] == "individual":
+        workspace_id = ensure_personal_workspace(conn, user_id, user_name)
+    elif row["workspace_id"] is not None:
+        workspace_id = int(row["workspace_id"])
+        current = membership(conn, workspace_id, user_id)
+        if current is None:
+            _check_seats(conn, workspace_id)
+        if current is None or ROLE_RANK["teacher"] > ROLE_RANK[current]:
+            add_member(conn, workspace_id, user_id, "teacher")
+    else:
+        name = (academy_name or row["academy_name"] or "").strip()
+        if not 2 <= len(name) <= 80:
+            raise HTTPException(
+                status_code=400,
+                detail="El nombre de la academia debe tener entre 2 y 80 caracteres.",
+            )
+        workspace_id = create_workspace(conn, "organization", name, user_id)
+    conn.execute(
+        "UPDATE platform_invitations SET accepted_at = ?, accepted_by = ? WHERE id = ?",
+        (utcnow(), user_id, row["id"]),
+    )
+    return workspace_id
+
+
+# ---------------------------------------------------------------------------
 # Demostración
 # ---------------------------------------------------------------------------
 

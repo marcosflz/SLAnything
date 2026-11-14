@@ -18,7 +18,11 @@ export default async function WelcomePage() {
   const { lang } = shell;
   return (
     <ShellPage shell={shell} path="/bienvenida" title={pick(lang, "Bienvenida", "Welcome")} kicker={shell.user.name} wide={false}>
-      <Welcome csrf={shell.user.csrf_token} lang={lang} />
+      <Welcome
+        csrf={shell.user.csrf_token}
+        lang={lang}
+        canCreateSpaces={shell.site.signup_open || Boolean(shell.user.permissions?.platform)}
+      />
     </ShellPage>
   );
 }

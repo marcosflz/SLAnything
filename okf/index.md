@@ -51,7 +51,7 @@ la documentación fuente mandan si hay contradicciones.
 
 * [Arranque](/operations/run.md) - Comandos, cuentas, variables y problemas típicos.
 * [Frontend Next.js](/operations/frontend.md) - Arranque, build, smoke y troubleshooting.
-* [Pruebas](/operations/testing.md) - Suite de 181 tests, validadores de capítulo, smoke y E2E por perfiles.
+* [Pruebas](/operations/testing.md) - Suite de 196 tests, validadores de capítulo, smoke y E2E por perfiles.
 * [Despliegue](/operations/deployment.md) - Producción mínima con SQLite y TLS.
 * [Mapa del repositorio](/operations/repository-map.md) - Qué vive en cada carpeta.
 
@@ -79,6 +79,7 @@ la documentación fuente mandan si hay contradicciones.
 * [ADR-019 · Cola de generación persistente y reanudable](/decisions/adr-019-generation-queue.md)
 * [ADR-020 · Plataforma genérica y curso LLM como ejemplo](/decisions/adr-020-generic-platform.md)
 * [ADR-021 · Perfiles de cuenta](/decisions/adr-021-account-profiles.md)
+* [ADR-022 · Registro solo por invitación](/decisions/adr-022-invite-only-signup.md)
 
 ## Referencias e historial
 

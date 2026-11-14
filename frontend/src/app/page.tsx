@@ -18,7 +18,7 @@ export default async function HomePage() {
     const pub = await getPublic();
     return (
       <PublicShell site={pub.site} lang={pub.lang} fullPath="/">
-        <Landing catalog={pub.catalog} formats={pub.formats} lang={pub.lang} />
+        <Landing catalog={pub.catalog} formats={pub.formats} lang={pub.lang} signupOpen={pub.site.signup_open} />
       </PublicShell>
     );
   }

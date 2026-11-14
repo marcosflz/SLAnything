@@ -53,16 +53,22 @@ export function RegisterForm({
   initialType = "individual",
   invite,
   inviteLabel,
+  inviteEmail,
+  askAcademyName = false,
 }: {
   lang: Lang;
   next: string;
   initialType?: AccountType;
   invite?: string;
   inviteLabel?: string;
+  /** Correo al que va dirigida la invitación (se rellena y bloquea). */
+  inviteEmail?: string;
+  /** La invitación crea una academia sin nombre: se pide aquí. */
+  askAcademyName?: boolean;
 }) {
   const [account, setAccount] = useState<AccountType>(initialType);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail ?? "");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [academyName, setAcademyName] = useState("");
@@ -83,7 +89,7 @@ export function RegisterForm({
         password2,
         next,
         account,
-        academy_name: account === "academy" ? academyName : null,
+        academy_name: account === "academy" || askAcademyName ? academyName : null,
         join_code: account === "join" ? joinCode : null,
         invite: invite ?? null,
       });
@@ -150,7 +156,7 @@ export function RegisterForm({
           </fieldset>
         )}
 
-        {!invite && account === "academy" ? (
+        {(!invite && account === "academy") || (invite && askAcademyName) ? (
           <div className="field">
             <label htmlFor="academy_name">{pick(lang, "Nombre de la academia", "Academy name")}</label>
             <input
@@ -207,6 +213,7 @@ export function RegisterForm({
             autoComplete="email"
             required
             value={email}
+            readOnly={Boolean(inviteEmail)}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
           />

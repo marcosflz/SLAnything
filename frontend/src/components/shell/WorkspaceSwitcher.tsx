@@ -19,34 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import { apiPost } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
+import { roleLabel } from "@/lib/roles";
 import type { User, WorkspaceRef } from "@/lib/types";
-
-export function roleLabel(role: string | null | undefined, lang: Lang): string {
-  const labels: Record<string, [string, string]> = {
-    owner: ["Propietario", "Owner"],
-    admin: ["Administración", "Admin"],
-    teacher: ["Profesorado", "Teacher"],
-    student: ["Estudiante", "Student"],
-  };
-  const pair = labels[role ?? "student"] ?? labels.student;
-  return lang === "en" ? pair[1] : pair[0];
-}
-
-/** Perfil visible del usuario en el espacio activo (ADR-021). */
-export function profileLabel(user: Pick<User, "profile" | "ws_role" | "is_platform_admin">, lang: Lang): string {
-  const labels: Record<string, [string, string]> = {
-    self_learner: ["Cuenta individual", "Individual account"],
-    student: ["Estudiante", "Student"],
-    teacher: ["Profesorado", "Teacher"],
-    academy_admin: [
-      user.ws_role === "owner" ? "Propietario de la academia" : "Administración de la academia",
-      user.ws_role === "owner" ? "Academy owner" : "Academy admin",
-    ],
-  };
-  const pair = user.profile ? labels[user.profile] : null;
-  if (!pair) return user.is_platform_admin ? pick(lang, "Superadmin", "Superadmin") : pick(lang, "Sin espacio", "No space");
-  return lang === "en" ? pair[1] : pair[0];
-}
 
 function WsIcon({ ws }: { ws: WorkspaceRef }) {
   const Icon = ws.kind === "personal" ? UserIcon : Building2;
@@ -57,7 +31,16 @@ function WsIcon({ ws }: { ws: WorkspaceRef }) {
   );
 }
 
-export function WorkspaceSwitcher({ user, lang }: { user: User; lang: Lang }) {
+export function WorkspaceSwitcher({
+  user,
+  lang,
+  canCreateSpaces = true,
+}: {
+  user: User;
+  lang: Lang;
+  /** Con el registro cerrado solo la superadministración crea academias o cuentas individuales (ADR-022). */
+  canCreateSpaces?: boolean;
+}) {
   const [dialog, setDialog] = useState<"create" | "join" | null>(null);
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
@@ -126,13 +109,15 @@ export function WorkspaceSwitcher({ user, lang }: { user: User; lang: Lang }) {
             </MenuItem>
           ))}
           <MenuSeparator />
-          <MenuItem onSelect={() => { setValue(""); setError(""); setDialog("create"); }}>
-            <Plus /> {pick(lang, "Crear academia", "Create academy")}
-          </MenuItem>
+          {canCreateSpaces ? (
+            <MenuItem onSelect={() => { setValue(""); setError(""); setDialog("create"); }}>
+              <Plus /> {pick(lang, "Crear academia", "Create academy")}
+            </MenuItem>
+          ) : null}
           <MenuItem onSelect={() => { setValue(""); setError(""); setDialog("join"); }}>
             <KeyRound /> {pick(lang, "Unirme con un código", "Join with a code")}
           </MenuItem>
-          {!hasPersonal ? (
+          {!hasPersonal && canCreateSpaces ? (
             <MenuItem onSelect={createPersonal}>
               <UserIcon /> {pick(lang, "Abrir mi cuenta individual", "Open my individual account")}
             </MenuItem>

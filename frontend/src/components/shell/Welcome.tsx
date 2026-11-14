@@ -14,7 +14,15 @@ import { pick, type Lang } from "@/lib/messages";
  * su academia): puede unirse a otra clase, abrir su cuenta individual o crear
  * una academia.
  */
-export function Welcome({ csrf, lang }: { csrf: string; lang: Lang }) {
+export function Welcome({
+  csrf,
+  lang,
+  canCreateSpaces = true,
+}: {
+  csrf: string;
+  lang: Lang;
+  canCreateSpaces?: boolean;
+}) {
   const [code, setCode] = useState("");
   const [academy, setAcademy] = useState("");
   const [error, setError] = useState("");
@@ -55,7 +63,16 @@ export function Welcome({ csrf, lang }: { csrf: string; lang: Lang }) {
         </p>
       </div>
       {error ? <p className="m-0 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</p> : null}
-      <div className="grid gap-4 md:grid-cols-3">
+      {canCreateSpaces ? null : (
+        <p className="m-0 text-sm text-muted-foreground">
+          {pick(
+            lang,
+            "Si necesitas una cuenta individual o una academia, pídesela a la administración de la plataforma: te enviará una invitación.",
+            "If you need an individual account or an academy, ask the platform administrators: they will send you an invitation."
+          )}
+        </p>
+      )}
+      <div className={canCreateSpaces ? "grid gap-4 md:grid-cols-3" : "grid max-w-sm gap-4"}>
         <Card>
           <CardHeader>
             <div>
@@ -82,6 +99,8 @@ export function Welcome({ csrf, lang }: { csrf: string; lang: Lang }) {
             </form>
           </CardContent>
         </Card>
+        {canCreateSpaces ? (
+          <>
         <Card>
           <CardHeader>
             <div>
@@ -127,6 +146,8 @@ export function Welcome({ csrf, lang }: { csrf: string; lang: Lang }) {
             </form>
           </CardContent>
         </Card>
+          </>
+        ) : null}
       </div>
     </div>
   );

@@ -65,8 +65,30 @@ await page.locator(".lang-switch a", { hasText: "ES" }).first().click();
 await page.waitForLoadState("networkidle");
 check("portada → ES", (await page.evaluate(() => document.documentElement.lang)) === "es");
 
-// Alta de cuenta individual por la interfaz.
-await page.goto(`${base}/registro`, { waitUntil: "networkidle" });
+// Alta de cuenta individual. Con registro cerrado (ADR-022) se usa una
+// invitación de plataforma creada por la superadministración.
+const signupOpen = Boolean((await fetch(`${base}/api/v1/public`).then((r) => r.json())).site.signup_open);
+let registerUrl = `${base}/registro`;
+if (!signupOpen) {
+  await page.goto(`${base}/registro`, { waitUntil: "networkidle" });
+  check("registro cerrado sin invitación", (await page.locator("main").innerText()).includes("solo por invitación"));
+  check("sin «Empezar gratis» en la cabecera", (await page.locator(".public-actions a", { hasText: "Empezar gratis" }).count()) === 0);
+  const admin = await newPage();
+  await login(admin, "admin@slanything.local", "admin1234");
+  const invitePath = await admin.evaluate(async () => {
+    const session = await fetch("/api/v1/session").then((r) => r.json());
+    const response = await fetch("/api/v1/platform/invitations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrf_token },
+      body: JSON.stringify({ kind: "individual" }),
+    });
+    return (await response.json()).path;
+  });
+  await admin.close();
+  check("superadmin crea invitación de cuenta individual", typeof invitePath === "string" && invitePath.startsWith("/invitacion/"));
+  registerUrl = `${base}/registro?invite=${invitePath.split("/").pop()}`;
+}
+await page.goto(registerUrl, { waitUntil: "networkidle" });
 await page.fill("#name", "Prueba E2E");
 await page.fill("#email", `e2e-${Date.now()}@example.com`);
 await page.fill("#password", "clave-segura-123");
@@ -78,6 +100,7 @@ await Promise.all([
 await page.waitForLoadState("networkidle");
 let links = await navLinks(page);
 check("cuenta individual ve el Estudio", links.includes("/estudio"));
+check("cuenta individual sin invitar alumnos", !links.includes("/admin/invitaciones"));
 check("cuenta individual sin gestión de aula", !links.includes("/admin") && !links.includes("/analitica"));
 
 // Tema claro por defecto y alternancia.
@@ -123,6 +146,12 @@ await login(page, "profe@slanything.local", "profe1234");
 links = await navLinks(page);
 check("academia: Estudio, analítica y administración", ["/estudio", "/analitica", "/profesor", "/admin"].every((href) => links.includes(href)));
 check("academia: sin plataforma", !links.includes("/plataforma"));
+await page.goto(`${base}/admin/invitaciones`, { waitUntil: "networkidle" });
+const roleOptions = await page.locator("#inv-role option").evaluateAll((items) => items.map((item) => item.getAttribute("value")));
+check(
+  "academia: roles invitables según el modo",
+  signupOpen ? roleOptions.includes("teacher") : roleOptions.length === 1 && roleOptions[0] === "student"
+);
 await page.goto(`${base}/admin/grupos`, { waitUntil: "networkidle" });
 const active = await page.locator('nav[aria-label="Navegación principal"] a[aria-current="page"]').evaluateAll((items) => items.map((item) => item.getAttribute("href")));
 check("menú marca solo la sección activa", active.length === 1 && active[0] === "/admin/grupos");

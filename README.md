@@ -95,8 +95,12 @@ Cuentas sembradas (`AULA_SEED_DEMO=1`, una por perfil):
 | Cuenta individual | `autodidacta@slanything.local` | `auto1234` |
 | Superadmin de la plataforma | `admin@slanything.local` | `admin1234` |
 
-En `/registro` puedes crear una cuenta individual, una academia o unirte a una
-clase con su código.
+El **registro es solo por invitación** (`AULA_OPEN_SIGNUP=0`, por defecto): la
+superadministración invita a cuentas individuales y a profesorado (con academia
+nueva o en una existente) desde `/plataforma/invitaciones`, y el profesorado
+invita a su alumnado desde «Invitar alumnos». Con `AULA_OPEN_SIGNUP=1`,
+`/registro` permite crear una cuenta individual, una academia o unirse con un
+código de clase.
 
 ### Estudio de autoría
 
@@ -240,8 +244,8 @@ npm run e2e                                # E2E_BASE para otra URL
 npm run e2e:labs                           # 15 laboratorios; requiere AULA_SAMPLE_COURSES=1
 ```
 
-La suite (181 tests) cubre perfiles y permisos, altas (individual, academia,
-código e invitación), biblioteca vacía, curso activo, aislamiento por espacio,
+La suite (196 tests) cubre perfiles y permisos, registro por invitación,
+altas (individual, academia, código e invitación), biblioteca vacía, curso activo, aislamiento por espacio,
 superadministración, matrículas, autenticación, CSRF, progreso, quiz, analítica,
 generación por etapas con modelo falso, Estudio, ejecución Python, contenido del
 curso de ejemplo y la API JSON. El smoke y el E2E recorren los cuatro perfiles

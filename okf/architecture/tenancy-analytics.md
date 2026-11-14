@@ -4,7 +4,7 @@ title: Espacios, usuarios y analítica
 description: Perfiles de cuenta, tenancy por espacios, matriz de permisos, superadmin, grupos, matrículas, invitaciones, auditoría y eventos de aprendizaje con sus KPIs.
 tags: [usuarios, roles, perfiles, tenancy, analítica, kpis, auditoría, superadmin]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: workspaces
     resource: ../../webapp/workspaces.py
@@ -26,22 +26,38 @@ sources:
     title: permissions_for, profile_for y dependencias
 ---
 
-# Perfiles (ADR-021)
+# Perfiles (ADR-021) y altas (ADR-022)
 
-O se crea una **cuenta individual** o se crea una **academia**; además se
-puede entrar en una academia por **invitación** o **código de clase**.
+Por defecto **no hay registro abierto** (`AULA_OPEN_SIGNUP=0`,
+[ADR-022](/decisions/adr-022-invite-only-signup.md)): la superadministración
+invita a cuentas individuales y a profesorado (academia nueva o existente) desde
+`/plataforma/invitaciones`, y el profesorado invita a su alumnado desde
+`/admin/invitaciones`. Con `AULA_OPEN_SIGNUP=1` vuelve el alta libre como
+cuenta individual, academia o código de clase.
 
 | Perfil | Cómo se obtiene | Espacio activo |
 |---|---|---|
-| Autodidacta (`self_learner`) | alta individual | `personal`, rol `owner` |
-| Alumno (`student`) | invitación o código de clase | academia, rol `student` (sin espacio personal) |
-| Profesorado (`teacher`) | invitación con rol `teacher` | academia, rol `teacher` |
-| Administración de la academia (`academy_admin`) | crear academia, o rol `admin`/`owner` | academia |
+| Autodidacta (`self_learner`) | invitación de plataforma `individual` | `personal`, rol `owner` |
+| Alumno (`student`) | invitación del profesorado (o código, ya registrado) | academia, rol `student` (sin espacio personal) |
+| Profesorado (`teacher`) | invitación de plataforma `teacher` a una academia existente | academia, rol `teacher` |
+| Administración de la academia (`academy_admin`) | invitación de plataforma `teacher` con academia nueva (owner), o rol `admin` | academia |
 | Superadmin | `users.is_platform_admin` | cualquiera; añade el panel `/plataforma` |
 
 `deps.profile_for(role, kind)` calcula el perfil de presentación. Un alumno
 puede abrir su cuenta individual (`POST /api/v1/workspaces/personal`) sin dejar
-de ser alumno en su academia. Sin ningún espacio, la UI lleva a `/bienvenida`.
+de ser alumno en su academia (con registro cerrado, solo el superadmin crea
+espacios fuera de una invitación). Sin ningún espacio, la UI lleva a
+`/bienvenida`.
+
+| Invitación | Quién la crea | Resultado |
+|---|---|---|
+| Plataforma · `individual` | superadmin | cuenta individual |
+| Plataforma · `teacher` + academia | superadmin | profesorado de esa academia |
+| Plataforma · `teacher` sin academia | superadmin | academia nueva con el invitado como owner |
+| Academia · `student` | profesorado, admin u owner (`teach`) | alumno de la academia |
+| Academia · `teacher` / `admin` | admin / owner, **solo con registro abierto** | rol en la academia |
+
+El profesorado sin `manage` ve y revoca solo sus invitaciones.
 
 
 # Modelo
@@ -84,13 +100,19 @@ de cursos publicados en su academia debajo.
 
 # API
 
-- `/api/v1/auth/register`: `account` = `individual` | `academy` | `join`, con
-  `academy_name`, `join_code` o `invite`.
+- `/api/v1/auth/register`: con registro cerrado exige `invite` (403 sin ella);
+  con registro abierto, `account` = `individual` | `academy` | `join`.
+  `academy_name` acompaña a las invitaciones de academia nueva.
+- `/api/v1/invitations/{token}` (`source`, `kind`, `needs_academy_name`) y
+  `/accept` (`academy_name` opcional), para invitaciones de academia y de
+  plataforma.
+- `/api/v1/admin/invitations`: `teach`; devuelve `roles` invitables.
 - `/api/v1/workspaces`: listar, `switch`, crear academia, `join` por código,
   `personal` (abrir la cuenta individual).
 - `/api/v1/platform/*` (superadmin): `overview`, `users` (+`PATCH`),
   `workspaces` (+`PATCH` plan, plazas y cuota `gen_monthly`; `DELETE` academias
-  sin cursos), `courses` (+`visibility`, `unpublish`), `ai`.
+  sin cursos), `courses` (+`visibility`, `unpublish`), `ai`, `invitations`
+  (+`POST`, `DELETE`).
 - `/api/v1/admin/*`: `members` (rol, expulsar), `join-code`, `groups`
   (+ `members`, `enrollments`), `invitations`, `audit`, `metrics`.
 - `/api/v1/invitations/{token}` (pública) y `/accept`.
@@ -117,5 +139,5 @@ de cursos publicados en su academia debajo.
 
 `/` (dashboard por perfil), `/analitica`, `/admin`, `/admin/usuarios`,
 `/admin/grupos`, `/admin/invitaciones`, `/admin/auditoria`, `/plataforma`,
-`/plataforma/usuarios`, `/plataforma/espacios`, `/plataforma/cursos`,
+`/plataforma/usuarios`, `/plataforma/invitaciones`, `/plataforma/espacios`, `/plataforma/cursos`,
 `/plataforma/ia`, `/cuenta`, `/bienvenida`, `/invitacion/[token]`.

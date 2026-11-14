@@ -18,8 +18,7 @@ PUBLIC_PAGES = [
     ("/", "Convierte cualquier material"),
     ("/cursos", "Elige qué quieres aprender"),
     ("/entrar", "Entrar"),
-    ("/registro", "Cuenta individual"),
-    ("/registro?tipo=academia", "Academia"),
+    ("/registro", "Crear cuenta"),
 ]
 
 # Páginas comunes a cualquier perfil, con o sin cursos.
@@ -45,7 +44,7 @@ SAMPLE_PAGES = [
 PROFILES = [
     ("profe@slanything.local", "profe1234", ["/estudio", "/profesor", "/analitica", "/admin"], ["/plataforma"]),
     ("autodidacta@slanything.local", "auto1234", ["/estudio"], ["/admin", "/plataforma"]),
-    ("admin@slanything.local", "admin1234", ["/plataforma", "/plataforma/usuarios", "/plataforma/ia"], []),
+    ("admin@slanything.local", "admin1234", ["/plataforma", "/plataforma/usuarios", "/plataforma/invitaciones", "/plataforma/ia"], []),
 ]
 
 RESTRICTED_MARKER = "Acceso restringido"
@@ -86,6 +85,8 @@ def main() -> int:
             return 1
         samples = bool(health.json().get("ejemplos"))
         print(f"cursos de ejemplo: {'activos' if samples else 'desactivados'}")
+        signup_open = bool(client.get("/api/v1/public").json()["site"].get("signup_open"))
+        print(f"registro: {'abierto' if signup_open else 'solo por invitación'}")
 
         failures = 0
         for path, marker in PUBLIC_PAGES:
@@ -94,6 +95,11 @@ def main() -> int:
             print(f"{path} (anónimo) -> {response.status_code} {'ok' if ok else 'FALLA'}")
             if not ok:
                 failures += 1
+
+        register_page = client.get("/registro").text
+        ok = ("Cuenta individual" in register_page) if signup_open else ("solo por invitación" in register_page)
+        print(f"/registro según el modo -> {'ok' if ok else 'FALLA'}")
+        failures += 0 if ok else 1
 
         login = client.post(
             "/api/v1/auth/login",

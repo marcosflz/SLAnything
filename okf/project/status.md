@@ -5,7 +5,7 @@ description: Foto del proyecto a 14 de noviembre de 2026 - plataforma genérica 
 tags: [estado, entrega, handoff, tests, cursos, catalogo]
 status: stable
 stale_after: 2026-12-15T00:00:00Z
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -27,7 +27,8 @@ sources:
 | Cursos | Generados desde el Estudio; biblioteca vacía al instalar |
 | Curso de ejemplo | Construye un LLM desde cero (`AULA_SAMPLE_COURSES=1`): 7 capítulos, 56 lecciones, 15 labs, 7 quizzes, 113 términos, 26 ejemplos Python |
 | Idiomas | Español e inglés |
-| Tests | 181 passed |
+| Acceso | Registro solo por invitación (`AULA_OPEN_SIGNUP=0`, ADR-022) |
+| Tests | 196 passed |
 | E2E | `npm run e2e` (perfiles) y `npm run e2e:labs` en verde con y sin ejemplos |
 | Repositorio | GitHub privado · `marcosflz/SLAnything` |
 | Servidor local | Next `http://127.0.0.1:3000` · FastAPI `http://127.0.0.1:8000` |
@@ -37,6 +38,12 @@ sources:
 | Última verificación | 2026-11-14 |
 
 # Qué está hecho
+
+**Registro por invitación (2026-11-14, tarde):** sin registro abierto por
+defecto; la superadministración invita a cuentas individuales y profesorado
+(academia nueva o existente) desde `/plataforma/invitaciones` y el profesorado
+invita a su alumnado ([ADR-022](/decisions/adr-022-invite-only-signup.md)).
+Migración v7 (`platform_invitations`).
 
 **Plataforma genérica y perfiles (2026-11-14):** la app funciona con la
 biblioteca vacía y el curso LLM pasa a ser ejemplo opcional

@@ -747,6 +747,16 @@ EN: dict[str, str] = {
         "This section is only for the academy's administrators."
     ),
     "Solo para la administración de la plataforma.": "Platform administrators only.",
+    # ------------------------------------------------- registro por invitación (ADR-022)
+    "El registro es solo por invitación.": "Sign-up is by invitation only.",
+    "Solo puedes invitar alumnado. El profesorado lo invita la administración de la plataforma.": (
+        "You can only invite students. Teachers are invited by the platform administrators."
+    ),
+    "Las academias y cuentas individuales se crean por invitación de la administración de la plataforma.": (
+        "Academies and individual accounts are created by invitation from the platform administrators."
+    ),
+    "Academia no encontrada.": "Academy not found.",
+    "Solo el propietario invita administradores.": "Only the owner can invite administrators.",
 }
 
 

@@ -59,9 +59,11 @@ export function PublicShell({
             <Link className="btn btn-ghost" href="/entrar">
               {t(lang, "Entrar")}
             </Link>
-            <Link className="btn btn-primary" href="/registro">
-              {t(lang, "Empezar gratis")}
-            </Link>
+            {site.signup_open ? (
+              <Link className="btn btn-primary" href="/registro">
+                {t(lang, "Empezar gratis")}
+              </Link>
+            ) : null}
           </div>
         </header>
 
@@ -86,7 +88,7 @@ export function PublicShell({
           </div>
           <div className="footer-links">
             <Link href="/entrar">{t(lang, "Entrar")}</Link>
-            <Link href="/registro">{t(lang, "Crear cuenta")}</Link>
+            {site.signup_open ? <Link href="/registro">{t(lang, "Crear cuenta")}</Link> : null}
             <Link href="/salud">{t(lang, "Estado")}</Link>
           </div>
           <p className="footer-credit">

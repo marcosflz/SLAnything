@@ -183,7 +183,10 @@ def test_teacher_of_an_academy_cannot_administer_it(client):
     ).json()
     client.cookies.clear()
     _register(client, "profe2@example.com", invite=invite["path"].rsplit("/", 1)[-1])
-    assert client.get("/api/v1/admin/invitations").status_code == 403
+    # Gestiona solo sus propias invitaciones de alumnado (ADR-022), no la academia.
+    assert client.get("/api/v1/admin/invitations").json()["invitations"] == []
+    assert client.get("/api/v1/admin/members").status_code == 403
+    assert client.get("/api/v1/admin/groups").status_code == 403
     assert client.get("/api/v1/analytics/course").status_code == 200
 
 

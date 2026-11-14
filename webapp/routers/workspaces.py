@@ -28,6 +28,20 @@ class JoinBody(BaseModel):
     code: str = Field(min_length=4, max_length=16)
 
 
+def _ensure_can_create_spaces(request: Request, user: dict) -> None:
+    """Con el registro cerrado (ADR-022) solo la superadministración crea
+    academias o cuentas individuales fuera de una invitación."""
+    if config.OPEN_SIGNUP or user.get("is_platform_admin"):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail=translate(
+            "Las academias y cuentas individuales se crean por invitación de la administración de la plataforma.",
+            request_lang(request),
+        ),
+    )
+
+
 def _set_active(response: JSONResponse, workspace_id: int) -> JSONResponse:
     response.set_cookie(
         config.WORKSPACE_COOKIE,
@@ -71,6 +85,7 @@ def create_organization(
 ):
     """Crea una academia. Quien la crea es su owner."""
     ensure_csrf(request, user)
+    _ensure_can_create_spaces(request, user)
     workspace_id = workspaces.create_workspace(
         conn, "organization", body.name, user["id"]
     )
@@ -123,6 +138,8 @@ def create_personal_workspace(
     """
     ensure_csrf(request, user)
     existing = workspaces.personal_workspace_id(conn, user["id"])
+    if existing is None:
+        _ensure_can_create_spaces(request, user)
     workspace_id = workspaces.ensure_personal_workspace(conn, user["id"], user["name"])
     if existing is None:
         audit.record(

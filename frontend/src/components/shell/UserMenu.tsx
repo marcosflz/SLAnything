@@ -8,7 +8,7 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } fr
 import { apiPost } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
 import type { User } from "@/lib/types";
-import { profileLabel } from "./WorkspaceSwitcher";
+import { profileLabel } from "@/lib/roles";
 
 export function ThemeButton({ lang }: { lang: Lang }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
