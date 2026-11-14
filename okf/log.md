@@ -1,5 +1,16 @@
 # Historial de cambios del OKF
 
+## 2026-11-14
+
+* **Update**: Plataforma genérica ([ADR-020](/decisions/adr-020-generic-platform.md)): el curso «Construye un LLM desde cero» pasa a ser ejemplo opcional (`AULA_SAMPLE_COURSES=1`, `Course.is_sample`); `ContentBundle.course` puede ser `None` y shell, inicio, progreso, glosario, recursos, búsqueda, profesorado y analítica responden con `course: null`. Curso activo = pedido → `users.last_course_slug` → primero publicado. Biblioteca por espacio activo. Glosario y recursos por curso; fuera `/downloads/plan` y la lista fija de recursos. `/salud` ya no lee `CATALOGS[0]`.
+* **Update**: Perfiles ([ADR-021](/decisions/adr-021-account-profiles.md)): alta como cuenta individual, academia o código de clase/invitación (sin espacio personal); matriz `learn/author/teach/manage/platform` en `deps.permissions_for`; `require_author`, `require_teaching`, `require_admin`; el alumnado no usa el Estudio y la cuenta individual no ve analítica ni gestión de aula. Nuevo router `/api/v1/platform/*` y páginas `/plataforma/*` para la superadministración (usuarios, espacios con cuota y plazas, cursos, IA). `POST /api/v1/workspaces/personal`, `/bienvenida` y matrículas visibles (`assigned`, `due_at`).
+* **Update**: Migración v6: `users.last_course_slug`, borra el espacio personal vacío del alumnado, crea la cuenta individual de usuarios sin espacio y renombra las cuentas demo a `@slanything.local` (la profesora deja de ser superadmin). Cuentas demo: `alumno@`, `profe@`, `autodidacta@`, `admin@`.
+* **Fix**: Carrera de lectura tras escritura: con FastAPI 0.162 el commit de `get_db` ocurría después de responder (crear un grupo y añadirle miembros daba 404). Todas las rutas usan `Depends(get_db, scope="function")`; `test_db_scope.py` lo vigila.
+* **Fix**: La barra lateral marcaba a la vez `/admin` y `/admin/grupos` (y `/plataforma`); ahora solo la entrada más específica. Desbordamiento a 360 px en la cabecera pública y en el botón «Continuar» del inicio.
+* **Update**: Frontend genérico: portada (documento → temario → curso, «Para quién»), registro por tipo de cuenta, login con las cuatro cuentas demo, biblioteca agrupada sin «El próximo libro», inicio por perfil con «Tus unidades» y accesos de clase, navegación por permisos. 52 cadenas LLM huérfanas fuera de `i18n.py`. Prompts de generación neutros respecto a la materia.
+* **Update**: Pruebas: 181 tests (nuevos `test_profiles.py`, `test_empty_library.py`, `test_platform.py`, `test_db_scope.py`); `smoke_next.py` y `npm run e2e` reescritos por perfiles y verificados en navegador con y sin ejemplos; `npm run e2e:labs` (15 labs) en verde. Compose pasa a `slanything-*` (volumen `aula-llm-data` conservado).
+* **Update**: OKF: ADR-020 y ADR-021; actualizados tenancy-analytics, security, backend, api, data-model, overview, nextjs-frontend, i18n, generation, course, lessons, labs, ux, vision, status, roadmap, known-issues, next-steps, glossary, run, testing, commands y session-playbook; nota en ADR-016.
+
 ## 2026-11-13
 
 * **Update**: Se retira la interfaz Jinja (plantillas, rutas HTML, `templating.py`, `webapp/static/css/app.css`, `tools/sync_frontend_assets.py`). FastAPI solo sirve `/api/v1`, `/api/ejecutar` y `/static`; los tests se reescribieron contra la API.

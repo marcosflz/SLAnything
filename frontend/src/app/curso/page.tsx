@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { AppShell } from "@/components/AppShell";
 import { CoursePageView } from "@/components/course/CoursePageView";
 import { apiGet, getShell } from "@/lib/api";
@@ -25,6 +27,7 @@ export default async function CoursePage({
   searchParams: Promise<SearchParams>;
 }) {
   const shell = await getShell("/curso");
+  if (!shell.course) redirect("/cursos");
   const data = await apiGet<CoursePayload>("/api/v1/course");
   const params = await searchParams;
   const lang = shell.lang;

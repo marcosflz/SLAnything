@@ -1,16 +1,21 @@
 import {
   ArrowRight,
+  BarChart3,
   BookOpenCheck,
+  CalendarClock,
   Clock3,
   Code2,
+  FileText,
   Flame,
   FlaskConical,
   GraduationCap,
   LayoutGrid,
+  Library,
   ListChecks,
   RotateCcw,
   Sparkles,
   Target,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,23 +26,166 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Pill } from "@/components/ui/pill";
 import { Progress } from "@/components/ui/progress";
 import { pick } from "@/lib/messages";
-import type { DashboardPayload, Lang, ProgressMap, StudentKpis, User } from "@/lib/types";
+import type { AuthoringPayload, DashboardPayload, Lang, ProgressMap, StudentKpis, User } from "@/lib/types";
 import { formatDate, formatMinutes } from "@/lib/utils";
+
+function firstNameOf(user: User) {
+  return user.name.trim().split(/\s+/)[0] || user.name;
+}
+
+/** Unidades del Estudio: trabajos en curso, borradores y cuota del mes. */
+function StudioSummary({ studio, lang }: { studio: AuthoringPayload; lang: Lang }) {
+  const drafts = studio.courses.filter((course) => course.status === "draft").length;
+  const published = studio.courses.filter((course) => course.status === "published").length;
+  const recent = studio.jobs.slice(0, 3);
+  return (
+    <Card>
+      <CardHeader>
+        <div>
+          <CardTitle>{pick(lang, "Tus unidades", "Your units")}</CardTitle>
+          <CardDescription>
+            {pick(lang, "{p} publicadas · {d} en borrador · {u} de {l} generaciones este mes", "{p} published · {d} drafts · {u} of {l} generations this month")
+              .replace("{p}", String(published))
+              .replace("{d}", String(drafts))
+              .replace("{u}", String(studio.quota.used))
+              .replace("{l}", String(studio.quota.limit))}
+          </CardDescription>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/estudio">
+            <Sparkles /> {pick(lang, "Abrir el Estudio", "Open the Studio")}
+          </Link>
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {recent.length ? (
+          <ul className="m-0 grid list-none gap-2 p-0">
+            {recent.map((job) => (
+              <li key={job.id}>
+                <Link
+                  href={`/estudio/trabajos/${job.id}`}
+                  className="flex items-center gap-3 rounded-lg border border-border p-3 text-foreground no-underline hover:border-primary/50 hover:no-underline"
+                >
+                  <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{job.title}</span>
+                  <Pill variant={job.status === "failed" ? "destructive" : job.status === "ready" ? "success" : "secondary"}>
+                    {job.status_label}
+                  </Pill>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="m-0 text-sm text-muted-foreground">
+            {pick(lang, "Aún no has subido ningún documento.", "You have not uploaded any document yet.")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Accesos de profesorado y administración de la academia. */
+function ClassShortcuts({ user, lang }: { user: User; lang: Lang }) {
+  const perms = user.permissions;
+  if (!perms?.teach && !perms?.manage) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <div>
+          <CardTitle>{pick(lang, "Tu clase", "Your class")}</CardTitle>
+          <CardDescription>{user.workspace?.name}</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        {perms.teach ? (
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/analitica">
+                <BarChart3 /> {pick(lang, "Analítica del curso", "Course analytics")}
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/profesor">
+                <GraduationCap /> {pick(lang, "Estudiantes", "Students")}
+              </Link>
+            </Button>
+          </>
+        ) : null}
+        {perms.manage ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/invitaciones">
+              <UserPlus /> {pick(lang, "Invitar a la academia", "Invite to the academy")}
+            </Link>
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Inicio sin cursos: qué hacer según el perfil. */
+function EmptyHome({ studio, lang, user }: { studio: AuthoringPayload | null; lang: Lang; user: User }) {
+  const canCreate = user.permissions?.author;
+  return (
+    <div className="grid grid-cols-1 gap-6">
+      <section className="rounded-xl border border-border bg-gradient-to-br from-primary-soft to-card p-5 sm:p-6">
+        <h2 className="m-0 text-2xl font-semibold tracking-tight">
+          {pick(lang, "Hola", "Hi")}, {firstNameOf(user)}.
+        </h2>
+        <p className="m-0 mt-1 max-w-2xl text-sm text-muted-foreground">
+          {canCreate
+            ? pick(
+                lang,
+                "Tu biblioteca está vacía. Sube unos apuntes, un libro o un manual y el Estudio lo convertirá en lecciones, cuestionarios y glosario.",
+                "Your library is empty. Upload notes, a book or a manual and the Studio will turn it into lessons, quizzes and a glossary."
+              )
+            : pick(
+                lang,
+                "Tu academia aún no ha publicado cursos. Cuando tu profesorado publique o te asigne uno, aparecerá aquí.",
+                "Your academy has not published any course yet. When your teachers publish or assign one, it will show up here."
+              )}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {canCreate ? (
+            <Button asChild size="lg">
+              <Link href="/estudio">
+                <Sparkles /> {pick(lang, "Crear desde un documento", "Create from a document")}
+              </Link>
+            </Button>
+          ) : null}
+          <Button asChild variant="outline" size="lg">
+            <Link href="/cursos">
+              <Library /> {pick(lang, "Explorar la biblioteca", "Browse the library")}
+            </Link>
+          </Button>
+        </div>
+      </section>
+      <div className="grid gap-6 xl:grid-cols-2">
+        {studio ? <StudioSummary studio={studio} lang={lang} /> : null}
+        <ClassShortcuts user={user} lang={lang} />
+      </div>
+    </div>
+  );
+}
 
 export function DashboardHome({
   data,
   kpis,
+  studio = null,
   lang,
   user,
 }: {
   data: DashboardPayload;
   kpis: StudentKpis;
+  studio?: AuthoringPayload | null;
   progress?: ProgressMap;
   lang: Lang;
   user: User;
 }) {
   const { course, courses, next_lesson } = data;
-  const firstName = user.name.trim().split(/\s+/)[0] || user.name;
+  if (!course) return <EmptyHome studio={studio} lang={lang} user={user} />;
+  const firstName = firstNameOf(user);
   const titles = new Map(
     course.chapters.flatMap((chapter) => chapter.lessons.map((lesson) => [lesson.slug, lesson.title] as const))
   );
@@ -55,7 +203,7 @@ export function DashboardHome({
   const canCreate = user.permissions?.author;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       {/* Saludo y siguiente paso */}
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-gradient-to-br from-primary-soft to-card p-5 sm:p-6">
         <div className="min-w-0">
@@ -71,11 +219,11 @@ export function DashboardHome({
                 : pick(lang, "Tu siguiente paso está a un clic.", "Your next step is one click away.")}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex max-w-full min-w-0 flex-wrap gap-2">
           {continueSlug ? (
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="max-w-full shrink">
               <Link href={`/leccion/${continueSlug}`} prefetch={false}>
-                {pick(lang, "Continuar", "Continue")}: <span className="max-w-56 truncate">{continueTitle}</span>
+                {pick(lang, "Continuar", "Continue")}: <span className="max-w-56 min-w-0 truncate">{continueTitle}</span>
                 <ArrowRight />
               </Link>
             </Button>
@@ -89,6 +237,13 @@ export function DashboardHome({
           ) : null}
         </div>
       </section>
+
+      {studio || user.permissions?.teach || user.permissions?.manage ? (
+        <div className="grid gap-6 xl:grid-cols-2">
+          {studio ? <StudioSummary studio={studio} lang={lang} /> : null}
+          <ClassShortcuts user={user} lang={lang} />
+        </div>
+      ) : null}
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label={pick(lang, "Indicadores", "Indicators")}>
@@ -261,7 +416,11 @@ export function DashboardHome({
         <CardHeader>
           <div>
             <CardTitle>{pick(lang, "Tus cursos", "Your courses")}</CardTitle>
-            <CardDescription>{pick(lang, "Cursos disponibles en este espacio", "Courses available in this workspace")}</CardDescription>
+            <CardDescription>
+              {user.profile === "student"
+                ? pick(lang, "Primero los que te ha asignado tu academia", "Courses assigned by your academy come first")
+                : pick(lang, "Cursos disponibles en este espacio", "Courses available in this workspace")}
+            </CardDescription>
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link href="/cursos">
@@ -278,8 +437,20 @@ export function DashboardHome({
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <span className="line-clamp-2 text-sm font-medium group-hover:text-primary">{item.title}</span>
-                {item.slug === course.slug ? <Pill>{pick(lang, "Actual", "Current")}</Pill> : null}
+                {item.slug === course.slug ? (
+                  <Pill>{pick(lang, "Actual", "Current")}</Pill>
+                ) : item.is_sample ? (
+                  <Pill variant="outline">{pick(lang, "Ejemplo", "Sample")}</Pill>
+                ) : null}
               </div>
+              {item.assigned ? (
+                <p className="m-0 mb-2 flex items-center gap-1 text-xs text-warning">
+                  <CalendarClock className="size-3.5" aria-hidden="true" />
+                  {item.due_at
+                    ? pick(lang, "Asignado · entrega {d}", "Assigned · due {d}").replace("{d}", formatDate(item.due_at, lang))
+                    : pick(lang, "Asignado por tu academia", "Assigned by your academy")}
+                </p>
+              ) : null}
               <Progress value={item.stats?.pct ?? 0} label={item.title} />
               <div className="mt-2 text-xs text-muted-foreground">
                 {item.stats?.pct ?? 0}% · {item.lesson_count} {pick(lang, "lecciones", "lessons")}

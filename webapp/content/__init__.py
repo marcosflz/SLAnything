@@ -1,4 +1,8 @@
-"""Contenido público de SLAnything, organizado por idioma y por curso."""
+"""Contenido de SLAnything, organizado por idioma y por curso.
+
+La biblioteca la forman los cursos publicados desde el Estudio y, de forma
+opcional, los cursos de ejemplo del repositorio (``AULA_SAMPLE_COURSES=1``).
+"""
 
 from __future__ import annotations
 
@@ -81,24 +85,40 @@ QUIZZES_BY_LANG: dict[str, dict[str, Quiz]] = {"es": QUIZZES, "en": QUIZZES_EN}
 
 @dataclass(frozen=True)
 class ContentBundle:
+    """Contenido visible para una petición: catálogo, curso activo y anexos.
+
+    ``course`` es ``None`` cuando la biblioteca está vacía (lo normal en una
+    instalación nueva sin cursos de ejemplo): la plataforma no exige ningún
+    curso para funcionar (ADR-020).
+    """
+
     lang: str
-    course: Course
+    course: Course | None
     catalog: tuple[Course, ...]
-    glossary: tuple[GlossaryTerm, ...]
+    glossaries: dict[str, tuple[GlossaryTerm, ...]]
     quizzes: dict[str, Quiz]
 
     @property
     def chapters(self) -> tuple[Chapter, ...]:
-        return self.course.chapters
+        return self.course.chapters if self.course else ()
+
+    @property
+    def glossary(self) -> tuple[GlossaryTerm, ...]:
+        """Glosario del curso activo (vacío sin curso)."""
+        return self.glossary_for(self.course.slug) if self.course else ()
+
+    def glossary_for(self, slug: str) -> tuple[GlossaryTerm, ...]:
+        return self.glossaries.get(slug, ())
 
     @property
     def published_catalog(self) -> tuple[Course, ...]:
         return tuple(course for course in self.catalog if course.is_published)
 
     @property
-    def default_course(self) -> Course:
+    def default_course(self) -> Course | None:
+        """Primer curso publicado: los del espacio antes que los ejemplos."""
         published = self.published_catalog
-        return published[0] if published else self.catalog[0]
+        return published[0] if published else None
 
     def course_for(self, slug: str | None) -> Course | None:
         if not slug:
@@ -136,14 +156,21 @@ def _dynamic_content(code: str, workspace_ids: frozenset[int] | None = None):
     de contenido, y este módulo solo necesita consultarlos en tiempo de petición.
     """
     if not config.AUTHORING_ENABLED:
-        return [], {}, ()
+        return [], {}, {}
     try:
         from webapp.authoring.store import dynamic_content
 
         return dynamic_content(code, workspace_ids)
     except Exception:  # noqa: BLE001 - el sitio debe seguir vivo sin el Estudio
         logger.exception("No se pudo cargar el contenido generado para %s", code)
-        return [], {}, ()
+        return [], {}, {}
+
+
+def sample_catalog(lang: str) -> tuple[Course, ...]:
+    """Cursos de ejemplo del repositorio, o ``()`` si están desactivados."""
+    if not config.SAMPLE_COURSES:
+        return ()
+    return CATALOGS.get(lang, CATALOGS[DEFAULT_LANG])
 
 
 def content_for(
@@ -153,47 +180,43 @@ def content_for(
 ) -> ContentBundle:
     """Bundle de contenido para un idioma.
 
-    ``workspace_ids`` limita los cursos generados a los espacios del usuario
-    (más los públicos). ``None`` desactiva el filtro (scripts y tareas internas).
+    ``workspace_ids`` limita los cursos generados a esos espacios (más los
+    públicos); la API pasa solo el espacio **activo**. ``None`` desactiva el
+    filtro (scripts y tareas internas). Los cursos de ejemplo van al final y
+    solo existen con ``config.SAMPLE_COURSES``.
     """
     code = lang if lang in CATALOGS else DEFAULT_LANG
-    static_catalog = CATALOGS[code]
-    dynamic_courses, dynamic_quizzes, dynamic_glossary = _dynamic_content(
+    samples = sample_catalog(code)
+    dynamic_courses, dynamic_quizzes, dynamic_glossaries = _dynamic_content(
         code, workspace_ids
     )
-    static_slugs = {item.slug for item in static_catalog}
-    catalog = static_catalog + tuple(
-        course for course in dynamic_courses if course.slug not in static_slugs
-    )
-    quizzes = dict(QUIZZES_BY_LANG[code])
+    sample_slugs = {item.slug for item in samples}
+    catalog = tuple(
+        course for course in dynamic_courses if course.slug not in sample_slugs
+    ) + samples
+
+    quizzes: dict[str, Quiz] = dict(QUIZZES_BY_LANG[code]) if samples else {}
     for quiz_id, quiz in dynamic_quizzes.items():
         if quiz_id in quizzes:
             logger.warning("Se ignora el quiz generado duplicado: %s", quiz_id)
             continue
         quizzes[quiz_id] = quiz
-    glossary = tuple(GLOSSARIES[code])
-    seen_terms = {term.term.casefold() for term in glossary}
-    for term in dynamic_glossary:
-        key = term.term.casefold()
-        if key in seen_terms:
-            continue
-        seen_terms.add(key)
-        glossary += (term,)
 
-    course = next(
-        (item for item in catalog if item.slug == course_slug),
-        None,
-    )
+    glossaries: dict[str, tuple[GlossaryTerm, ...]] = {}
+    for course in samples:
+        glossaries[course.slug] = GLOSSARIES[code]
+    for slug, terms in dynamic_glossaries.items():
+        if slug not in glossaries:
+            glossaries[slug] = tuple(terms)
+
+    course = next((item for item in catalog if item.slug == course_slug), None)
     if course is None:
-        course = next(
-            (item for item in catalog if item.is_published),
-            catalog[0],
-        )
+        course = next((item for item in catalog if item.is_published), None)
     return ContentBundle(
         lang=code,
         course=course,
         catalog=catalog,
-        glossary=glossary,
+        glossaries=glossaries,
         quizzes=quizzes,
     )
 
@@ -227,6 +250,7 @@ __all__ = [
     "Question",
     "Quiz",
     "content_for",
+    "sample_catalog",
     "validate_catalog",
     "validate_program",
     "validate_content",

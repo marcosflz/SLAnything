@@ -48,7 +48,7 @@ RUN uv sync --frozen --no-dev
 # Código y datos que la app sirve o descarga.
 COPY aula.py ./
 COPY webapp ./webapp
-COPY docs/PLAN_PLATAFORMA_WEB.md ./docs/PLAN_PLATAFORMA_WEB.md
+# Cuaderno del curso de ejemplo (solo se sirve con AULA_SAMPLE_COURSES=1).
 COPY notebooks/capitulo_01_entender_los_llms.ipynb ./notebooks/
 
 RUN mkdir -p /data \

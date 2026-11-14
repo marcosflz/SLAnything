@@ -1,5 +1,6 @@
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import type { Course, CourseSummary, Lang, ProgressMap, Site, Stats, User } from "@/lib/types";
 import { pick, t } from "@/lib/messages";
@@ -17,10 +18,13 @@ function isActive(current: string, href: string) {
   return current === href || current.startsWith(`${href}/`);
 }
 
+/** Rutas que un usuario sin espacio puede abrir sin ir a /bienvenida. */
+const NO_WORKSPACE_PATHS = ["/bienvenida", "/cuenta"];
+
 /**
- * Shell de la aplicación: sidebar con espacio de trabajo, navegación por rol y
- * temario del curso activo; topbar con búsqueda ⌘K, idioma, tema y usuario.
- * Las páginas heredadas siguen usando `.content` para su ancho y márgenes.
+ * Shell de la aplicación: sidebar con espacio de trabajo, navegación por
+ * permisos y temario del curso activo (si lo hay); topbar con búsqueda ⌘K,
+ * idioma, tema y usuario. Las páginas heredadas siguen usando `.content`.
  */
 export function AppShell({
   user,
@@ -36,7 +40,7 @@ export function AppShell({
   children,
 }: {
   user: User;
-  course: Course;
+  course: Course | null;
   courses?: CourseSummary[];
   progress: ProgressMap;
   stats?: Stats;
@@ -50,8 +54,17 @@ export function AppShell({
   wide?: boolean;
   children: React.ReactNode;
 }) {
-  const sections = navSections(user, lang);
-  const lessons = course.chapters.flatMap((chapter) =>
+  if (!user.workspace && !user.permissions?.platform && !NO_WORKSPACE_PATHS.includes(pathname)) {
+    redirect("/bienvenida");
+  }
+  const sections = navSections(user, lang, Boolean(course));
+  // La entrada activa es la coincidencia más específica: /plataforma/espacios
+  // no debe marcar también /plataforma (ni /admin/grupos, /admin).
+  const activeHref = sections
+    .flatMap((section) => section.items.map((item) => item.href))
+    .filter((href) => isActive(pathname, href))
+    .sort((a, b) => b.length - a.length)[0];
+  const lessons = (course?.chapters ?? []).flatMap((chapter) =>
     chapter.lessons.map((lesson) => ({ slug: lesson.slug, title: lesson.title, chapter: chapter.number }))
   );
   const done = lessons.filter((lesson) => progress[lesson.slug]?.completed).length;
@@ -71,7 +84,7 @@ export function AppShell({
             <ul className="m-0 grid list-none gap-0.5 p-0">
               {section.items.map((item) => {
                 const Icon = NAV_ICONS[item.icon];
-                const active = isActive(pathname, item.href);
+                const active = item.href === activeHref;
                 return (
                   <li key={item.href}>
                     <Link
@@ -92,6 +105,7 @@ export function AppShell({
           </div>
         ))}
 
+        {course ? (
         <div className="mb-2">
           <p className="m-0 mb-1 px-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             {pick(lang, "Curso actual", "Current course")}
@@ -157,6 +171,21 @@ export function AppShell({
             );
           })}
         </div>
+        ) : user.workspace ? (
+          <div className="mb-2 rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <p className="m-0 font-medium text-foreground">{pick(lang, "Aún no hay cursos", "No courses yet")}</p>
+            <p className="m-0 mt-1">
+              {user.permissions?.author
+                ? pick(lang, "Sube un documento y conviértelo en tu primera unidad.", "Upload a document and turn it into your first unit.")
+                : pick(lang, "Cuando tu academia publique un curso aparecerá aquí.", "Courses your academy publishes will appear here.")}
+            </p>
+            {user.permissions?.author ? (
+              <Link href="/estudio" className="mt-2 inline-flex items-center gap-1 font-medium text-primary">
+                <Sparkles className="size-3.5" aria-hidden="true" /> {pick(lang, "Abrir el Estudio", "Open the Studio")}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </nav>
       <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
         {site.name} · {t(lang, "Uso educativo")} · {site.year}

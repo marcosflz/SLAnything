@@ -13,7 +13,7 @@ from webapp.authoring.package import parse_package
 from webapp.authoring.sanitize import sanitize_html
 from webapp.db import connect
 
-from conftest import login
+from conftest import admin_login, login
 
 
 @pytest.fixture
@@ -338,7 +338,8 @@ def test_studio_payload_for_teacher(client, authoring_dir, monkeypatch):
 
 
 def test_api_settings_save_and_preserve_key(client, authoring_dir):
-    token = _teacher(client)
+    # El proveedor de IA es global: solo lo configura la superadministración.
+    token = admin_login(client)
     response = client.put(
         "/api/v1/authoring/settings",
         json={

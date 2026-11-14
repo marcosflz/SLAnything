@@ -4,7 +4,7 @@ title: Backend FastAPI
 description: Routers, dependencias, repositorios y convenciones del backend de SLAnything.
 tags: [backend, fastapi, routers, sqlite]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: main
     resource: ../../webapp/main.py
@@ -89,11 +89,17 @@ el navegador los muestre sin romper la página.
 
 # Dependencias
 
-- `get_db()`: conexión SQLite por petición, commit/rollback y cierre.
+- `get_db()`: conexión SQLite por petición, commit/rollback y cierre. Se usa
+  siempre como `Depends(get_db, scope="function")` para confirmar antes de
+  enviar la respuesta (test `test_db_scope.py`).
 - `get_current_user()`: cookie → sesión → usuario; renueva la sesión si quedan
   menos de 7 días.
 - `require_user()`: lanza 401; el handler redirige a `/entrar?next=...`.
-- `require_teacher()`: lanza 403 si el rol no es `teacher`.
+- `permissions_for()` / `profile_for()`: matriz de permisos y perfil del espacio
+  activo ([ADR-021](/decisions/adr-021-account-profiles.md)).
+- `require_author` (Estudio), `require_teaching` (analítica y estudiantes, solo
+  academias), `require_admin` (gestión de la academia) y
+  `require_platform_admin` (superadmin): 403 si falta el permiso.
 - `ensure_csrf()`: valida el token de formulario o `X-CSRF-Token`.
 
 # Repositorios

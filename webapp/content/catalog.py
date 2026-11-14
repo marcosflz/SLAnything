@@ -2,12 +2,12 @@
 
 ``Chapter`` sigue siendo la unidad editorial y ``Program`` la unidad de
 navegación dentro de un curso. ``Course`` añade la capa que faltaba para que la
-plataforma no gire alrededor de un único libro: metadatos editoriales, crédito
-del libro, estado de publicación y un programa propio.
+plataforma no gire alrededor de un único material: metadatos editoriales,
+crédito de la fuente, estado de publicación y un programa propio.
 
-Los cursos son datos inmutables. Añadir un libro nuevo consiste en crear su
-``Program`` (con sus capítulos) y registrarlo en ``CATALOGS``; ni los routers ni
-SQLite necesitan cambios.
+Los cursos son datos inmutables. Casi todos llegan desde el Estudio (paquetes
+JSON en ``generated_courses``); los cursos estáticos de ``CATALOGS`` son
+ejemplos opcionales que se activan con ``AULA_SAMPLE_COURSES=1``.
 """
 
 from __future__ import annotations
@@ -24,12 +24,24 @@ _COURSE_STATUSES = {"published", "coming_soon"}
 
 @dataclass(frozen=True)
 class Book:
-    """Crédito editorial del libro en el que se basa un curso."""
+    """Crédito de la fuente en la que se basa un curso (libro, apuntes, artículo…)."""
 
     title: str
     author: str
     year: int | None = None
     url: str | None = None
+
+
+@dataclass(frozen=True)
+class Resource:
+    """Material descargable o de consulta asociado a un curso."""
+
+    title: str
+    description: str
+    href: str
+    icon: str = "folder"
+    meta: str = ""
+    download: bool = False
 
 
 @dataclass(frozen=True)
@@ -52,6 +64,9 @@ class Course:
     cover: str | None = None
     order: int = 0
     tags: tuple[str, ...] = field(default_factory=tuple)
+    # Curso de ejemplo incluido en el repositorio (``AULA_SAMPLE_COURSES=1``).
+    is_sample: bool = False
+    resources: tuple[Resource, ...] = field(default_factory=tuple)
 
     @property
     def chapters(self):

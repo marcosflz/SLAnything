@@ -475,8 +475,8 @@ def _visible(row: sqlite3.Row, workspace_ids: frozenset[int] | None) -> bool:
 
 def dynamic_content(
     lang: str, workspace_ids: frozenset[int] | None = None
-) -> tuple[list[Any], dict[str, Any], tuple[Any, ...]]:
-    """Cursos, quizzes y glosario publicados para un idioma.
+) -> tuple[list[Any], dict[str, Any], dict[str, tuple[Any, ...]]]:
+    """Cursos, quizzes y glosario (por curso) publicados para un idioma.
 
     Se cachea por ``(slug, updated_at)``; publicar o despublicar invalida la
     entrada. Si un paquete guardado deja de validar se ignora y se registra.
@@ -484,11 +484,11 @@ def dynamic_content(
     try:
         rows = _published_rows(lang)
     except sqlite3.OperationalError:
-        return [], {}, ()
+        return [], {}, {}
     if not rows:
         with _cache_lock:
             _parsed_cache.pop(f"{lang}:{config.DB_PATH}", None)
-        return [], {}, ()
+        return [], {}, {}
     version = "|".join(f"{row['slug']}:{row['updated_at']}" for row in rows)
     cache_key = f"{lang}:{config.DB_PATH}"
     with _cache_lock:
@@ -509,7 +509,7 @@ def dynamic_content(
     visible_slugs = {row["slug"] for row in rows if _visible(row, workspace_ids)}
     courses = []
     quizzes: dict[str, Any] = {}
-    glossary: list[Any] = []
+    glossaries: dict[str, tuple[Any, ...]] = {}
     for parsed in parsed_packages:
         if parsed.slug not in visible_slugs:
             continue
@@ -518,8 +518,8 @@ def dynamic_content(
             continue
         courses.append(course)
         quizzes.update(parsed.quizzes.get(lang, {}))
-        glossary.extend(parsed.glossaries.get(lang, ()))
-    return courses, quizzes, tuple(glossary)
+        glossaries[course.slug] = tuple(parsed.glossaries.get(lang, ()))
+    return courses, quizzes, glossaries
 
 
 def tail_log(job_id: str, limit: int = 14_000) -> str:

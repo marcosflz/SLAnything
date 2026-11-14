@@ -1,14 +1,15 @@
-"""Ensamblado de los programas y del catálogo de cursos.
+"""Curso de ejemplo «Construye un LLM desde cero».
 
-El capítulo 1 conserva sus módulos históricos. Los capítulos 2-7 viven en
-``webapp/content/chapters/`` y se integran aquí. ``PROGRAM`` representa un curso
-completo y ``CATALOG`` la biblioteca de cursos publicados por la plataforma.
+Es el curso con el que nació la plataforma. Hoy es un **ejemplo opcional**
+(ADR-020): solo aparece en la biblioteca con ``AULA_SAMPLE_COURSES=1`` y nunca
+es obligatorio para que la app funcione. El capítulo 1 conserva sus módulos
+históricos; los capítulos 2-7 viven en ``webapp/content/chapters/``.
 """
 
 from __future__ import annotations
 
 from webapp import config
-from webapp.content.catalog import Book, Course
+from webapp.content.catalog import Book, Course, Resource
 from webapp.content.chapters import MODULES
 from webapp.content.lessons import LESSONS
 from webapp.content.lessons.en import LESSONS as LESSONS_EN
@@ -82,8 +83,58 @@ BOOK_LLM_EN = Book(
     year=2024,
 )
 
+RESOURCES_ES = (
+    Resource(
+        title="Cuaderno interactivo",
+        description="El capítulo 1 en Jupyter, con las celdas y experimentos originales del libro.",
+        href="/api/v1/downloads/notebook",
+        icon="notebook",
+        meta="Jupyter · 0.86 MB",
+        download=True,
+    ),
+    Resource(
+        title="Corpus de El Quijote",
+        description="Fragmento de texto en dominio público para entrenar el generador de n-gramas del laboratorio.",
+        href="/static/data/quijote_fragmento.txt",
+        icon="database",
+        meta="Texto · 408 KB",
+    ),
+    Resource(
+        title="Figuras del capítulo",
+        description="Diagramas de la jerarquía de la IA, el transformer y las dos etapas del entrenamiento.",
+        href="/static/img/ch01/fig_1_1_jerarquia_ia.png",
+        icon="folder",
+        meta="PNG · 11 figuras",
+    ),
+)
+
+RESOURCES_EN = (
+    Resource(
+        title="Interactive notebook",
+        description="Chapter 1 in Jupyter, with the book's original cells and experiments.",
+        href="/api/v1/downloads/notebook",
+        icon="notebook",
+        meta="Jupyter · 0.86 MB",
+        download=True,
+    ),
+    Resource(
+        title="Don Quixote corpus",
+        description="Public-domain text excerpt used to train the n-gram generator in the lab.",
+        href="/static/data/quijote_fragmento.txt",
+        icon="database",
+        meta="Text · 408 KB",
+    ),
+    Resource(
+        title="Chapter figures",
+        description="Diagrams of the AI hierarchy, the transformer, and the two training stages.",
+        href="/static/img/ch01/fig_1_1_jerarquia_ia.png",
+        icon="folder",
+        meta="PNG · 11 figures",
+    ),
+)
+
 COURSE_LLM = Course(
-    slug=config.DEFAULT_COURSE_SLUG,
+    slug=config.SAMPLE_COURSE_SLUG,
     title=PROGRAM.title,
     subtitle=PROGRAM.subtitle,
     description=PROGRAM.description,
@@ -91,12 +142,14 @@ COURSE_LLM = Course(
     program=PROGRAM,
     book=BOOK_LLM_ES,
     accent="blue",
-    order=1,
-    tags=("LLM", "transformers", "Python"),
+    order=100,
+    tags=("Ejemplo", "LLM", "Python"),
+    is_sample=True,
+    resources=RESOURCES_ES,
 )
 
 COURSE_LLM_EN = Course(
-    slug=config.DEFAULT_COURSE_SLUG,
+    slug=config.SAMPLE_COURSE_SLUG,
     title=PROGRAM_EN.title,
     subtitle=PROGRAM_EN.subtitle,
     description=PROGRAM_EN.description,
@@ -104,10 +157,14 @@ COURSE_LLM_EN = Course(
     program=PROGRAM_EN,
     book=BOOK_LLM_EN,
     accent="blue",
-    order=1,
-    tags=("LLM", "transformers", "Python"),
+    order=100,
+    tags=("Sample", "LLM", "Python"),
+    is_sample=True,
+    resources=RESOURCES_EN,
 )
 
+# Cursos de ejemplo por idioma. ``content_for`` solo los usa si
+# ``config.SAMPLE_COURSES`` está activo.
 CATALOG = (COURSE_LLM,)
 CATALOG_EN = (COURSE_LLM_EN,)
 CATALOGS = {"es": CATALOG, "en": CATALOG_EN}

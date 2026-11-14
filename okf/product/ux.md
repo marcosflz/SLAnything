@@ -4,7 +4,7 @@ title: Diseño y experiencia de SLAnything
 description: Identidad, sistema visual, pantallas, responsive, modo oscuro y accesibilidad.
 tags: [ux, diseno, css, accesibilidad, responsive]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: css
     resource: ../../webapp/static/css/app.css
@@ -23,7 +23,9 @@ sources:
 # Identidad
 
 - Nombre: **SLAnything**.
-- Lema: «Aprende IA desde los libros que la explican».
+- Lema: «Convierte cualquier material en un curso». Marca «S» y subtítulo
+  «Aula virtual»; ningún texto fijo de la interfaz menciona una materia concreta
+  ([ADR-020](/decisions/adr-020-generic-platform.md)).
 - Tono: cercano, riguroso, sin hype; español de España.
 - Paleta: azul tinta, azul académico, ámbar, verde, rojo y neutros cálidos.
 - Tipografía: pila del sistema (Inter/Segoe UI/system-ui) + monoespaciada para código.
@@ -32,19 +34,35 @@ sources:
 
 - **Interfaz principal:** Next.js (`frontend/`) reproduce el shell, las páginas y
   los componentes; Jinja (`webapp/templates/`) es el fallback de diseño.
-- **Público:** nav superior, hero de biblioteca a dos columnas, catálogo de
-  cursos, features, detalle del curso de referencia, pasos, CTA y footer.
-- **Catálogo:** `/cursos` con tarjetas de curso, libro, metadatos y progreso;
-  incluye una tarjeta «En preparación» para los próximos libros.
-- **App:** sidebar de 286 px con una tarjeta de contexto del curso activo y las
+- **Público:** nav (Cómo funciona · Para quién · Biblioteca), hero con el flujo
+  documento → temario → curso, «Cómo funciona» en tres pasos, «Para quién»
+  (cuenta individual, academia, alumno con código → `/registro?tipo=…`),
+  funciones, biblioteca abierta (solo si hay cursos públicos), CTA y footer.
+- **Registro:** elección de cuenta individual, academia (pide el nombre) o
+  código de clase; con `?invite=` muestra la academia y el rol de la invitación.
+  Login con las cuatro cuentas demo si la siembra está activa.
+- **Catálogo:** `/cursos` agrupa «Asignados por tu academia», el resto y «Cursos
+  de ejemplo»; las tarjetas muestran fuente, nivel, labs (solo si hay) y la
+  insignia «Asignado · fecha» o «Curso de ejemplo». Estado vacío por perfil.
+- **Inicio por perfil:** sin curso, saludo y CTA (Estudio para quien crea,
+  biblioteca para el alumnado); con curso, KPIs y «Tus cursos». Cuentas con
+  Estudio ven «Tus unidades» (trabajos, borradores y cuota); profesorado y
+  administración, accesos a analítica, estudiantes e invitaciones.
+- **Bienvenida:** `/bienvenida` para usuarios sin espacio (código, cuenta
+  individual o academia).
+- **Plataforma:** `/plataforma/*` con pestañas, KPIs globales y tablas de
+  usuarios, espacios (cuota y plazas editables) y cursos.
+- **App:** navegación por permisos (Aprender · Crear/Enseñar · Administrar
+  academia · Plataforma; solo se marca la entrada más específica). Sidebar de
+  286 px con una tarjeta de contexto del curso activo (o un estado vacío) y las
   lecciones agrupadas por capítulo (`<details>`; el capítulo activo se abre
   solo), colapsable en escritorio (estado persistido y aplicado antes de pintar),
   topbar con búsqueda global, selector ES/EN, tema y usuario, contenido máximo
   1180 px y footer. El cambio de curso se hace desde «Cursos», no desde enlaces
   duplicados en la sidebar.
 - **Curso:** `/cursos/{slug}` con hero, crédito del libro, progreso y secciones
-  `#capitulo-N`, cada una con sus 8 lecciones y progreso parcial. `/curso` se
-  mantiene como alias del curso por defecto.
+  `#capitulo-N`, cada una con sus lecciones y progreso parcial. `/curso` abre el
+  curso activo y redirige a `/cursos` si no hay ninguno.
 - **Lección y quiz:** muestran el capítulo activo; la navegación anterior/siguiente
   cruza capítulos y el final del curso vuelve al programa.
 - **Lección:** contenido + aside sticky con progreso, apuntes, marcador y quiz.

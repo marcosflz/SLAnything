@@ -4,7 +4,7 @@ title: Visión general de la arquitectura
 description: Stack, flujo de una petición y mapa de carpetas de SLAnything con Next.js y FastAPI.
 tags: [arquitectura, nextjs, fastapi, sqlite, react]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: main
     resource: ../../webapp/main.py
@@ -62,10 +62,11 @@ webapp/                  # backend FastAPI y legado Jinja
   config.py              # rutas, cookie, lab registry, cuentas demo
   db.py                  # esquema, conexión, seed
   security.py            # scrypt, tokens, CSRF, rate limit
-  deps.py                # usuario actual, require_user, require_teacher, CSRF
+  deps.py                # usuario, perfil, permisos (require_author/teaching/admin), CSRF
   repositories.py        # SQL
   routers/api.py         # API JSON versionada
   routers/authoring.py   # API del Estudio y /estudio
+  routers/platform.py    # superadministración /api/v1/platform/*
   routers/*.py           # rutas HTML legado
   authoring/             # settings, providers, extract, package, store y runner
   content/               # schema, Program, Course/Catalog, lecciones, quizzes, glosario

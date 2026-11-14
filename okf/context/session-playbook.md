@@ -60,9 +60,11 @@ sources:
   `/decisions/index.md`.
 - Si encuentras un bug que no vas a arreglar ahora, anótalo en
   [known-issues](/context/known-issues.md) con síntoma, impacto y workaround.
-- Mantén el alcance: el curso de referencia está cerrado y la biblioteca ya es
-  multi-curso; el siguiente hito es publicar el segundo libro, calidad,
-  accesibilidad y producto.
+- Mantén el alcance: la plataforma es **genérica** (ADR-020) y el curso LLM es
+  solo un ejemplo opcional; ningún texto fijo de la interfaz debe asumir una
+  materia. Respeta la matriz de permisos de ADR-021 al añadir rutas
+  (`require_author`, `require_teaching`, `require_admin`,
+  `require_platform_admin`) y usa `Depends(get_db, scope="function")`.
 
 # Cierre obligatorio
 

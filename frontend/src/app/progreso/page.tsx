@@ -1,6 +1,8 @@
+import { LineChart } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
+import { EmptyState } from "@/components/charts/Kpi";
 import { ActivityBars } from "@/components/progress/ActivityBars";
 import { AttemptList } from "@/components/quiz/AttemptList";
 import {
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui";
 import { apiGet, getShell } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
 import type { ProgressPayload } from "@/lib/types";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -43,8 +45,40 @@ export default async function ProgressPage({
   const lang = shell.lang;
   const { course, stats, rows, attempts, activity, avg_score: avgScore, streak } =
     payload;
+  if (!course) {
+    return (
+      <AppShell
+        user={shell.user}
+        course={null}
+        courses={payload.courses}
+        progress={payload.progress}
+        stats={stats}
+        site={shell.site}
+        lang={lang}
+        pathname={pathname}
+        fullPath={buildFullPath(pathname, query)}
+        title={t(lang, "Mi progreso")}
+        kicker={t(lang, "Tu recorrido")}
+      >
+        <EmptyState
+          icon={LineChart}
+          title={pick(lang, "Todavía no hay progreso que mostrar", "No progress to show yet")}
+          description={pick(
+            lang,
+            "Abre un curso de la biblioteca y aquí verás tus lecciones completadas, tus intentos y tu actividad.",
+            "Open a course from the library and you will see your completed lessons, attempts and activity here."
+          )}
+          action={
+            <Link className="btn btn-primary" href="/cursos">
+              {pick(lang, "Ir a la biblioteca", "Go to the library")}
+            </Link>
+          }
+        />
+      </AppShell>
+    );
+  }
   const quizLesson = course.lessons.find((lesson) => lesson.quiz_id !== null);
-  const quizHref = `/quiz/${quizLesson?.quiz_id ?? "quiz-capitulo-1"}`;
+  const quizHref = quizLesson?.quiz_id ? `/quiz/${quizLesson.quiz_id}` : `/cursos/${course.slug}`;
 
   return (
     <AppShell

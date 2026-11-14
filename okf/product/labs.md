@@ -1,10 +1,10 @@
 ---
 type: Lab Catalog
 title: Laboratorios interactivos
-description: Los 15 laboratorios JS, su contrato, archivos y comportamiento esperado.
+description: Los 15 laboratorios JS del curso de ejemplo, su contrato, archivos y comportamiento esperado. Los cursos generados no usan laboratorios.
 tags: [laboratorios, javascript, interactividad, labs]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T20:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: labsmeta
     resource: ../../webapp/labs.py

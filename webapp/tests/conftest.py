@@ -43,7 +43,16 @@ def db_path(tmp_path, monkeypatch):
     # del repositorio ni leer cursos generados reales.
     monkeypatch.setattr(config, "AUTHORING_DIR", tmp_path / "authoring")
     monkeypatch.setattr(config, "AUTHORING_HOME", tmp_path / "authoring" / "home")
+    # La mayoría de la suite ejercita el curso de ejemplo (lecciones, quiz,
+    # labs). Los tests de biblioteca vacía lo desactivan con ``no_samples``.
+    monkeypatch.setattr(config, "SAMPLE_COURSES", True)
     return path
+
+
+@pytest.fixture
+def no_samples(db_path, monkeypatch):
+    """Plataforma sin cursos de ejemplo: la biblioteca empieza vacía."""
+    monkeypatch.setattr(config, "SAMPLE_COURSES", False)
 
 
 @pytest.fixture
@@ -116,4 +125,18 @@ def login_and_csrf(
 def teacher_login(client: TestClient) -> str:
     return login_and_csrf(
         client, email=config.TEACHER_EMAIL, password=config.TEACHER_PASSWORD
+    )
+
+
+def admin_login(client: TestClient) -> str:
+    """Superadministración de la plataforma (cuenta demo ``admin@``)."""
+    return login_and_csrf(
+        client, email=config.ADMIN_EMAIL, password=config.ADMIN_PASSWORD
+    )
+
+
+def self_learner_login(client: TestClient) -> str:
+    """Cuenta individual demo (perfil autodidacta)."""
+    return login_and_csrf(
+        client, email=config.SELF_LEARNER_EMAIL, password=config.SELF_LEARNER_PASSWORD
     )

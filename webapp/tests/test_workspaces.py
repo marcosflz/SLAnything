@@ -7,7 +7,7 @@ import sqlite3
 from webapp import config, migrations
 from webapp.db import SCHEMA
 
-from conftest import csrf, login, login_and_csrf, register, teacher_login
+from conftest import csrf, login, login_and_csrf, register, self_learner_login, teacher_login
 
 
 def test_migrations_upgrade_a_v3_database(tmp_path):
@@ -23,50 +23,67 @@ def test_migrations_upgrade_a_v3_database(tmp_path):
 
     applied = migrations.migrate(conn)
 
-    assert applied == [4, 5]
+    assert applied == [4, 5, 6]
     assert migrations.current_version(conn) == migrations.LATEST_VERSION
     columns = {row[1] for row in conn.execute("PRAGMA table_info(generated_courses)")}
     assert {"workspace_id", "visibility"} <= columns
+    # Los usuarios de una base v3 reciben su cuenta individual (v6).
+    kinds = [row[0] for row in conn.execute(
+        "SELECT w.kind FROM workspaces w JOIN users u ON u.id = w.owner_id "
+        "WHERE u.email = 'old@example.com'"
+    )]
+    assert kinds == ["personal"]
     # Idempotente: una segunda pasada no aplica nada.
     assert migrations.migrate(conn) == []
     conn.close()
 
 
-def test_every_user_gets_a_personal_workspace(client, db_path):
+def test_individual_signup_gets_a_personal_workspace(client, db_path):
     assert register(client, "nuevo@example.com", name="Nuevo Usuario").status_code == 200
     body = client.get("/api/v1/workspaces").json()
 
     kinds = [item["kind"] for item in body["workspaces"]]
     assert kinds == ["personal"]
     assert body["active"]["role"] == "owner"
-    # En su espacio personal cualquiera puede generar unidades.
+    # Cuenta individual: crea unidades, pero no gestiona un aula.
     assert body["permissions"]["author"] is True
+    assert body["permissions"]["teach"] is False
+    assert body["permissions"]["manage"] is False
 
 
-def test_demo_student_is_student_of_the_demo_academy(client):
+def test_demo_student_only_belongs_to_the_demo_academy(client):
     login(client)
     body = client.get("/api/v1/workspaces").json()
     assert body["active"]["slug"] == "academia-demo"
     assert body["active"]["role"] == "student"
     assert body["permissions"]["author"] is False
-    assert any(item["kind"] == "personal" for item in body["workspaces"])
+    # El alumnado de una academia no recibe espacio personal.
+    assert [item["kind"] for item in body["workspaces"]] == ["organization"]
 
 
-def test_switching_to_personal_workspace_unlocks_the_studio(client):
+def test_student_can_open_an_individual_account_to_use_the_studio(client):
     token = login_and_csrf(client)
     assert client.get("/api/v1/authoring").status_code == 403
 
-    personal = next(
+    created = client.post("/api/v1/workspaces/personal", headers={"X-CSRF-Token": token})
+    assert created.status_code == 200
+    personal_id = created.json()["workspace"]["id"]
+    assert client.get("/api/v1/workspaces").json()["active"]["id"] == personal_id
+    assert client.get("/api/v1/authoring").status_code == 200
+
+    # Idempotente y, de vuelta en la academia, sigue siendo estudiante.
+    again = client.post("/api/v1/workspaces/personal", headers={"X-CSRF-Token": token})
+    assert again.json()["workspace"]["id"] == personal_id
+    academy = next(
         item for item in client.get("/api/v1/workspaces").json()["workspaces"]
-        if item["kind"] == "personal"
+        if item["kind"] == "organization"
     )
-    switched = client.post(
+    client.post(
         "/api/v1/workspaces/switch",
-        json={"workspace_id": personal["id"]},
+        json={"workspace_id": academy["id"]},
         headers={"X-CSRF-Token": token},
     )
-    assert switched.status_code == 200
-    assert client.get("/api/v1/workspaces").json()["active"]["id"] == personal["id"]
+    assert client.get("/api/v1/authoring").status_code == 403
 
 
 def test_cannot_switch_to_a_foreign_workspace(client, db_path):
@@ -75,7 +92,7 @@ def test_cannot_switch_to_a_foreign_workspace(client, db_path):
     foreign = conn.execute(
         "SELECT w.id FROM workspaces w JOIN users u ON u.id = w.owner_id "
         "WHERE w.kind = 'personal' AND u.email = ?",
-        (config.TEACHER_EMAIL,),
+        (config.SELF_LEARNER_EMAIL,),
     ).fetchone()[0]
     conn.close()
 

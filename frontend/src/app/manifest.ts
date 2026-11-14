@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "SLAnything",
     short_name: "SLAnything",
     description:
-      "Biblioteca de cursos interactivos para aprender IA desde los libros que la explican.",
+      "Aula virtual que convierte cualquier material de aprendizaje en cursos.",
     start_url: "/",
     scope: "/",
     display: "standalone",

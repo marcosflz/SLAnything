@@ -125,7 +125,7 @@ def test_progress_notes_and_bookmarks_are_isolated_per_course(client, db_path):
     conn.row_factory = sqlite3.Row
     try:
         user_id = conn.execute(
-            "SELECT id FROM users WHERE email = ?", ("demo@aulallm.local",)
+            "SELECT id FROM users WHERE email = ?", ("alumno@slanything.local",)
         ).fetchone()["id"]
         repositories.touch_lesson(conn, user_id, "curso-a", "leccion-compartida")
         repositories.set_lesson_completed(

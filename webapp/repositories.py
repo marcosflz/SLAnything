@@ -40,17 +40,24 @@ def create_user(
     name: str,
     password_hash: str,
     role: str = "student",
+    *,
+    personal_workspace: bool = True,
 ) -> sqlite3.Row:
+    """Crea un usuario.
+
+    ``personal_workspace`` crea su cuenta individual (perfil autodidacta). Quien
+    entra en una academia por invitación o código no la recibe (ADR-021).
+    """
     conn.execute(
         """INSERT INTO users (email, name, password_hash, role, created_at)
            VALUES (?, ?, ?, ?, ?)""",
         (email.strip().lower(), name.strip(), password_hash, role, utcnow()),
     )
     user = get_user_by_email(conn, email)
-    from webapp import workspaces
+    if personal_workspace:
+        from webapp import workspaces
 
-    workspaces.ensure_personal_workspace(conn, int(user["id"]), name)
-    conn.commit()
+        workspaces.ensure_personal_workspace(conn, int(user["id"]), name)
     return get_user_by_email(conn, email)  # type: ignore[return-value]
 
 
@@ -100,6 +107,10 @@ def touch_lesson(
                last_seen_at = excluded.last_seen_at,
                views = lesson_progress.views + 1""",
         (user_id, course_slug, slug, now, now),
+    )
+    # El último curso abierto se usa como curso activo por defecto.
+    conn.execute(
+        "UPDATE users SET last_course_slug = ? WHERE id = ?", (course_slug, user_id)
     )
 
 
@@ -432,8 +443,9 @@ def attempts_passed(conn: sqlite3.Connection, user_id: int, quiz_id: str) -> boo
 # ---------------------------------------------------------------------------
 
 def _student_filter(workspace_id: int | None) -> tuple[str, tuple]:
+    """Estudiantes de una academia. Sin espacio no hay estudiantes que listar."""
     if workspace_id is None:
-        return "u.role = 'student'", ()
+        return "0", ()
     return (
         """u.id IN (SELECT user_id FROM memberships
                     WHERE workspace_id = ? AND role = 'student')""",
@@ -504,3 +516,26 @@ def teacher_stats(
         "active_week": int(active),
         "total_lessons": total_lessons,
     }
+
+
+# ---------------------------------------------------------------------------
+# Matrículas (cursos asignados por la academia)
+# ---------------------------------------------------------------------------
+
+def assigned_courses(
+    conn: sqlite3.Connection, workspace_id: int, user_id: int
+) -> dict[str, dict]:
+    """Cursos asignados al usuario en una academia, directamente o por grupo.
+
+    Devuelve ``{course_slug: {"due_at": ...}}`` con la fecha límite más próxima.
+    """
+    rows = conn.execute(
+        """SELECT e.course_slug, MIN(e.due_at) AS due_at
+           FROM enrollments e
+           WHERE e.workspace_id = ?
+             AND (e.user_id = ?
+                  OR e.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?))
+           GROUP BY e.course_slug""",
+        (workspace_id, user_id, user_id),
+    ).fetchall()
+    return {row["course_slug"]: {"due_at": row["due_at"]} for row in rows}

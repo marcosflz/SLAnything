@@ -1,11 +1,11 @@
 ---
 type: Status
 title: Estado actual de SLAnything
-description: Foto del proyecto a 24 de octubre de 2026 con el catálogo multi-curso, el Estudio de autoría, el curso de referencia completo y las cifras verificadas.
+description: Foto del proyecto a 14 de noviembre de 2026 - plataforma genérica sin curso obligatorio, perfiles individual/academia/superadmin, curso LLM como ejemplo opcional y cifras verificadas.
 tags: [estado, entrega, handoff, tests, cursos, catalogo]
 status: stable
-stale_after: 2026-11-30T00:00:00Z
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+stale_after: 2026-12-15T00:00:00Z
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -22,27 +22,32 @@ sources:
 
 | Campo | Valor |
 |---|---|
-| Producto | SLAnything · biblioteca de cursos tipo aula virtual |
-| Cursos | 1 estático + cursos generados publicables desde el Estudio |
-| Curso de referencia | Construye un LLM desde cero |
-| Capítulos | 7 · del 1 al 7 del libro |
-| Estado | Curso completo entregado y plataforma preparada para más cursos |
-| Lecciones | 56 (8 por capítulo) |
-| Duración estimada | 584 minutos |
-| Laboratorios | 15 |
-| Quizzes | 7 · 10 preguntas cada uno · 80 % para aprobar |
-| Glosario | 113 términos (ES/EN) |
+| Producto | SLAnything · aula virtual genérica: cualquier material → curso |
+| Perfiles | Cuenta individual (autodidacta), alumno, profesorado, administración de academia, superadmin |
+| Cursos | Generados desde el Estudio; biblioteca vacía al instalar |
+| Curso de ejemplo | Construye un LLM desde cero (`AULA_SAMPLE_COURSES=1`): 7 capítulos, 56 lecciones, 15 labs, 7 quizzes, 113 términos, 26 ejemplos Python |
 | Idiomas | Español e inglés |
-| Ejemplos Python | 26 ejecutables en servidor + descarga |
-| Tests | 140 passed |
+| Tests | 181 passed |
+| E2E | `npm run e2e` (perfiles) y `npm run e2e:labs` en verde con y sin ejemplos |
 | Repositorio | GitHub privado · `marcosflz/SLAnything` |
 | Servidor local | Next `http://127.0.0.1:3000` · FastAPI `http://127.0.0.1:8000` |
-| Empaquetado | Docker Compose (`aula-llm-backend`, `aula-llm-frontend`) con OpenCode |
+| Empaquetado | Docker Compose (`slanything-backend`, `slanything-frontend`; volumen histórico `aula-llm-data`) con OpenCode |
 | Base de datos | `aula.db` (SQLite v3, ignorada por git) |
 | Autoría | `/estudio` · OpenCode portable + proveedor configurable + PWA |
-| Última verificación | 2026-11-13 |
+| Última verificación | 2026-11-14 |
 
 # Qué está hecho
+
+**Plataforma genérica y perfiles (2026-11-14):** la app funciona con la
+biblioteca vacía y el curso LLM pasa a ser ejemplo opcional
+([ADR-020](/decisions/adr-020-generic-platform.md)); curso activo por último
+abierto, biblioteca por espacio activo, glosario y recursos por curso; portada,
+login y registro genéricos. Perfiles ([ADR-021](/decisions/adr-021-account-profiles.md)):
+alta como cuenta individual o academia, invitación o código de clase sin espacio
+personal, matriz `learn/author/teach/manage/platform`, alumnado sin Estudio,
+cuenta individual sin gestión de aula, panel de superadmin `/plataforma`,
+matrículas visibles con fecha límite, `/bienvenida` y migración v6. Corregida
+una carrera de lectura tras escritura (`get_db` con `scope="function"`).
 
 **Evolución 2026-11-13 (SLAnything 2.0, en curso):** interfaz Jinja retirada;
 espacios de trabajo con roles (cuentas personales y academias), grupos,
@@ -119,7 +124,8 @@ npm run build
 npm start
 ```
 
-Estudio: abre `/estudio` con `profe@aulallm.local / profe1234`. En Docker,
+Estudio: abre `/estudio` con `autodidacta@slanything.local / auto1234` o
+`profe@slanything.local / profe1234`. Sin red: `AULA_LLM_FAKE=1`. En Docker,
 OpenCode ya está dentro de la imagen; en local instala `@opencode/cli`. Smoke
 test con ambos servidores: `uv run python tools/smoke_next.py`.
 E2E de navegador: `cd frontend; npm run e2e`.
@@ -133,26 +139,32 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Cuentas: `demo@aulallm.local / demo1234` y `profe@aulallm.local / profe1234`.
+Cuentas demo (`AULA_SEED_DEMO=1`): `alumno@slanything.local / alumno1234`,
+`profe@slanything.local / profe1234`, `autodidacta@slanything.local / auto1234`
+y `admin@slanything.local / admin1234` (superadmin). Curso de ejemplo:
+`AULA_SAMPLE_COURSES=1`.
 
 # Handoff
 
-El curso de referencia está completo, la plataforma ya no gira alrededor de un
-único libro y el Estudio permite crear unidades a partir de documentos. El
-siguiente trabajo recomendado es probar el Estudio con el proveedor real del
-centro, añadir el segundo curso estático si se quiere conservar el catálogo
-curado, decidir si hace falta matrícula explícita y seguir con calidad
-(accesibilidad, interacción profunda de labs y capturas). Antes de empezar, lee
-[next-steps](/context/next-steps.md), [ADR-011](/decisions/adr-011-multi-course.md),
-[ADR-012](/decisions/adr-012-authoring-opencode.md), [authoring](/architecture/authoring.md)
-y [content-model](/architecture/content-model.md).
+La plataforma ya es genérica: arranca sin cursos, cada perfil ve solo lo que le
+corresponde y el curso LLM es un ejemplo que se activa por variable de entorno.
+El siguiente trabajo recomendado es probar el Estudio con un proveedor real y
+documentos de materias no técnicas, automatizar en Playwright el asistente del
+Estudio, migrar las páginas heredadas (lección, quiz, progreso, glosario) al
+sistema de diseño nuevo y añadir correo (invitaciones y recuperación de
+contraseña). Antes de empezar, lee [next-steps](/context/next-steps.md),
+[ADR-020](/decisions/adr-020-generic-platform.md),
+[ADR-021](/decisions/adr-021-account-profiles.md) y
+[tenancy-analytics](/architecture/tenancy-analytics.md).
 
 # Estado de la base de datos
 
-`aula.db` se crea al arrancar y se siembra con demo/profesor. Es local y no se
-versiona. El esquema v3 añade `authoring_jobs` y `generated_courses` al modelo v2
-(progreso, notas, marcadores e intentos por curso). `init_db()` migra
-automáticamente una base v1 copiando sus filas al curso por defecto. Si se borra
+`aula.db` se crea al arrancar y, con `AULA_SEED_DEMO=1`, se siembra con las
+cuatro cuentas demo y la Academia Demo. Es local y no se versiona. El esquema va
+por la **v6** (`webapp/migrations.py`): espacios, membresías, grupos,
+matrículas, invitaciones, auditoría, eventos, generación por etapas y perfiles.
+`init_db()` migra automáticamente bases antiguas (v1 copia sus filas al curso de
+ejemplo). Si se borra
 la base, no se pierde código ni contenido, solo progreso de pruebas y los cursos
 generados; los documentos y logs viven en `authoring-data/` o en el volumen
 `/data/authoring`.

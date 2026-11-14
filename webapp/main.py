@@ -50,22 +50,24 @@ async def lifespan(app: FastAPI):
             logger.info("%s generaciones reanudadas tras el reinicio.", resumed)
     except OSError:
         logger.exception("No se pudo preparar el directorio del Estudio")
-    try:
-        for lang, catalog in CATALOGS.items():
-            validate_catalog(
-                catalog,
-                QUIZZES_BY_LANG[lang],
-                config.KNOWN_LABS,
-                config.STATIC_DIR,
-                GLOSSARIES[lang],
-            )
-    except ValueError:
-        logger.exception("El contenido no supera la validación")
-        raise
+    # Los cursos de ejemplo del repositorio solo se validan si están activos;
+    # la plataforma arranca igual con la biblioteca vacía (ADR-020).
+    if config.SAMPLE_COURSES:
+        try:
+            for lang, catalog in CATALOGS.items():
+                validate_catalog(
+                    catalog,
+                    QUIZZES_BY_LANG[lang],
+                    config.KNOWN_LABS,
+                    config.STATIC_DIR,
+                    GLOSSARIES[lang],
+                )
+        except ValueError:
+            logger.exception("El contenido de ejemplo no supera la validación")
+            raise
     logger.info(
-        "SLAnything lista · %s cursos · %s lecciones por idioma · %s idiomas",
-        len(CATALOGS["es"]),
-        len(CATALOGS["es"][0].lessons),
+        "SLAnything lista · cursos de ejemplo %s · %s idiomas",
+        "activos" if config.SAMPLE_COURSES else "desactivados",
         len(CATALOGS),
     )
     try:
@@ -77,7 +79,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SLAnything",
-    description="Cursos interactivos y autoría de unidades con OpenCode.",
+    description="Aula virtual que convierte cualquier material de aprendizaje en cursos.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -86,7 +88,15 @@ app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static
 
 
 # Routers (se importan después de crear la app para evitar ciclos).
-from webapp.routers import admin, analytics, api, authoring, execution, workspaces  # noqa: E402
+from webapp.routers import (  # noqa: E402
+    admin,
+    analytics,
+    api,
+    authoring,
+    execution,
+    platform,
+    workspaces,
+)
 
 app.include_router(api.router)
 app.include_router(authoring.router)
@@ -94,6 +104,7 @@ app.include_router(execution.router)
 app.include_router(workspaces.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
+app.include_router(platform.router)
 
 
 @app.middleware("http")
@@ -131,8 +142,7 @@ async def security_headers(request: Request, call_next):
 async def health():
     return {
         "status": "ok",
-        "lecciones": len(CATALOGS["es"][0].lessons),
-        "cursos": len(CATALOGS["es"]),
+        "ejemplos": config.SAMPLE_COURSES,
     }
 
 

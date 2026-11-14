@@ -386,7 +386,7 @@ function JobRow({ job, lang }: { job: AuthoringJob; lang: Lang }) {
   );
 }
 
-function ProviderSettings({ initial, csrf, lang }: { initial: AuthoringSettings; csrf: string; lang: Lang }) {
+export function ProviderSettings({ initial, csrf, lang }: { initial: AuthoringSettings; csrf: string; lang: Lang }) {
   const [settings, setSettings] = useState(initial);
   const [apiKey, setApiKey] = useState("");
   const [message, setMessage] = useState("");

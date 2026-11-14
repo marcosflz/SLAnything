@@ -1,22 +1,72 @@
 "use client";
 
+import { Building2, KeyRound, User as UserIcon } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/ui";
 import { ApiClientError, apiPost } from "@/lib/client";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
 import type { Lang } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type RegisterResponse = {
   ok: boolean;
   next?: string;
 };
 
-export function RegisterForm({ lang, next }: { lang: Lang; next: string }) {
+export type AccountType = "individual" | "academy" | "join";
+
+const TYPES: Array<{
+  value: AccountType;
+  icon: typeof UserIcon;
+  title: [string, string];
+  text: [string, string];
+}> = [
+  {
+    value: "individual",
+    icon: UserIcon,
+    title: ["Cuenta individual", "Individual account"],
+    text: ["Aprendo por mi cuenta y creo mis propias unidades.", "I learn on my own and create my own units."],
+  },
+  {
+    value: "academy",
+    icon: Building2,
+    title: ["Academia", "Academy"],
+    text: ["Enseño a un grupo: profesorado, alumnado y analítica.", "I teach a group: teachers, students and analytics."],
+  },
+  {
+    value: "join",
+    icon: KeyRound,
+    title: ["Código de clase", "Class code"],
+    text: ["Soy alumno y mi profesor me ha dado un código.", "I'm a student and my teacher gave me a code."],
+  },
+];
+
+/**
+ * Alta de cuenta (ADR-021): cuenta individual, academia o unirse a una clase.
+ * Con `invite` (enlace de invitación) no se elige tipo: la cuenta entra en la
+ * academia con el rol de la invitación y no recibe espacio personal.
+ */
+export function RegisterForm({
+  lang,
+  next,
+  initialType = "individual",
+  invite,
+  inviteLabel,
+}: {
+  lang: Lang;
+  next: string;
+  initialType?: AccountType;
+  invite?: string;
+  inviteLabel?: string;
+}) {
+  const [account, setAccount] = useState<AccountType>(initialType);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
+  const [academyName, setAcademyName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -32,6 +82,10 @@ export function RegisterForm({ lang, next }: { lang: Lang; next: string }) {
         password,
         password2,
         next,
+        account,
+        academy_name: account === "academy" ? academyName : null,
+        join_code: account === "join" ? joinCode : null,
+        invite: invite ?? null,
       });
       window.location.href = data.next || "/";
     } catch (caught) {
@@ -54,6 +108,81 @@ export function RegisterForm({ lang, next }: { lang: Lang; next: string }) {
 
       <form className="auth-form" onSubmit={handleSubmit} aria-busy={busy}>
         <input type="hidden" name="next" value={next} />
+
+        {invite ? (
+          <div className="flash flash-success" role="status">
+            <Icon name="users" /> <span>{inviteLabel}</span>
+          </div>
+        ) : (
+          <fieldset className="m-0 grid gap-2 border-0 p-0">
+            <legend className="mb-2 text-sm font-medium">
+              {pick(lang, "¿Cómo vas a usar SLAnything?", "How will you use SLAnything?")}
+            </legend>
+            {TYPES.map((type) => {
+              const selected = account === type.value;
+              return (
+                <label
+                  key={type.value}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition",
+                    selected ? "border-primary bg-primary-soft" : "border-border hover:border-border-strong"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="account"
+                    value={type.value}
+                    checked={selected}
+                    onChange={() => setAccount(type.value)}
+                    className="sr-only"
+                  />
+                  <type.icon
+                    className={cn("mt-0.5 size-4 shrink-0", selected ? "text-primary" : "text-muted-foreground")}
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{pick(lang, ...type.title)}</span>
+                    <span className="block text-xs text-muted-foreground">{pick(lang, ...type.text)}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
+
+        {!invite && account === "academy" ? (
+          <div className="field">
+            <label htmlFor="academy_name">{pick(lang, "Nombre de la academia", "Academy name")}</label>
+            <input
+              id="academy_name"
+              type="text"
+              required
+              minLength={2}
+              maxLength={80}
+              value={academyName}
+              onChange={(event) => setAcademyName(event.target.value)}
+              placeholder={pick(lang, "Por ejemplo, IES Cervantes · 2º Bachillerato", "For example, Riverside High · Year 12")}
+            />
+          </div>
+        ) : null}
+
+        {!invite && account === "join" ? (
+          <div className="field">
+            <label htmlFor="join_code">{pick(lang, "Código de clase", "Class code")}</label>
+            <input
+              id="join_code"
+              type="text"
+              required
+              minLength={4}
+              maxLength={16}
+              autoComplete="off"
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              placeholder="ABCD2345"
+            />
+          </div>
+        ) : null}
+
         <div className="field">
           <label htmlFor="name">{t(lang, "Nombre")}</label>
           <input
@@ -115,7 +244,14 @@ export function RegisterForm({ lang, next }: { lang: Lang; next: string }) {
           type="submit"
           disabled={busy}
         >
-          <Icon name="arrow-right" /> {t(lang, "Crear mi cuenta")}
+          <Icon name="arrow-right" />{" "}
+          {invite
+            ? pick(lang, "Crear cuenta y unirme", "Create account and join")
+            : account === "academy"
+              ? pick(lang, "Crear mi academia", "Create my academy")
+              : account === "join"
+                ? pick(lang, "Crear cuenta y unirme", "Create account and join")
+                : t(lang, "Crear mi cuenta")}
         </button>
       </form>
     </>

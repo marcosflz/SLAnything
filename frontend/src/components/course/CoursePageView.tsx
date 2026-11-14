@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Icon, LessonStatus, Ring } from "@/components/ui";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
 import type {
   Course,
   CourseSummary,
@@ -50,8 +50,8 @@ export function CoursePageView({
           <p>{course.description}</p>
           {course.book ? (
             <p className="course-book course-book-hero">
-              {t(lang, "Basado en")} <em>{course.book.title}</em> ·{" "}
-              {course.book.author}
+              {pick(lang, "Fuente", "Source")}: <em>{course.book.title}</em>
+              {course.book.author ? ` · ${course.book.author}` : ""}
               {course.book.year ? ` (${course.book.year})` : ""}
             </p>
           ) : null}
@@ -68,13 +68,22 @@ export function CoursePageView({
               <Icon name="clock" />{" "}
               {t(lang, "{n} minutos", { n: course.total_minutes })}
             </span>
-            <span>
-              <Icon name="sparkles" />{" "}
-              {t(lang, "{n} laboratorios", { n: course.lab_count })}
-            </span>
-            <span>
-              <Icon name="cpu" /> {course.level}
-            </span>
+            {course.lab_count ? (
+              <span>
+                <Icon name="sparkles" />{" "}
+                {t(lang, "{n} laboratorios", { n: course.lab_count })}
+              </span>
+            ) : null}
+            {course.level ? (
+              <span>
+                <Icon name="target" /> {course.level}
+              </span>
+            ) : null}
+            {course.is_sample ? (
+              <span>
+                <Icon name="info" /> {pick(lang, "Curso de ejemplo", "Sample course")}
+              </span>
+            ) : null}
           </div>
           {publicView ? (
             <Link
@@ -294,13 +303,22 @@ export function CoursePageView({
           </div>
           <div>
             <h3 style={{ fontSize: 14 }}>
-              {t(lang, "2 · Toca los laboratorios")}
+              {course.lab_count
+                ? t(lang, "2 · Toca los laboratorios")
+                : pick(lang, "2 · Explícalo con tus palabras", "2 · Explain it in your own words")}
             </h3>
             <p className="small muted mb-0">
-              {t(
-                lang,
-                "Mueve la temperatura, cambia el contexto, prueba otra precisión. Cada control enseña algo."
-              )}
+              {course.lab_count
+                ? pick(
+                    lang,
+                    "Mueve los controles y observa qué cambia. Cada laboratorio está pensado para comprobar una idea.",
+                    "Move the controls and watch what changes. Each lab is designed to test one idea."
+                  )
+                : pick(
+                    lang,
+                    "Resume cada lección en tus apuntes y responde las preguntas de comprobación antes de mirar la solución.",
+                    "Summarise each lesson in your notes and answer the check questions before looking at the solution."
+                  )}
             </p>
           </div>
           <div>

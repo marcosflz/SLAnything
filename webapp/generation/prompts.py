@@ -11,7 +11,8 @@ import json
 from typing import Any
 
 SYSTEM = """Eres el autor didáctico de SLAnything, una plataforma que convierte
-documentos en unidades de aprendizaje guiado y autoevaluable.
+documentos de cualquier disciplina en unidades de aprendizaje guiado y
+autoevaluable. Adapta el tono, los ejemplos y los bloques al tema del documento.
 
 Reglas:
 - Responde SIEMPRE con un único objeto JSON válido, sin texto fuera del JSON.
@@ -36,8 +37,8 @@ LESSON_BLOCKS = """Bloques permitidos en "blocks":
 - {"type":"table","headers":["…","…"],"rows":[["…","…"]],"caption":"…","sources":["id"]}
 - {"type":"quote","text":"…","source":"…"}
 - {"type":"check","question":"…","answer":"…"}  (pregunta de autocomprobación con respuesta razonada)
-- {"type":"code","language":"python|bash|text|json|sql|html|css|javascript","code":"…","caption":"…"}
-- {"type":"python","code":"…","caption":"…"}  (solo si el tema lo pide: autocontenido, sin red, imprime algo)
+- {"type":"code","language":"python|bash|text|json|sql|html|css|javascript","code":"…","caption":"…"}  (solo en temas de programación o datos)
+- {"type":"python","code":"…","caption":"…"}  (solo si el documento trata de programación o cálculo: autocontenido, sin red, imprime algo)
 - {"type":"divider"}
 - {"type":"keypoints","items":["…","…","…"]}  (siempre el último; 3–6 ideas)
 Cada lección: al menos un "callout" y un "check"."""

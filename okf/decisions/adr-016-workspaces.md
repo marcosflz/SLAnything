@@ -40,6 +40,15 @@ roles globales `student`/`teacher` y todos los profesores veían todo.
 - Grupos, matrículas por grupo, invitaciones de un solo uso, código de clase y
   `audit_log` cuelgan del espacio.
 
+# Actualización (2026-11-14)
+
+[ADR-021](/decisions/adr-021-account-profiles.md) matiza esta decisión: el
+espacio personal ya no es universal. Solo lo recibe quien se da de alta como
+cuenta individual (o lo abre después); el alumnado que entra por invitación o
+código solo pertenece a la academia. `require_teacher` se sustituye por
+`require_author` / `require_teaching` y la matriz de permisos se calcula con el
+tipo de espacio.
+
 # Consecuencias
 
 - Los progresos no llevan `workspace_id`: el slug de curso es global y la

@@ -1,17 +1,17 @@
-name: aula-llm
+name: slanything
 
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aula-llm-backend:local
+    image: slanything-backend:local
     init: true
     restart: unless-stopped
     environment:
       AULA_ENV: production
       AULA_DB: /data/aula.db
-      AULA_SECRET: ${AULA_SECRET:-aula-llm-cambia-este-secreto}
+      AULA_SECRET: ${AULA_SECRET:-slanything-cambia-este-secreto}
       AULA_SECURE_COOKIES: ${AULA_SECURE_COOKIES:-0}
       AULA_EXEC_ENABLED: ${AULA_EXEC_ENABLED:-1}
       AULA_EXEC_TIMEOUT: ${AULA_EXEC_TIMEOUT:-10}
@@ -25,6 +25,9 @@ services:
       AULA_AUTHORING_MAX_FILES: ${AULA_AUTHORING_MAX_FILES:-5}
       AULA_AUTHORING_MAX_CHARS: ${AULA_AUTHORING_MAX_CHARS:-300000}
       AULA_AUTHORING_MAX_JOBS: ${AULA_AUTHORING_MAX_JOBS:-3}
+      AULA_SAMPLE_COURSES: ${AULA_SAMPLE_COURSES:-0}
+      AULA_SEED_DEMO: ${AULA_SEED_DEMO:-1}
+      AULA_PLATFORM_ADMINS: ${AULA_PLATFORM_ADMINS:-}
       TZ: ${TZ:-Europe/Madrid}
     volumes:
       - aula-data:/data
@@ -54,7 +57,7 @@ services:
       dockerfile: Dockerfile
       args:
         API_INTERNAL_URL: http://backend:8000
-    image: aula-llm-frontend:local
+    image: slanything-frontend:local
     init: true
     restart: unless-stopped
     environment:
@@ -86,4 +89,5 @@ services:
 
 volumes:
   aula-data:
+    # Nombre histórico conservado para no perder los datos de instalaciones previas.
     name: aula-llm-data

@@ -44,7 +44,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
             ) : (
               <div className="grid gap-2">
                 <Button asChild>
-                  <Link href={`/registro?next=${next}`}>{pick(lang, "Crear cuenta y aceptar", "Sign up and accept")}</Link>
+                  <Link href={`/registro?invite=${encodeURIComponent(token)}`}>{pick(lang, "Crear cuenta y aceptar", "Sign up and accept")}</Link>
                 </Button>
                 <Button asChild variant="outline">
                   <Link href={`/entrar?next=${next}`}>{pick(lang, "Ya tengo cuenta", "I already have an account")}</Link>

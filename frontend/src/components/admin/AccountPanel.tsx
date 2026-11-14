@@ -120,10 +120,37 @@ export function AccountPanel({ data, csrf, lang }: { data: AccountData; csrf: st
             {data.workspaces.map((ws) => (
               <li key={ws.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
                 <span>{ws.name}</span>
-                <Pill variant="secondary">{ws.kind === "personal" ? pick(lang, "Personal", "Personal") : roleLabel(ws.role, lang)}</Pill>
+                <Pill variant="secondary">{ws.kind === "personal" ? pick(lang, "Cuenta individual", "Individual account") : roleLabel(ws.role, lang)}</Pill>
               </li>
             ))}
+            {data.workspaces.length === 0 ? (
+              <li className="text-sm text-muted-foreground">{pick(lang, "No perteneces a ningún espacio.", "You don't belong to any space.")}</li>
+            ) : null}
           </ul>
+          {!data.workspaces.some((ws) => ws.kind === "personal") ? (
+            <div className="mt-4 rounded-lg border border-dashed border-border p-3 text-sm">
+              <p className="m-0 font-medium">{pick(lang, "¿Quieres crear unidades para ti?", "Want to create units for yourself?")}</p>
+              <p className="m-0 mt-1 text-muted-foreground">
+                {pick(
+                  lang,
+                  "Abre tu cuenta individual: tendrás tu propio Estudio y tu biblioteca. En tus academias seguirás con el mismo rol.",
+                  "Open your individual account: you get your own Studio and library. Your role in your academies stays the same."
+                )}
+              </p>
+              <Button
+                size="sm"
+                className="mt-3"
+                onClick={() =>
+                  run(async () => {
+                    await apiPost("/api/v1/workspaces/personal", {}, csrf);
+                    window.location.href = "/";
+                  }, pick(lang, "Cuenta individual creada.", "Individual account created."))
+                }
+              >
+                <UserRound /> {pick(lang, "Abrir mi cuenta individual", "Open my individual account")}
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

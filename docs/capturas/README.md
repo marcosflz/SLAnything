@@ -1,11 +1,19 @@
 # Capturas de SLAnything
 
-Imágenes de referencia de la plataforma, tomadas en Chrome a 1440 × 1000 px y a
-390 × 844 px. El README las muestra todas en la sección *Capturas*; aquí van con
-su descripción.
+Imágenes de referencia de la plataforma. Las capturas `21`–`26` (noviembre de
+2026, 1440 × 900 px) muestran la **plataforma genérica** y los perfiles. Las
+`00`–`20` son anteriores: muestran la interfaz de la etapa «Aula LLM» y el
+**curso de ejemplo** «Construye un LLM desde cero» (laboratorios, lección,
+quiz); siguen siendo válidas para ese curso, no para la portada ni el shell.
 
 | Archivo | Pantalla |
 |---|---|
+| `21_portada_generica.png` | Portada pública genérica (portada del README) |
+| `22_registro_tipos.png` | Registro: cuenta individual, academia o código de clase |
+| `23_inicio_cuenta_individual.png` | Inicio de una cuenta individual con la biblioteca vacía |
+| `24_inicio_alumno_asignado.png` | Inicio del alumno con un curso asignado y su fecha límite |
+| `25_plataforma.png` | Superadministración: resumen de la plataforma |
+| `26_biblioteca_ejemplo.png` | Biblioteca con el curso de ejemplo activado |
 | `00_landing_full.png` | Portada pública completa |
 | `00b_landing_programa.png` | Programa del capítulo en la portada |
 | `01_dashboard.png` | Dashboard del estudiante |

@@ -2,14 +2,18 @@ import {
   BarChart3,
   BookMarked,
   BookOpen,
+  Bot,
   Building2,
   FolderOpen,
+  Gauge,
   GraduationCap,
   Home,
+  Layers,
   LayoutGrid,
   LineChart,
   ScrollText,
   Settings,
+  ShieldCheck,
   Sparkles,
   UserPlus,
   Users,
@@ -36,6 +40,10 @@ export const NAV_ICONS = {
   settings: Settings,
   workspace: Building2,
   lesson: BookOpen,
+  platform: ShieldCheck,
+  gauge: Gauge,
+  spaces: Layers,
+  ai: Bot,
 } satisfies Record<string, LucideIcon>;
 
 export interface NavItem {
@@ -49,45 +57,67 @@ export interface NavSection {
   items: NavItem[];
 }
 
-/** Navegación por rol en el espacio activo: aprender, enseñar y administrar. */
-export function navSections(user: User, lang: Lang): NavSection[] {
+/**
+ * Navegación por permisos del espacio activo (ADR-021):
+ * aprender (todos) · crear (`author`) · enseñar (`teach`) ·
+ * administrar la academia (`manage`) · plataforma (`platform`).
+ */
+export function navSections(user: User, lang: Lang, hasCourse = true): NavSection[] {
   const perms = user.permissions;
-  const sections: NavSection[] = [
-    {
+  const sections: NavSection[] = [];
+  if (user.workspace) {
+    sections.push({
       label: pick(lang, "Aprender", "Learn"),
       items: [
         { href: "/", label: pick(lang, "Inicio", "Home"), icon: "home" },
         { href: "/cursos", label: pick(lang, "Biblioteca", "Library"), icon: "catalog" },
         { href: "/progreso", label: pick(lang, "Mi progreso", "My progress"), icon: "progress" },
-        { href: "/glosario", label: pick(lang, "Glosario", "Glossary"), icon: "glossary" },
-        { href: "/recursos", label: pick(lang, "Recursos", "Resources"), icon: "resources" },
-      ],
-    },
-  ];
-  if (perms?.author || perms?.teach) {
-    const isOrg = user.workspace?.kind === "organization";
-    sections.push({
-      label: pick(lang, "Crear y enseñar", "Create & teach"),
-      items: [
-        { href: "/estudio", label: pick(lang, "Estudio", "Studio"), icon: "studio" },
-        ...(isOrg
+        ...(hasCourse
           ? [
-              { href: "/analitica", label: pick(lang, "Analítica", "Analytics"), icon: "analytics" } as NavItem,
-              { href: "/profesor", label: pick(lang, "Estudiantes", "Students"), icon: "teacher" } as NavItem,
+              { href: "/glosario", label: pick(lang, "Glosario", "Glossary"), icon: "glossary" } as NavItem,
+              { href: "/recursos", label: pick(lang, "Recursos", "Resources"), icon: "resources" } as NavItem,
             ]
           : []),
       ],
     });
   }
-  if (perms?.admin && user.workspace?.kind === "organization") {
+  const create: NavItem[] = [];
+  if (perms?.author) {
+    create.push({ href: "/estudio", label: pick(lang, "Estudio", "Studio"), icon: "studio" });
+  }
+  if (perms?.teach) {
+    create.push(
+      { href: "/analitica", label: pick(lang, "Analítica", "Analytics"), icon: "analytics" },
+      { href: "/profesor", label: pick(lang, "Estudiantes", "Students"), icon: "teacher" }
+    );
+  }
+  if (create.length) {
     sections.push({
-      label: pick(lang, "Administrar", "Manage"),
+      label: perms?.teach ? pick(lang, "Crear y enseñar", "Create & teach") : pick(lang, "Crear", "Create"),
+      items: create,
+    });
+  }
+  if (perms?.manage) {
+    sections.push({
+      label: pick(lang, "Administrar academia", "Manage academy"),
       items: [
         { href: "/admin", label: pick(lang, "Resumen", "Overview"), icon: "workspace" },
         { href: "/admin/usuarios", label: pick(lang, "Miembros", "Members"), icon: "members" },
         { href: "/admin/grupos", label: pick(lang, "Grupos", "Groups"), icon: "groups" },
         { href: "/admin/invitaciones", label: pick(lang, "Invitaciones", "Invitations"), icon: "invites" },
         { href: "/admin/auditoria", label: pick(lang, "Auditoría", "Audit log"), icon: "audit" },
+      ],
+    });
+  }
+  if (perms?.platform) {
+    sections.push({
+      label: pick(lang, "Plataforma", "Platform"),
+      items: [
+        { href: "/plataforma", label: pick(lang, "Resumen", "Overview"), icon: "gauge" },
+        { href: "/plataforma/usuarios", label: pick(lang, "Usuarios", "Users"), icon: "members" },
+        { href: "/plataforma/espacios", label: pick(lang, "Espacios", "Spaces"), icon: "spaces" },
+        { href: "/plataforma/cursos", label: pick(lang, "Cursos", "Courses"), icon: "catalog" },
+        { href: "/plataforma/ia", label: pick(lang, "Proveedor de IA", "AI provider"), icon: "ai" },
       ],
     });
   }

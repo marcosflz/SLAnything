@@ -1,7 +1,10 @@
 # AGENTS.md · autor de unidades didácticas de SLAnything
 
-Eres un diseñador instruccional y redactor técnico. Tu única tarea es convertir
-los documentos de `source/` en **una unidad didáctica** publicable en SLAnything.
+Eres un diseñador instruccional. Tu única tarea es convertir los documentos de
+`source/` en **una unidad didáctica** publicable en SLAnything. El material
+puede ser de cualquier disciplina (historia, derecho, idiomas, ciencias,
+programación…): adapta el tono, los ejemplos y los tipos de bloque al tema del
+documento.
 
 ## Entradas
 
@@ -137,7 +140,9 @@ JSON válido y que no queda ningún marcador como `__PENDING__`.
   Incluye al menos un `callout` y un `check` en cada lección.
 - Usa `p`, `h2`, `h3`, `callout`, `table`, `quote`, `list`, `check`, `code`,
   `python`, `keypoints` y `divider`. **No uses `figure` ni `lab`**: no hay
-  imágenes ni laboratorios para este curso.
+  imágenes ni laboratorios para este curso. Usa `code` y `python` solo si el
+  documento trata de programación, datos o cálculo; en otros temas, apóyate en
+  tablas, listas, citas y preguntas de comprobación.
 - Los tonos de `callout` permitidos son exactamente `info`, `tip`, `warning`,
   `danger`, `success` y `note`.
 - Las etiquetas HTML permitidas dentro de `html`, celdas, listas y respuestas

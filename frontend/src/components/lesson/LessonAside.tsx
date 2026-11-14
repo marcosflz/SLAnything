@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Icon, ProgressBar } from "@/components/ui";
 import { percent } from "@/lib/format";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
 import type { Attempt, Lang, ProgressRow, QuizMeta } from "@/lib/types";
 import { LessonActions, type LessonActionLabels } from "./LessonActions";
 import { NoteEditor } from "./NoteEditor";
@@ -161,9 +161,10 @@ export function LessonAside({
           <Icon name="lightbulb" /> {t(lang, "Consejo de estudio")}
         </h3>
         <p className="mb-0">
-          {t(
+          {pick(
             lang,
-            "Si una idea no queda clara, vuelve al laboratorio y cambia un parámetro. Aprender LLMs es construir intuición, no memorizar siglas."
+            "Si una idea no queda clara, vuelve a leer el bloque citado en la fuente y explícalo en tus apuntes con tus palabras. Entender es poder explicarlo.",
+            "If an idea isn't clear, reread the block cited in the source and explain it in your notes in your own words. Understanding means being able to explain it."
           )}
         </p>
       </section>

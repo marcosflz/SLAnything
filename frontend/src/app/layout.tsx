@@ -15,8 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description:
       lang === "en"
-        ? "An interactive library of courses for learning AI by building."
-        : "SLAnything · biblioteca de cursos interactivos para aprender IA construyendo.",
+        ? "SLAnything: a virtual classroom that turns any learning material into courses."
+        : "SLAnything · aula virtual que convierte cualquier material de aprendizaje en cursos.",
     applicationName: "SLAnything",
     icons: {
       icon: "/icon.svg",

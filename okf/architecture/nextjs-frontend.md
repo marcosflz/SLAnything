@@ -4,7 +4,7 @@ title: Frontend Next.js
 description: Interfaz principal en Next.js 16 y React 19, su relación con FastAPI y la sincronización con Jinja.
 tags: [nextjs, react, typescript, frontend, api]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: package
     resource: ../../frontend/package.json
@@ -33,13 +33,15 @@ sources:
 | `/entrar`, `/registro` | Auth |
 | `/cursos` | Catálogo de cursos |
 | `/cursos/[slug]` | Detalle de un curso |
-| `/curso` | Programa del curso activo (7 capítulos) |
+| `/curso` | Programa del curso activo (redirige a `/cursos` si no hay) |
 | `/leccion/[slug]` | Lección con bloques, labs y runner |
 | `/quiz/[id]`, `/quiz/intento/[id]` | Quiz y revisión |
 | `/progreso` | Progreso |
 | `/glosario`, `/recursos`, `/buscar` | Glosario, recursos y búsqueda |
 | `/profesor` | Panel del profesor |
-| `/estudio` | Estudio de autoría (solo profesorado) |
+| `/estudio` | Estudio de autoría (cuenta individual y profesorado) |
+| `/bienvenida` | Usuario sin espacio: código, cuenta individual o academia |
+| `/plataforma/*` | Superadministración (resumen, usuarios, espacios, cursos, IA) |
 | `/idioma/[lang]` | Cambio de idioma |
 | `/manifest.webmanifest` | Manifiesto PWA |
 | `/sw.js` | Service worker de estáticos |
@@ -133,3 +135,25 @@ CommandPalette, UserMenu), `components/studio/*`, `components/admin/*`,
 tailwindcss 4, radix-ui, recharts, lucide-react, cmdk, sonner,
 class-variance-authority, clsx, tailwind-merge. `npm run sync:assets` ya no
 existe. Next 16 genera `frontend/AGENTS.md` en `next dev`.
+
+# Actualización 2026-11-14 (plataforma genérica y perfiles)
+
+- `course` es opcional en `AppShell`, `ShellPayload`, `DashboardPayload` y las
+  páginas de progreso, glosario, recursos, búsqueda y analítica: cada una
+  muestra un `EmptyState` por perfil ([ADR-020](/decisions/adr-020-generic-platform.md)).
+- `shell/nav.ts` arma la navegación por **permisos** (`author`, `teach`,
+  `manage`, `platform`) y `AppShell` marca solo la entrada más específica.
+  Sin espacio y sin `platform`, `AppShell` redirige a `/bienvenida`.
+- `WorkspaceSwitcher` exporta `profileLabel`; el selector ofrece «Abrir mi
+  cuenta individual» si falta. `UserMenu` muestra el perfil.
+- `auth/RegisterForm` elige cuenta individual, academia o código de clase
+  (`?tipo=individual|academia|codigo`) y acepta `?invite=`.
+- `home/Landing` es genérica; `home/DashboardHome` añade `EmptyHome`,
+  `StudioSummary` (unidades y cuota) y `ClassShortcuts`.
+- `platform/PlatformLayout` y `platform/PlatformPanels`; `ProviderSettings` se
+  exporta desde `studio/StudioHome` y se reutiliza en `/plataforma/ia`.
+- `CourseCard` sin `ComingSoonCard`; insignias «Asignado · fecha» y «Curso de
+  ejemplo»; la biblioteca agrupa asignados, resto y ejemplos.
+- Tipos: `Permissions` (`learn`, `manage`…), `Profile`, `DemoAccount`,
+  `Platform*`; `User.role` desaparece.
+- `npm run e2e` se reescribió por perfiles (ver [testing](/operations/testing.md)).

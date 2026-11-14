@@ -5,7 +5,16 @@ import { redirect } from "next/navigation";
 import { PublicShell } from "@/components/PublicShell";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { getPublic, getSession } from "@/lib/api";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
+import type { DemoAccount } from "@/lib/types";
+
+const DEMO_LABELS: Record<DemoAccount["profile"], [string, string]> = {
+  student: ["Alumno", "Student"],
+  teacher: ["Profesora (academia)", "Teacher (academy)"],
+  academy_admin: ["Administración (academia)", "Academy admin"],
+  self_learner: ["Cuenta individual", "Individual account"],
+  platform: ["Superadmin", "Superadmin"],
+};
 
 export const metadata: Metadata = { title: "Entrar" };
 
@@ -38,19 +47,21 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="auth-wrap">
         <section className="auth-art">
           <div>
-            <span className="eyebrow">{t(lang, "Aula LLM · Curso completo")}</span>
+            <span className="eyebrow">{site.name}</span>
             <h2>{t(lang, "Vuelve a donde lo dejaste.")}</h2>
             <p>
-              {t(
+              {pick(
                 lang,
-                "Tu progreso, tus apuntes y tus intentos de quiz te esperan. Entra y continúa construyendo intuición sobre los LLM."
+                "Tus cursos, tu progreso, tus apuntes y tus unidades en borrador te esperan.",
+                "Your courses, progress, notes and draft units are waiting for you."
               )}
             </p>
           </div>
           <div className="auth-quote">
-            {t(
+            {pick(
               lang,
-              "“Un LLM no devuelve una única palabra: devuelve una probabilidad para cada token posible y elige una.”"
+              "“Aprender es convertir información en algo que puedes explicar con tus palabras.”",
+              "“Learning is turning information into something you can explain in your own words.”"
             )}
           </div>
         </section>
@@ -63,13 +74,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             {t(lang, "¿No tienes cuenta?")}{" "}
             <Link href="/registro">{t(lang, "Crear una cuenta gratis")}</Link>
           </p>
-          <div className="demo-box">
-            <strong>{t(lang, "Cuenta de demostración")}</strong>
-            <br />
-            {t(lang, "Correo")}: <code>demo@aulallm.local</code>
-            <br />
-            {t(lang, "Contraseña")}: <code>demo1234</code>
-          </div>
+          {publicData.demo_accounts.length ? (
+            <div className="demo-box">
+              <strong>{pick(lang, "Cuentas de demostración", "Demo accounts")}</strong>
+              {publicData.demo_accounts.map((account) => (
+                <div key={account.email} className="mt-1">
+                  {DEMO_LABELS[account.profile][lang === "en" ? 1 : 0]}: <code>{account.email}</code> ·{" "}
+                  <code>{account.password}</code>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </section>
       </div>
     </PublicShell>

@@ -8,7 +8,7 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } fr
 import { apiPost } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
 import type { User } from "@/lib/types";
-import { roleLabel } from "./WorkspaceSwitcher";
+import { profileLabel } from "./WorkspaceSwitcher";
 
 export function ThemeButton({ lang }: { lang: Lang }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -65,7 +65,9 @@ export function UserMenu({ user, lang }: { user: User; lang: Lang }) {
           <span className="block truncate text-sm font-semibold">{user.name}</span>
           <span className="block truncate text-xs font-normal text-muted-foreground">{user.email}</span>
           <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            {user.workspace?.name} · {roleLabel(user.ws_role, lang)}
+            {user.workspace ? `${user.workspace.name} · ` : ""}
+            {profileLabel(user, lang)}
+            {user.permissions?.platform && user.profile ? ` · ${pick(lang, "Superadmin", "Superadmin")}` : ""}
           </span>
         </MenuLabel>
         <MenuSeparator />

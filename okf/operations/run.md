@@ -4,7 +4,7 @@ title: Arranque local de SLAnything
 description: Comandos para instalar, arrancar, comprobar y reiniciar la plataforma en local.
 tags: [runbook, arranque, uv, fastapi, local]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -85,10 +85,18 @@ cd frontend; npm run typecheck; npm run build
 
 # Cuentas
 
+Con `AULA_SEED_DEMO=1` (una por perfil, [ADR-021](/decisions/adr-021-account-profiles.md)):
+
 | Perfil | Correo | Contraseña |
 |---|---|---|
-| Estudiante | `demo@aulallm.local` | `demo1234` |
-| Profesora | `profe@aulallm.local` | `profe1234` |
+| Alumno de la Academia Demo | `alumno@slanything.local` | `alumno1234` |
+| Profesora y propietaria de la academia | `profe@slanything.local` | `profe1234` |
+| Cuenta individual (autodidacta) | `autodidacta@slanything.local` | `auto1234` |
+| Superadmin de la plataforma | `admin@slanything.local` | `admin1234` |
+
+Las bases antiguas se migran solas: `demo@aulallm.local` pasa a
+`alumno@slanything.local` y `profe@aulallm.local` a `profe@slanything.local`,
+con las contraseñas nuevas.
 
 # Variables de entorno
 
@@ -158,6 +166,7 @@ progreso es importante.
 | Variable | Defecto | Uso |
 |---|---|---|
 | `AULA_SEED_DEMO` | `1` | Crea cuentas y academia demo; pon `0` en producción |
+| `AULA_SAMPLE_COURSES` | `0` | Muestra el curso de ejemplo «Construye un LLM desde cero» (ADR-020) |
 | `AULA_PLATFORM_ADMINS` | — | Correos con superadministración (coma) |
 | `AULA_GEN_ENGINE` | `direct` | Motor por defecto del Estudio |
 | `AULA_GEN_WORKERS` | `2` | Hilos del pool de generación |

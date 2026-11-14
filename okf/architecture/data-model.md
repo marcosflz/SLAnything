@@ -4,7 +4,7 @@ title: Modelo de datos SQLite
 description: Tablas, columnas y relaciones que sostienen usuarios, progreso y evaluación.
 tags: [datos, sqlite, esquema, progreso, quiz]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: db
     resource: ../../webapp/db.py
@@ -57,7 +57,7 @@ sources:
 
 `init_db()` detecta tablas del esquema de un solo curso, las renombra a
 `*_legacy`, crea el esquema nuevo y copia las filas asignándolas a
-`config.DEFAULT_COURSE_SLUG` (`llm-desde-cero`). Después elimina las tablas
+`config.SAMPLE_COURSE_SLUG` (`llm-desde-cero`). Después elimina las tablas
 antiguas y fija `PRAGMA user_version = 3`. La v3 solo añade
 `authoring_jobs` y `generated_courses` con `CREATE TABLE IF NOT EXISTS`, así que
 una base v2 se actualiza sin tocar sus datos. La operación es idempotente.
@@ -74,12 +74,13 @@ una base v2 se actualiza sin tocar sus datos. La operación es idempotente.
 # Operación
 
 - `aula.db`, `aula.db-wal` y `aula.db-shm` están en `.gitignore`.
-- `init_db()` crea el esquema y siembra demo/profesor con `INSERT OR IGNORE`.
-- No hay migraciones versionadas todavía. Para un cambio de columna, añade una
-  migración idempotente en `init_db()` o un script en `tools/`.
+- `init_db()` crea el esquema, aplica las migraciones y, con `AULA_SEED_DEMO=1`,
+  siembra las cuatro cuentas demo (una por perfil) y la Academia Demo.
+- Los cambios de esquema se añaden como migración numerada en
+  `webapp/migrations.py`.
 - Copia de seguridad: parar el servidor y copiar `aula.db` (o usar `sqlite3 .backup`).
 
-# Migraciones versionadas (v4, v5)
+# Migraciones versionadas (v4, v5, v6)
 
 Desde 2026-11-13 el esquema evoluciona con `webapp/migrations.py`
 ([ADR-015](/decisions/adr-015-versioned-migrations.md)). v4 añade espacios,
@@ -87,5 +88,10 @@ membresías, grupos, matrículas, invitaciones, auditoría, `learning_events` y
 columnas nuevas en `users`, `authoring_jobs` y `generated_courses`; además crea
 un espacio personal por usuario. v5 reconstruye `authoring_jobs` sin el CHECK de
 estados y añade `engine`, `stage`, `progress_json`, `config_json`, tokens y
-`generated_courses.report_json`. `activity.day` pasa a UTC. Detalle de uso en
-[tenancy-analytics](/architecture/tenancy-analytics.md).
+`generated_courses.report_json`. `activity.day` pasa a UTC. v6
+([ADR-021](/decisions/adr-021-account-profiles.md)) añade
+`users.last_course_slug` (curso activo por defecto), borra el espacio personal
+vacío de quien solo es alumno, crea la cuenta individual de usuarios sin
+espacio y renombra las cuentas demo `@aulallm.local`. `workspaces.settings_json`
+guarda `gen_monthly` (cuota fijada por la superadministración). Detalle de uso
+en [tenancy-analytics](/architecture/tenancy-analytics.md).

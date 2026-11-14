@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from webapp import analytics, workspaces
 from webapp.db import get_db
-from webapp.deps import require_admin, require_teacher, require_user
+from webapp.deps import require_admin, require_teaching, require_user
 from webapp.routers.api import _bundle
 from webapp.security import csrf_matches
 
@@ -29,7 +29,7 @@ class EventsBody(BaseModel):
 async def ingest_events(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     """Lote de eventos del navegador.
 
@@ -53,12 +53,12 @@ async def ingest_events(
 def my_analytics(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
     course = bundle.course
     return {
-        "course": {"slug": course.slug, "title": course.title},
+        "course": {"slug": course.slug, "title": course.title} if course else None,
         **analytics.student_kpis(conn, user["id"], course, bundle.quizzes),
     }
 
@@ -96,7 +96,7 @@ def _course_report(request: Request, user: dict, conn, group: int | None, days: 
         )
     ]
     return {
-        "course": {"slug": course.slug, "title": course.title},
+        "course": {"slug": course.slug, "title": course.title} if course else None,
         "courses": [
             {"slug": item.slug, "title": item.title} for item in bundle.published_catalog
         ],
@@ -112,8 +112,8 @@ def course_analytics(
     request: Request,
     group: int | None = None,
     days: int = 30,
-    user: dict = Depends(require_teacher),
-    conn: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(require_teaching),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     return _course_report(request, user, conn, group, days)
 
@@ -123,8 +123,8 @@ def course_analytics_csv(
     request: Request,
     group: int | None = None,
     days: int = 30,
-    user: dict = Depends(require_teacher),
-    conn: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(require_teaching),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     report = _course_report(request, user, conn, group, days)
     buffer = io.StringIO()
@@ -143,7 +143,8 @@ def course_analytics_csv(
                 "|".join(row["risk"]),
             ]
         )
-    filename = f"analitica-{report['course']['slug']}.csv"
+    slug = (report.get("course") or {}).get("slug") or "sin-curso"
+    filename = f"analitica-{slug}.csv"
     return PlainTextResponse(
         buffer.getvalue(),
         media_type="text/csv; charset=utf-8",
@@ -154,7 +155,7 @@ def course_analytics_csv(
 @router.get("/admin/metrics")
 def admin_metrics(
     user: dict = Depends(require_admin),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     return {
         "workspace": user["workspace"],

@@ -1,9 +1,11 @@
 # Estudio de autoría · documentos → unidades con OpenCode
 
-El **Estudio** convierte un documento en una unidad didáctica publicable en el
-catálogo. Está pensado para el profesorado: sube un PDF, DOCX, EPUB, ODT,
-Markdown, HTML o TXT, elige idioma y proveedor, y OpenCode genera un
-`course.json` que el backend valida, sanea y deja en borrador.
+El **Estudio** convierte un documento de cualquier materia en una unidad
+didáctica publicable en la biblioteca. Lo usan las **cuentas individuales** y el
+**profesorado** de una academia (el alumnado no crea unidades): sube un PDF,
+DOCX, EPUB, ODT, Markdown, HTML o TXT, elige idioma y el motor genera un
+`course.json` que el backend valida, sanea y deja en borrador. El proveedor de
+IA lo configura la superadministración en `/plataforma/ia`.
 
 ## Flujo
 
@@ -33,11 +35,15 @@ Copy-Item .env.example .env
 docker compose up -d --build
 ```
 
-Abre <http://127.0.0.1:3000/estudio> con la cuenta de profesora:
+Abre <http://127.0.0.1:3000/estudio> con una cuenta individual o con la
+profesora:
 
 ```text
-profe@aulallm.local / profe1234
+autodidacta@slanything.local / auto1234
+profe@slanything.local / profe1234
 ```
+
+Para probar sin proveedor ni red, arranca el backend con `AULA_LLM_FAKE=1`.
 
 El Estudio escribe en `/data/authoring` dentro del volumen `aula-llm-data`:
 

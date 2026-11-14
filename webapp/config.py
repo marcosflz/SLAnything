@@ -21,7 +21,7 @@ DATA_DIR = NOTEBOOKS_DIR / "data"
 DB_PATH = Path(os.environ.get("AULA_DB", BASE_DIR / "aula.db")).resolve()
 
 # Secreto de aplicación (reservado para firmas futuras y mensajes flash).
-SECRET_KEY = os.environ.get("AULA_SECRET", "aula-llm-desarrollo-local")
+SECRET_KEY = os.environ.get("AULA_SECRET", "slanything-desarrollo-local")
 
 ENV = os.environ.get("AULA_ENV", "development")
 SECURE_COOKIES = os.environ.get("AULA_SECURE_COOKIES", "0") == "1"
@@ -29,9 +29,7 @@ COOKIE_NAME = "aula_session"
 SESSION_DAYS = 14
 
 SITE_NAME = "SLAnything"
-SITE_TAGLINE = "Aprende IA desde los libros que la explican."
-COURSE_TITLE = "Construye un LLM desde cero"
-COURSE_CHAPTER = "Curso completo"
+SITE_TAGLINE = "Convierte cualquier material en un curso."
 
 # ---------------------------------------------------------------------------
 # Estudio de autoría · OpenCode + documentos
@@ -52,8 +50,12 @@ AUTHORING_MAX_CHARS = int(os.environ.get("AULA_AUTHORING_MAX_CHARS", "300000"))
 AUTHORING_MAX_JOBS = int(os.environ.get("AULA_AUTHORING_MAX_JOBS", "3"))
 AUTHORING_HOME = AUTHORING_DIR / "opencode-home"
 
-# Curso que se abre por defecto en /curso y en el panel del estudiante.
-DEFAULT_COURSE_SLUG = "llm-desde-cero"
+# Cursos de ejemplo incluidos en el repositorio (hoy, «Construye un LLM desde
+# cero»). Son opcionales: la plataforma funciona con la biblioteca vacía y todo
+# el contenido puede venir del Estudio. Se lee en cada petición para que los
+# tests puedan activarlo o desactivarlo con monkeypatch.
+SAMPLE_COURSES = os.environ.get("AULA_SAMPLE_COURSES", "0") == "1"
+SAMPLE_COURSE_SLUG = "llm-desde-cero"
 
 # Labs que el frontend sabe montar. El contenido solo puede referenciar estos.
 KNOWN_LABS = {
@@ -74,10 +76,19 @@ KNOWN_LABS = {
     "chat-template",
 }
 
-DEMO_EMAIL = "demo@aulallm.local"
-DEMO_PASSWORD = "demo1234"
-TEACHER_EMAIL = "profe@aulallm.local"
+# Cuentas de demostración, una por perfil (ver ADR-021):
+# - alumno: estudiante de la «Academia Demo», sin espacio personal;
+# - profe: propietaria de la «Academia Demo» (gestiona el aula y crea unidades);
+# - autodidacta: cuenta individual (crea unidades para sí, sin gestión de aula);
+# - admin: superadministración de la plataforma.
+DEMO_EMAIL = "alumno@slanything.local"
+DEMO_PASSWORD = "alumno1234"
+TEACHER_EMAIL = "profe@slanything.local"
 TEACHER_PASSWORD = "profe1234"
+SELF_LEARNER_EMAIL = "autodidacta@slanything.local"
+SELF_LEARNER_PASSWORD = "auto1234"
+ADMIN_EMAIL = "admin@slanything.local"
+ADMIN_PASSWORD = "admin1234"
 
 # Siembra de cuentas y academia de demostración. Desactívala en producción.
 SEED_DEMO = os.environ.get("AULA_SEED_DEMO", "1") == "1"

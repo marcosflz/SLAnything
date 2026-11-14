@@ -37,7 +37,7 @@ def test_api_login_session_and_shell(client):
     body = shell.json()
     assert body["course"]["lesson_count"] == 56
     assert body["course"]["chapter_count"] == 7
-    assert body["user"]["role"] == "student"
+    assert body["user"]["profile"] == "student"
     assert body["stats"]["total"] == 56
 
 

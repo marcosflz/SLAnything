@@ -4,7 +4,7 @@ title: Glosario del proyecto
 description: Vocabulario interno de SLAnything, OKF y la plataforma web.
 tags: [glosario, contexto, okf]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -33,20 +33,26 @@ sources:
 - **Racha**: días consecutivos con actividad registrada.
 - **Apuntes**: nota privada por usuario y lección.
 - **Marcador**: lección guardada por un usuario.
-- **Capítulo**: agrupación de 8 lecciones con su quiz; el curso de referencia
-  tiene 7.
+- **Capítulo**: agrupación de lecciones con su quiz; el curso de ejemplo LLM
+  tiene 7 de 8 lecciones.
 - **Programa (`Program`)**: agrupación de capítulos; resuelve lecciones,
   capítulos y vecinos entre capítulos.
 - **Curso (`Course`)**: unidad de producto del catálogo; envuelve un `Program` y
   añade slug, libro, nivel, estado y presentación.
-- **Catálogo (`CATALOGS`)**: biblioteca de cursos publicados por idioma.
-- **Curso activo**: curso que resuelve el `ContentBundle` de una petición.
+- **Catálogo (`CATALOGS`)**: cursos de ejemplo del repositorio por idioma; solo
+  se usan con `AULA_SAMPLE_COURSES=1`.
+- **Biblioteca**: cursos visibles en el espacio activo (generados del espacio,
+  públicos y, si están activos, de ejemplo).
+- **Curso de ejemplo**: curso estático incluido en el repositorio
+  (`Course.is_sample`); hoy, «Construye un LLM desde cero».
+- **Curso activo**: curso que resuelve el `ContentBundle` de una petición:
+  `?course=`, el último abierto o el primero publicado. Puede no haber ninguno.
 - **Paquete de capítulo**: directorio `webapp/content/chapters/chNN/` con
   lecciones, quiz, glosario y labs de un capítulo.
 - **ContentBundle**: curso activo, catálogo, glosario y quizzes resueltos para un
   idioma.
-- **Estudio**: sección `/estudio` donde el profesorado sube documentos y revisa
-  unidades generadas.
+- **Estudio**: sección `/estudio` donde las cuentas individuales y el
+  profesorado suben documentos y revisan unidades generadas.
 - **Unidad generada**: curso creado desde un `course.json`; vive en
   `generated_courses` y se publica como cualquier otro curso.
 - **Paquete (`course.json`)**: JSON bilingüe con curso, capítulos, lecciones,
@@ -61,8 +67,16 @@ sources:
 
 - **Aula**: prefijo interno histórico (`aula.db`, `aula_session`, `aula_lang`,
   volumen `aula-llm-data`); el producto visible es SLAnything.
-- **Demo**: cuenta `demo@aulallm.local` con contraseña `demo1234`.
-- **Profesor**: rol con acceso a `/profesor`; cuenta `profe@aulallm.local`.
+- **Cuenta individual / autodidacta**: espacio `personal` cuyo owner aprende y
+  crea unidades para sí, sin gestión de aula.
+- **Academia**: espacio `organization` con owner, admins, profesorado y alumnado.
+- **Perfil**: `self_learner`, `student`, `teacher` o `academy_admin`, derivado
+  del espacio activo (`deps.profile_for`).
+- **Superadmin**: `users.is_platform_admin`; administra toda la plataforma en
+  `/plataforma`.
+- **Cuentas demo**: `alumno@`, `profe@`, `autodidacta@` y `admin@`
+  `slanything.local` (contraseñas `alumno1234`, `profe1234`, `auto1234`,
+  `admin1234`).
 - **CSRF**: token por sesión que protege los POST.
 - **Sesión**: fila en `sessions`; cookie `aula_session` con token hasheado en BD.
 - **Render**: helper de `webapp/templating.py` que añade contexto común a Jinja.

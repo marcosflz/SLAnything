@@ -32,6 +32,22 @@ export function roleLabel(role: string | null | undefined, lang: Lang): string {
   return lang === "en" ? pair[1] : pair[0];
 }
 
+/** Perfil visible del usuario en el espacio activo (ADR-021). */
+export function profileLabel(user: Pick<User, "profile" | "ws_role" | "is_platform_admin">, lang: Lang): string {
+  const labels: Record<string, [string, string]> = {
+    self_learner: ["Cuenta individual", "Individual account"],
+    student: ["Estudiante", "Student"],
+    teacher: ["Profesorado", "Teacher"],
+    academy_admin: [
+      user.ws_role === "owner" ? "Propietario de la academia" : "Administración de la academia",
+      user.ws_role === "owner" ? "Academy owner" : "Academy admin",
+    ],
+  };
+  const pair = user.profile ? labels[user.profile] : null;
+  if (!pair) return user.is_platform_admin ? pick(lang, "Superadmin", "Superadmin") : pick(lang, "Sin espacio", "No space");
+  return lang === "en" ? pair[1] : pair[0];
+}
+
 function WsIcon({ ws }: { ws: WorkspaceRef }) {
   const Icon = ws.kind === "personal" ? UserIcon : Building2;
   return (
@@ -48,10 +64,16 @@ export function WorkspaceSwitcher({ user, lang }: { user: User; lang: Lang }) {
   const [busy, setBusy] = useState(false);
   const active = user.workspace;
   const list = user.workspaces ?? [];
+  const hasPersonal = list.some((ws) => ws.kind === "personal");
 
   async function switchTo(id: number) {
     if (id === active?.id) return;
     await apiPost("/api/v1/workspaces/switch", { workspace_id: id }, user.csrf_token);
+    window.location.href = "/";
+  }
+
+  async function createPersonal() {
+    await apiPost("/api/v1/workspaces/personal", {}, user.csrf_token);
     window.location.href = "/";
   }
 
@@ -87,7 +109,7 @@ export function WorkspaceSwitcher({ user, lang }: { user: User; lang: Lang }) {
               <span className="block truncate text-sm font-semibold">{active.name}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {active.kind === "personal"
-                  ? pick(lang, "Espacio personal", "Personal space")
+                  ? pick(lang, "Cuenta individual", "Individual account")
                   : roleLabel(active.role, lang)}
               </span>
             </span>
@@ -110,6 +132,11 @@ export function WorkspaceSwitcher({ user, lang }: { user: User; lang: Lang }) {
           <MenuItem onSelect={() => { setValue(""); setError(""); setDialog("join"); }}>
             <KeyRound /> {pick(lang, "Unirme con un código", "Join with a code")}
           </MenuItem>
+          {!hasPersonal ? (
+            <MenuItem onSelect={createPersonal}>
+              <UserIcon /> {pick(lang, "Abrir mi cuenta individual", "Open my individual account")}
+            </MenuItem>
+          ) : null}
         </MenuContent>
       </Menu>
 

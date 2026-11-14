@@ -1,9 +1,12 @@
 """API JSON versionada para el frontend Next.js.
 
-La API convive con las rutas HTML de Jinja. Es la frontera estable entre el
-backend FastAPI y el frontend React: serializa el catálogo, el contenido, el
-progreso y las operaciones de escritura sin exponer las respuestas correctas del
-quiz.
+Es la frontera estable entre el backend FastAPI y el frontend React: serializa
+el catálogo, el contenido, el progreso y las operaciones de escritura sin
+exponer las respuestas correctas del quiz.
+
+La biblioteca puede estar vacía (ADR-020): las rutas de shell, inicio,
+progreso, glosario, recursos, búsqueda y profesorado responden con
+``course: null`` en lugar de fallar.
 """
 
 from __future__ import annotations
@@ -13,15 +16,16 @@ import re
 import sqlite3
 import unicodedata
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
-from webapp import analytics, config, repositories
+from webapp import analytics, audit, config, repositories, workspaces
 from webapp.content import ContentBundle, Course, content_for
 from webapp.db import get_db
-from webapp.deps import ensure_csrf, get_current_user, require_teacher, require_user
+from webapp.deps import ensure_csrf, get_current_user, require_teaching, require_user
 from webapp.i18n import request_lang, translate
 from webapp.labs import lab_meta_for
 from webapp.downloads import example_position as _example_position
@@ -51,11 +55,23 @@ class LoginBody(BaseModel):
 
 
 class RegisterBody(BaseModel):
+    """Alta de cuenta (ADR-021).
+
+    - ``individual``: cuenta individual (perfil autodidacta).
+    - ``academy``: crea una academia y su propietario.
+    - ``join``: entra como estudiante con ``join_code``.
+    Con ``invite`` se acepta una invitación y se ignora ``account``.
+    """
+
     name: str
     email: str
     password: str
     password2: str
     next: str = "/"
+    account: Literal["individual", "academy", "join"] = "individual"
+    academy_name: str | None = Field(default=None, max_length=80)
+    join_code: str | None = Field(default=None, max_length=16)
+    invite: str | None = Field(default=None, max_length=200)
 
 
 class CompleteBody(BaseModel):
@@ -83,22 +99,54 @@ def _requested_course(request: Request) -> str | None:
 
 
 def _visible_workspaces(request: Request) -> frozenset[int]:
+    """Solo el espacio **activo**: cambiar de espacio cambia la biblioteca."""
     user = getattr(request.state, "user", None)
-    return user.get("workspace_ids", frozenset()) if user else frozenset()
+    workspace = user.get("workspace") if user else None
+    return frozenset({int(workspace["id"])}) if workspace else frozenset()
 
 
 def _bundle(request: Request, course_slug: str | None = None) -> ContentBundle:
+    """Contenido visible con el curso activo resuelto.
+
+    Orden: el curso pedido (ruta o ``?course=``), el último curso abierto por
+    el usuario si sigue visible en el espacio activo y, si no, el primer curso
+    publicado (los del espacio antes que los ejemplos). Puede no haber curso.
+    """
+    slug = course_slug or _requested_course(request)
+    if not slug:
+        user = getattr(request.state, "user", None)
+        slug = user.get("last_course_slug") if user else None
     return content_for(
         _lang(request),
-        course_slug or _requested_course(request),
+        slug,
         workspace_ids=_visible_workspaces(request),
     )
+
+
+def _require_course(bundle: ContentBundle) -> Course:
+    if bundle.course is None:
+        raise HTTPException(
+            status_code=404,
+            detail=translate("Aún no hay cursos en este espacio.", bundle.lang),
+        )
+    return bundle.course
 
 
 def _safe_next(value: str | None, fallback: str = "/") -> str:
     if not value or not value.startswith("/") or value.startswith("//"):
         return fallback
     return value
+
+
+_NO_PERMISSIONS = {
+    "learn": False,
+    "author": False,
+    "teach": False,
+    "manage": False,
+    "admin": False,
+    "owner": False,
+    "platform": False,
+}
 
 
 def _user_payload(user: dict | None) -> dict | None:
@@ -108,14 +156,14 @@ def _user_payload(user: dict | None) -> dict | None:
         "id": user["id"],
         "email": user["email"],
         "name": user["name"],
-        "role": user["role"],
         "initials": _initials(user["name"]),
         "csrf_token": user.get("csrf_token", ""),
         "workspace": user.get("workspace"),
         "workspaces": user.get("memberships", []),
         "ws_role": user.get("ws_role"),
-        "permissions": user.get("permissions")
-        or {"author": False, "teach": False, "admin": False, "owner": False, "platform": False},
+        "profile": user.get("profile"),
+        "is_platform_admin": bool(user.get("is_platform_admin")),
+        "permissions": user.get("permissions") or dict(_NO_PERMISSIONS),
     }
 
 
@@ -184,6 +232,10 @@ def _chapter_payload(chapter, course: Course | None = None) -> dict:
     }
 
 
+def _course_or_none(course: Course | None) -> dict | None:
+    return _course_payload(course) if course is not None else None
+
+
 def _course_payload(course: Course) -> dict:
     labs = {
         lab_id
@@ -201,6 +253,7 @@ def _course_payload(course: Course) -> dict:
         "cover": course.cover,
         "book": _book_payload(course),
         "tags": list(course.tags),
+        "is_sample": course.is_sample,
         "total_minutes": course.total_minutes,
         "lesson_count": course.lesson_count,
         "chapter_count": course.chapter_count,
@@ -228,6 +281,7 @@ def _course_summary(
     course: Course,
     stats: dict,
     next_lesson,
+    assignment: dict | None = None,
 ) -> dict:
     return {
         "slug": course.slug,
@@ -240,12 +294,15 @@ def _course_summary(
         "cover": course.cover,
         "book": _book_payload(course),
         "tags": list(course.tags),
+        "is_sample": course.is_sample,
         "total_minutes": course.total_minutes,
         "lesson_count": course.lesson_count,
         "chapter_count": course.chapter_count,
         "lab_count": course.lab_count,
         "stats": _stats_payload(stats),
         "next_lesson": _summary_for(course, next_lesson),
+        "assigned": assignment is not None,
+        "due_at": (assignment or {}).get("due_at"),
     }
 
 
@@ -276,9 +333,16 @@ def _catalog_payload(
     conn: sqlite3.Connection | None,
     user: dict | None,
 ) -> list[dict]:
+    """Cursos publicados visibles. Los asignados al usuario van primero."""
     progress_by_course = (
         repositories.progress_by_course(conn, user["id"])
         if conn is not None and user is not None
+        else {}
+    )
+    workspace = (user or {}).get("workspace")
+    assignments = (
+        repositories.assigned_courses(conn, int(workspace["id"]), user["id"])
+        if conn is not None and workspace
         else {}
     )
     courses = []
@@ -292,9 +356,18 @@ def _catalog_payload(
             else _empty_stats(course)
         )
         courses.append(
-            _course_summary(course, stats, _next_lesson(course, progress))
+            _course_summary(
+                course,
+                stats,
+                _next_lesson(course, progress),
+                assignments.get(course.slug),
+            )
         )
-    return courses
+    assigned = sorted(
+        (item for item in courses if item["assigned"]),
+        key=lambda item: item["due_at"] or "9999",
+    )
+    return assigned + [item for item in courses if not item["assigned"]]
 
 
 def _quiz_meta(quiz) -> dict:
@@ -352,20 +425,36 @@ def _progress_payload(progress: dict[str, dict]) -> dict[str, dict]:
     return result
 
 
-def _site_payload(lang: str, course: Course, catalog_count: int) -> dict:
+def _site_payload(lang: str, course: Course | None, catalog_count: int) -> dict:
     return {
         "name": config.SITE_NAME,
         "tagline": translate(config.SITE_TAGLINE, lang),
-        "course_title": course.title,
+        "course_title": course.title if course else None,
         "course_chapter": translate(
             "{n} capítulos · {m} lecciones",
             lang,
             n=course.chapter_count,
             m=course.lesson_count,
-        ),
+        )
+        if course
+        else None,
         "catalog_count": catalog_count,
         "year": date.today().year,
     }
+
+
+def _progress_for(conn: sqlite3.Connection, user: dict, course: Course | None) -> dict:
+    if course is None:
+        return {}
+    return repositories.progress_for_user(conn, user["id"], course.slug)
+
+
+def _stats_for(conn: sqlite3.Connection, user: dict, course: Course | None) -> dict:
+    if course is None:
+        return {"completed": 0, "total": 0, "pct": 0}
+    return repositories.completion_stats(
+        conn, user["id"], course.slug, len(course.lessons)
+    )
 
 
 def _activity(conn: sqlite3.Connection, user_id: int, days: int) -> list[dict]:
@@ -434,15 +523,33 @@ def session(
     }
 
 
+def _demo_accounts() -> list[dict]:
+    """Credenciales demo documentadas, solo si la siembra está activa."""
+    if not config.SEED_DEMO:
+        return []
+    return [
+        {"profile": "student", "email": config.DEMO_EMAIL, "password": config.DEMO_PASSWORD},
+        {"profile": "teacher", "email": config.TEACHER_EMAIL, "password": config.TEACHER_PASSWORD},
+        {
+            "profile": "self_learner",
+            "email": config.SELF_LEARNER_EMAIL,
+            "password": config.SELF_LEARNER_PASSWORD,
+        },
+        {"profile": "platform", "email": config.ADMIN_EMAIL, "password": config.ADMIN_PASSWORD},
+    ]
+
+
 @router.get("/public")
 def public(request: Request):
     bundle = _bundle(request)
     lang = _lang(request)
     return {
-        "course": _course_payload(bundle.course),
+        "course": _course_or_none(bundle.course),
         "catalog": _catalog_payload(bundle, None, None),
         "site": _site_payload(lang, bundle.course, len(bundle.published_catalog)),
         "lab_meta": lab_meta_for(lang),
+        "demo_accounts": _demo_accounts(),
+        "formats": ["PDF", "DOCX", "EPUB", "ODT", "Markdown", "HTML", "TXT"],
         "lang": lang,
     }
 
@@ -451,13 +558,13 @@ def public(request: Request):
 def catalog(
     request: Request,
     user: dict | None = Depends(get_current_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
     lang = _lang(request)
     return {
         "courses": _catalog_payload(bundle, conn, user),
-        "featured": _course_payload(bundle.course),
+        "featured": _course_or_none(bundle.course),
         "site": _site_payload(lang, bundle.course, len(bundle.published_catalog)),
         "lang": lang,
     }
@@ -468,7 +575,7 @@ def course_detail(
     course_slug: str,
     request: Request,
     user: dict | None = Depends(get_current_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request, course_slug)
     course = bundle.course_for(course_slug)
@@ -505,22 +612,22 @@ def course_detail(
 def shell(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
-    progress = repositories.progress_for_user(conn, user["id"], bundle.course.slug)
-    stats = repositories.completion_stats(
-        conn, user["id"], bundle.course.slug, len(bundle.course.lessons)
-    )
-    nxt = _next_lesson(bundle.course, progress)
+    course = bundle.course
+    progress = _progress_for(conn, user, course)
+    stats = _stats_for(conn, user, course)
+    nxt = _next_lesson(course, progress) if course else None
+    default = bundle.default_course
     return {
         "user": _user_payload(user),
-        "course": _course_payload(bundle.course),
+        "course": _course_or_none(course),
         "courses": _catalog_payload(bundle, conn, user),
-        "default_course_slug": bundle.default_course.slug,
+        "default_course_slug": default.slug if default else None,
         "progress": _progress_payload(progress),
         "stats": _stats_payload(stats),
-        "next_lesson": _summary_for(bundle.course, nxt),
+        "next_lesson": _summary_for(course, nxt) if course else None,
         "lab_meta": lab_meta_for(_lang(request)),
         "site": _site_payload(
             _lang(request), bundle.course, len(bundle.published_catalog)
@@ -538,6 +645,7 @@ def _login_response(
     conn: sqlite3.Connection,
     user_id: int,
     next_path: str,
+    workspace_id: int | None = None,
 ) -> JSONResponse:
     token = new_token()
     repositories.create_session(
@@ -559,7 +667,6 @@ def _login_response(
                     "id": row["id"],
                     "email": row["email"],
                     "name": row["name"],
-                    "role": row["role"],
                     "csrf_token": "",
                 }
             ),
@@ -574,6 +681,16 @@ def _login_response(
         secure=config.SECURE_COOKIES,
         path="/",
     )
+    if workspace_id is not None:
+        response.set_cookie(
+            config.WORKSPACE_COOKIE,
+            str(workspace_id),
+            max_age=365 * 86400,
+            httponly=True,
+            samesite="lax",
+            secure=config.SECURE_COOKIES,
+            path="/",
+        )
     return response
 
 
@@ -581,7 +698,7 @@ def _login_response(
 def api_login(
     body: LoginBody,
     request: Request,
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     email = body.email.strip()
     lang = _lang(request)
@@ -622,7 +739,7 @@ def api_login(
 def api_register(
     body: RegisterBody,
     request: Request,
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     lang = _lang(request)
     clean_name = body.name.strip()
@@ -645,6 +762,37 @@ def api_register(
     if repositories.get_user_by_email(conn, clean_email) is not None:
         return error("Ya existe una cuenta con ese correo. Prueba a iniciar sesión.")
 
+    invite = (body.invite or "").strip()
+    code = (body.join_code or "").strip()
+    account = "invite" if invite else body.account
+    academy_name = (body.academy_name or "").strip()
+    if account == "academy" and not 2 <= len(academy_name) <= 80:
+        return error("El nombre de la academia debe tener entre 2 y 80 caracteres.")
+    if account == "join" and not code:
+        return error("Introduce el código de clase.")
+
+    def fail(exc: HTTPException) -> JSONResponse:
+        conn.rollback()
+        return JSONResponse(
+            {"detail": translate(str(exc.detail), lang)}, status_code=exc.status_code
+        )
+
+    # Comprobaciones previas: no se crea la cuenta si el acceso no es válido.
+    try:
+        if account == "invite":
+            row = workspaces.usable_invitation(conn, invite)
+            if row["email"] and row["email"] != clean_email.lower():
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta invitación es para otra dirección de correo.",
+                )
+        elif account == "join":
+            target = workspaces.get_workspace_by_join_code(conn, code)
+            if target is None or target["kind"] != "organization":
+                raise HTTPException(status_code=404, detail="Código de clase no válido.")
+    except HTTPException as exc:
+        return fail(exc)
+
     try:
         user = repositories.create_user(
             conn,
@@ -652,18 +800,39 @@ def api_register(
             name=clean_name,
             password_hash=hash_password(body.password),
             role="student",
+            personal_workspace=account == "individual",
         )
     except sqlite3.IntegrityError:
         return error("Ya existe una cuenta con ese correo. Prueba a iniciar sesión.")
 
-    return _login_response(request, conn, user["id"], body.next)
+    user_id = int(user["id"])
+    try:
+        if account == "invite":
+            workspace_id = workspaces.accept_invitation(conn, invite, user_id, clean_email)
+            audit.record(conn, actor_id=user_id, action="invite.accept",
+                         workspace_id=workspace_id, target=clean_email, request=request)
+        elif account == "join":
+            joined, _ = workspaces.join_with_code(conn, code, user_id)
+            workspace_id = int(joined["id"])
+            audit.record(conn, actor_id=user_id, action="member.join_code",
+                         workspace_id=workspace_id, target=clean_email, request=request)
+        elif account == "academy":
+            workspace_id = workspaces.create_workspace(conn, "organization", academy_name, user_id)
+            audit.record(conn, actor_id=user_id, action="workspace.create",
+                         workspace_id=workspace_id, target=academy_name, request=request)
+        else:
+            workspace_id = workspaces.personal_workspace_id(conn, user_id)
+    except HTTPException as exc:
+        return fail(exc)
+
+    return _login_response(request, conn, user_id, body.next, workspace_id)
 
 
 @router.post("/auth/logout")
 def api_logout(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     ensure_csrf(request, user)
     repositories.delete_session(conn, user["session_id"])
@@ -681,28 +850,26 @@ def api_logout(
 def dashboard(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
     course = bundle.course
-    progress = repositories.progress_for_user(conn, user["id"], course.slug)
-    stats = repositories.completion_stats(
-        conn, user["id"], course.slug, len(course.lessons)
-    )
-    nxt = _next_lesson(course, progress)
+    progress = _progress_for(conn, user, course)
+    stats = _stats_for(conn, user, course)
+    nxt = _next_lesson(course, progress) if course else None
     next_progress = (
         _progress_payload({nxt.slug: progress.get(nxt.slug)}).get(nxt.slug)
         if nxt
         else None
     )
     return {
-        "course": _course_payload(course),
+        "course": _course_or_none(course),
         "courses": _catalog_payload(bundle, conn, user),
         "progress": _progress_payload(progress),
         "stats": _stats_payload(stats),
-        "next_lesson": _summary_for(course, nxt),
+        "next_lesson": _summary_for(course, nxt) if course else None,
         "next_progress": next_progress,
-        "avg_score": repositories.average_score(conn, user["id"], course.slug),
+        "avg_score": repositories.average_score(conn, user["id"], course.slug) if course else None,
         "streak": repositories.current_streak(conn, user["id"]),
         "activity": _activity(conn, user["id"], 14),
         "attempts": [
@@ -711,7 +878,9 @@ def dashboard(
                 conn, user["id"], course.slug, 3
             )
             if row["quiz_id"] in bundle.quizzes
-        ],
+        ]
+        if course
+        else [],
     }
 
 
@@ -719,10 +888,10 @@ def dashboard(
 def course_page(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
-    course = bundle.course
+    course = _require_course(bundle)
     progress = repositories.progress_for_user(conn, user["id"], course.slug)
     stats = repositories.completion_stats(
         conn, user["id"], course.slug, len(course.lessons)
@@ -742,7 +911,7 @@ def lesson_detail(
     slug: str,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle, lesson = _resolve_lesson(_bundle(request), slug)
     course = bundle.course
@@ -799,7 +968,7 @@ def complete_lesson(
     body: CompleteBody,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle, lesson = _resolve_lesson(_bundle(request), slug)
     if lesson is None:
@@ -840,7 +1009,7 @@ def save_note(
     body: NoteBody,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle, lesson = _resolve_lesson(_bundle(request), slug)
     if lesson is None:
@@ -862,7 +1031,7 @@ def toggle_bookmark(
     slug: str,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle, lesson = _resolve_lesson(_bundle(request), slug)
     if lesson is None:
@@ -888,7 +1057,7 @@ def quiz_detail(
     quiz_id: str,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle, course = _resolve_quiz(_bundle(request), quiz_id)
     quiz = bundle.quizzes.get(quiz_id)
@@ -919,7 +1088,7 @@ def submit_quiz(
     body: QuizBody,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle, course = _resolve_quiz(_bundle(request), quiz_id)
     quiz = bundle.quizzes.get(quiz_id)
@@ -960,7 +1129,7 @@ def attempt_review(
     attempt_id: int,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     attempt = repositories.get_attempt(conn, attempt_id, user["id"])
     if attempt is None:
@@ -976,7 +1145,12 @@ def attempt_review(
             status_code=404,
             detail=translate("Cuestionario no encontrado.", _lang(request)),
         )
-    course = bundle.course_for_quiz(quiz.id) or bundle.course
+    course = bundle.course_for_quiz(quiz.id)
+    if course is None:
+        raise HTTPException(
+            status_code=404,
+            detail=translate("Cuestionario no encontrado.", _lang(request)),
+        )
     bundle = bundle.select(course.slug)
 
     try:
@@ -1030,16 +1204,14 @@ def attempt_review(
 def progress_page(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
     course = bundle.course
-    progress = repositories.progress_for_user(conn, user["id"], course.slug)
-    stats = repositories.completion_stats(
-        conn, user["id"], course.slug, len(course.lessons)
-    )
+    progress = _progress_for(conn, user, course)
+    stats = _stats_for(conn, user, course)
     return {
-        "course": _course_payload(course),
+        "course": _course_or_none(course),
         "courses": _catalog_payload(bundle, conn, user),
         "progress": _progress_payload(progress),
         "stats": _stats_payload(stats),
@@ -1050,16 +1222,18 @@ def progress_page(
                     {lesson.slug: progress.get(lesson.slug)}
                 ).get(lesson.slug),
             }
-            for chapter in course.chapters
+            for chapter in bundle.chapters
             for lesson in chapter.lessons
         ],
         "attempts": [
             _attempt_payload(row, bundle.quizzes[row["quiz_id"]].pass_score)
             for row in repositories.attempts_for_user(conn, user["id"], course.slug)
             if row["quiz_id"] in bundle.quizzes
-        ],
+        ]
+        if course
+        else [],
         "activity": _activity(conn, user["id"], 28),
-        "avg_score": repositories.average_score(conn, user["id"], course.slug),
+        "avg_score": repositories.average_score(conn, user["id"], course.slug) if course else None,
         "streak": repositories.current_streak(conn, user["id"]),
     }
 
@@ -1068,7 +1242,7 @@ def progress_page(
 def glossary_page(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
     terms = sorted(bundle.glossary, key=lambda item: item.term.casefold())
@@ -1098,86 +1272,78 @@ def glossary_page(
             )
     return {
         "groups": groups,
-        "course": _course_payload(bundle.course),
+        "course": _course_or_none(bundle.course),
         "courses": _catalog_payload(bundle, conn, user),
-        "progress": _progress_payload(
-            repositories.progress_for_user(conn, user["id"], bundle.course.slug)
-        ),
+        "progress": _progress_payload(_progress_for(conn, user, bundle.course)),
     }
+
+
+def _resource_payload(resource) -> dict:
+    return {
+        "title": resource.title,
+        "description": resource.description,
+        "href": resource.href,
+        "icon": resource.icon,
+        "meta": resource.meta,
+        "download": resource.download,
+    }
+
+
+def _generated_sources(course_slug: str) -> list[str]:
+    """Nombres de los documentos de los que se generó un curso del Estudio."""
+    from webapp.authoring import store
+
+    generated = store.get_course(course_slug)
+    if not generated or not generated.get("job_id"):
+        return []
+    job = store.get_job(generated["job_id"], with_log=False) or {}
+    names = job.get("source_names") or []
+    return [str(name) for name in names] if isinstance(names, list) else []
 
 
 @router.get("/resources")
 def resources_page(
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
+    """Recursos del curso activo: los suyos, su fuente y los ejemplos de código."""
     lang = _lang(request)
-    items = [
-        {
-            "title": translate("Cuaderno interactivo", lang),
-            "description": translate(
-                "El capítulo completo en Jupyter, con las celdas y experimentos originales del libro.",
-                lang,
-            ),
-            "href": "/api/v1/downloads/notebook",
-            "icon": "notebook",
-            "meta": "Jupyter · 0.86 MB",
-            "download": True,
-        },
-        {
-            "title": translate("Corpus de El Quijote", lang),
-            "description": translate(
-                "Fragmento de texto en dominio público para entrenar el generador de n-gramas del laboratorio.",
-                lang,
-            ),
-            "href": "/static/data/quijote_fragmento.txt",
-            "icon": "database",
-            "meta": "Text · 408 KB" if lang == "en" else "Texto · 408 KB",
-            "download": False,
-        },
-        {
-            "title": translate("Figuras del capítulo", lang),
-            "description": translate(
-                "Diagramas de la jerarquía de la IA, el transformer y las dos etapas del entrenamiento.",
-                lang,
-            ),
-            "href": "/static/img/ch01/fig_1_1_jerarquia_ia.png",
-            "icon": "folder",
-            "meta": "PNG · 11 figures" if lang == "en" else "PNG · 11 figuras",
-            "download": False,
-        },
-        {
-            "title": translate("Plan de la plataforma", lang),
-            "description": translate(
-                "Documento de diseño con el alcance, la arquitectura, las fases y las decisiones técnicas del proyecto.",
-                lang,
-            ),
-            "href": "/api/v1/downloads/plan",
-            "icon": "list",
-            "meta": "Markdown · Plan",
-            "download": True,
-        },
-        {
-            "title": translate("Guía de créditos", lang),
-            "description": translate(
-                "Fuentes, atribuciones y licencias del material didáctico y de las figuras utilizadas.",
-                lang,
-            ),
-            "href": "#creditos",
-            "icon": "info",
-            "meta": translate("Licencias y atribución", lang),
-            "download": False,
-        },
-    ]
     bundle = _bundle(request)
+    course = bundle.course
+    items: list[dict] = []
+    if course is not None:
+        items.extend(_resource_payload(resource) for resource in course.resources)
+        for name in _generated_sources(course.slug):
+            items.append(
+                {
+                    "title": name,
+                    "description": translate("Documento original del que se generó el curso.", lang),
+                    "href": f"/cursos/{course.slug}",
+                    "icon": "file",
+                    "meta": translate("Documento fuente", lang),
+                    "download": False,
+                }
+            )
+        for chapter in course.chapters:
+            for lesson in chapter.lessons:
+                if lesson.python_blocks:
+                    items.append(
+                        {
+                            "title": lesson.title,
+                            "description": translate("Ejemplos de código ejecutables de la lección.", lang),
+                            "href": f"/api/v1/downloads/lessons/{lesson.slug}/code",
+                            "icon": "code",
+                            "meta": translate("Python · {n} ejemplos", lang, n=len(lesson.python_blocks)),
+                            "download": True,
+                        }
+                    )
     return {
         "resources": items,
-        "course": _course_payload(bundle.course),
+        "source": _book_payload(course) if course else None,
+        "course": _course_or_none(course),
         "courses": _catalog_payload(bundle, conn, user),
-        "progress": _progress_payload(
-            repositories.progress_for_user(conn, user["id"], bundle.course.slug)
-        ),
+        "progress": _progress_payload(_progress_for(conn, user, course)),
     }
 
 
@@ -1186,7 +1352,7 @@ def search_page(
     request: Request,
     q: str = "",
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     query = q.strip()
     results: list[dict] = []
@@ -1219,19 +1385,17 @@ def search_page(
     return {
         "query": query,
         "results": results,
-        "course": _course_payload(bundle.course),
+        "course": _course_or_none(bundle.course),
         "courses": _catalog_payload(bundle, conn, user),
-        "progress": _progress_payload(
-            repositories.progress_for_user(conn, user["id"], bundle.course.slug)
-        ),
+        "progress": _progress_payload(_progress_for(conn, user, bundle.course)),
     }
 
 
 @router.get("/teacher")
 def teacher_page(
     request: Request,
-    user: dict = Depends(require_teacher),
-    conn: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(require_teaching),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     bundle = _bundle(request)
     workspace_id = user["workspace"]["id"] if user.get("workspace") else None
@@ -1244,11 +1408,9 @@ def teacher_page(
         "stats": repositories.teacher_stats(
             conn, total_lessons, workspace_id=workspace_id
         ),
-        "course": _course_payload(bundle.course),
+        "course": _course_or_none(bundle.course),
         "courses": _catalog_payload(bundle, conn, user),
-        "progress": _progress_payload(
-            repositories.progress_for_user(conn, user["id"], bundle.course.slug)
-        ),
+        "progress": _progress_payload(_progress_for(conn, user, bundle.course)),
     }
 
 
@@ -1317,23 +1479,12 @@ def download_python_block(
 
 @router.get("/downloads/notebook")
 def download_notebook(user: dict = Depends(require_user)):
+    """Cuaderno Jupyter del curso de ejemplo (solo con ejemplos activos)."""
     path = config.NOTEBOOKS_DIR / "capitulo_01_entender_los_llms.ipynb"
-    if not path.is_file():
+    if not config.SAMPLE_COURSES or not path.is_file():
         raise HTTPException(status_code=404, detail="Cuaderno no disponible.")
     return FileResponse(
         path,
         filename=path.name,
         media_type="application/x-ipynb+json",
-    )
-
-
-@router.get("/downloads/plan")
-def download_plan(user: dict = Depends(require_user)):
-    path = config.BASE_DIR / "docs" / "PLAN_PLATAFORMA_WEB.md"
-    if not path.is_file():
-        raise HTTPException(status_code=404, detail="Plan no disponible.")
-    return FileResponse(
-        path,
-        filename=path.name,
-        media_type="text/markdown; charset=utf-8",
     )

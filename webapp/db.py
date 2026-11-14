@@ -159,7 +159,7 @@ def _prepare_legacy_tables(conn: sqlite3.Connection) -> None:
 
 def _copy_legacy_tables(conn: sqlite3.Connection) -> None:
     """Copia los datos antiguos al curso por defecto y elimina las tablas v1."""
-    course = config.DEFAULT_COURSE_SLUG
+    course = config.SAMPLE_COURSE_SLUG
 
     if _table_exists(conn, "lesson_progress_legacy"):
         conn.execute(
@@ -220,6 +220,36 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _seed_demo_accounts(conn: sqlite3.Connection, now: str) -> None:
+    """Una cuenta demo por perfil (ADR-021).
+
+    - alumno: estudiante de la Academia Demo, sin espacio personal;
+    - profe: propietaria de la Academia Demo;
+    - autodidacta: cuenta individual;
+    - admin: superadministración (con su propia cuenta individual).
+    """
+    from webapp import workspaces
+
+    accounts = (
+        (config.DEMO_EMAIL, "Estudiante demo", config.DEMO_PASSWORD, "student", False),
+        (config.TEACHER_EMAIL, "Profesora", config.TEACHER_PASSWORD, "teacher", False),
+        (config.SELF_LEARNER_EMAIL, "Autodidacta", config.SELF_LEARNER_PASSWORD, "student", True),
+        (config.ADMIN_EMAIL, "Administración", config.ADMIN_PASSWORD, "student", True),
+    )
+    for email, name, password, role, personal in accounts:
+        row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if row is None:
+            cursor = conn.execute(
+                """INSERT INTO users (email, name, password_hash, role, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (email, name, hash_password(password), role, now),
+            )
+            user_id = int(cursor.lastrowid)
+            if personal:
+                workspaces.ensure_personal_workspace(conn, user_id, name)
+    workspaces.ensure_demo_organization(conn, config.TEACHER_EMAIL, config.DEMO_EMAIL)
+
+
 def init_db(db_path: Path | None = None) -> None:
     """Crea el esquema, aplica migraciones y siembra los datos de demostración.
 
@@ -232,38 +262,15 @@ def init_db(db_path: Path | None = None) -> None:
         conn.executescript(SCHEMA)
         _copy_legacy_tables(conn)
         conn.commit()
-        from webapp import migrations, workspaces
+        from webapp import migrations
 
         migrations.migrate(conn)
         now = utcnow()
-        demo = (
-            config.DEMO_EMAIL,
-            "Estudiante demo",
-            hash_password(config.DEMO_PASSWORD),
-            "student",
-            now,
-        )
-        teacher = (
-            config.TEACHER_EMAIL,
-            "Profesora",
-            hash_password(config.TEACHER_PASSWORD),
-            "teacher",
-            now,
-        )
         if config.SEED_DEMO:
-            conn.executemany(
-                """INSERT OR IGNORE INTO users (email, name, password_hash, role, created_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                [demo, teacher],
-            )
-        workspaces.ensure_all_personal_workspaces(conn)
-        if config.SEED_DEMO:
-            workspaces.ensure_demo_organization(
-                conn, config.TEACHER_EMAIL, config.DEMO_EMAIL
-            )
+            _seed_demo_accounts(conn, now)
         admins = list(config.PLATFORM_ADMINS)
         if config.SEED_DEMO:
-            admins.append(config.TEACHER_EMAIL)
+            admins.append(config.ADMIN_EMAIL)
         for email in admins:
             conn.execute(
                 "UPDATE users SET is_platform_admin = 1 WHERE email = ?", (email,)
@@ -275,7 +282,13 @@ def init_db(db_path: Path | None = None) -> None:
 
 
 def get_db() -> Generator[sqlite3.Connection, None, None]:
-    """Dependencia de FastAPI: una conexión por petición."""
+    """Dependencia de FastAPI: una conexión por petición.
+
+    Úsala siempre como ``Depends(get_db, scope="function")``: así el commit se
+    ejecuta al terminar el endpoint y **antes** de enviar la respuesta. Con el
+    ámbito por defecto (``request``) FastAPI confirma después de responder y una
+    petición inmediatamente posterior puede leer datos aún sin confirmar.
+    """
     conn = connect()
     try:
         yield conn

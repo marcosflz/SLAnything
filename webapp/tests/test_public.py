@@ -37,7 +37,7 @@ def test_static_assets_are_served(client):
 def test_health_endpoint_and_security_headers(client):
     response = client.get("/salud")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "lecciones": 56, "cursos": 1}
+    assert response.json() == {"status": "ok", "ejemplos": True}
 
     headers = {key.lower(): value for key, value in response.headers.items()}
     assert headers["x-content-type-options"] == "nosniff"

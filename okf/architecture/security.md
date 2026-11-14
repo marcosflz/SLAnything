@@ -4,7 +4,7 @@ title: Seguridad de la plataforma
 description: Controles de autenticación, sesión, CSRF, autorización y cabeceras, con sus límites.
 tags: [seguridad, auth, csrf, sesiones, privacidad]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: security
     resource: ../../webapp/security.py
@@ -44,7 +44,15 @@ sources:
 # Autorización
 
 - `require_user` → 401 y redirect al login con `next` interno validado.
-- `require_teacher` → 403 para estudiantes.
+- `require_author` → 403 para el alumnado (el Estudio es de cuentas
+  individuales y profesorado).
+- `require_teaching` → 403 fuera de una academia o sin rol de profesorado; una
+  cuenta individual no ve analítica de curso ni panel de estudiantes.
+- `require_admin` → 403 sin `manage` (admin/owner de una academia).
+- `require_platform_admin` → 403 sin `users.is_platform_admin`. Un superadmin no
+  puede desactivarse ni retirarse el flag, y siempre queda al menos uno.
+- El registro con `invite` o `join_code` valida el acceso **antes** de crear la
+  cuenta; si falla, no queda usuario huérfano.
 - Los intentos de quiz se consultan filtrando `user_id`; un intento ajeno da 404.
 - Las notas y marcadores se consultan siempre por `user_id`.
 
@@ -95,8 +103,12 @@ sources:
   solo para contenido del catálogo. El curso estático es de confianza; el
   generado pasa antes por `sanitize_html()` (lista blanca de etiquetas y
   atributos). Nunca se inserta HTML de notas, correos o formularios.
-- `/api/v1/authoring` y `/estudio` exigen `require_teacher`; todas las mutaciones
+- `/api/v1/authoring` y `/estudio` exigen `require_author`; todas las mutaciones
   llevan CSRF. La API key nunca se devuelve al navegador.
+- Consistencia: `get_db` se declara con `scope="function"`; con el ámbito por
+  defecto FastAPI confirmaba la transacción después de responder y una
+  petición inmediata podía leer datos sin confirmar (crear un grupo y añadirle
+  miembros devolvía 404).
 
 # Otras protecciones
 

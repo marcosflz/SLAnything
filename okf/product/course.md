@@ -1,10 +1,10 @@
 ---
 type: Course
 title: Catálogo de cursos de SLAnything
-description: Estructura modular de la biblioteca, curso de referencia basado en Build a Large Language Model (From Scratch), progreso y experiencia de aprendizaje.
+description: Biblioteca genérica por espacio, cursos generados desde el Estudio, curso de ejemplo opcional (Build a Large Language Model) y experiencia de aprendizaje.
 tags: [curso, producto, aprendizaje, catalogo, cursos, capitulos]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T22:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: catalog
     resource: ../../webapp/content/catalog.py
@@ -19,22 +19,24 @@ sources:
 
 # Propuesta
 
-SLAnything es una **biblioteca de cursos interactivos** bilingüe (español e
-inglés), sin instalación y sin GPU. Cada curso parte de un libro y lo convierte
-en un recorrido guiado con lecciones, figuras, laboratorios, ejemplos de Python
-ejecutables, quizzes y progreso propio.
+SLAnything es un **aula virtual genérica** y bilingüe (español e inglés): convierte
+cualquier material de aprendizaje (apuntes, libros, manuales, artículos) en
+cursos con lecciones guiadas, citas a la fuente, cuestionarios, glosario y
+progreso propio. El contenido llega del **Estudio**; la plataforma no depende de
+ningún curso concreto ([ADR-020](/decisions/adr-020-generic-platform.md)).
 
-El primer curso, **Construye un LLM desde cero**, recorre *Build a Large Language
-Model (From Scratch)* de Sebastian Raschka: desde entender qué es un LLM hasta
-tokenizar texto, implementar atención, montar un GPT, preentrenarlo, clasificar y
-ajustarlo para seguir instrucciones.
+El repositorio incluye un **curso de ejemplo** opcional, **Construye un LLM desde
+cero** (*Build a Large Language Model (From Scratch)*, Sebastian Raschka), que
+solo aparece con `AULA_SAMPLE_COURSES=1`. Es el escaparate de lo que admite el
+modelo de contenido estático: figuras, 15 laboratorios y Python ejecutable.
 
 # Estructura de la plataforma
 
-- **Catálogo (`/cursos`):** tarjetas de cursos con libro, nivel, duración,
-  laboratorios y progreso del estudiante.
-- **Detalle (`/cursos/{slug}`):** portada del curso, crédito del libro, temario
-  por capítulos, progreso y acceso a las lecciones.
+- **Biblioteca (`/cursos`):** cursos del espacio activo, cursos abiertos de la
+  plataforma y, si están activos, de ejemplo; los asignados por la academia van
+  primero con su fecha límite.
+- **Detalle (`/cursos/{slug}`):** portada del curso, fuente, temario por
+  capítulos, progreso y acceso a las lecciones.
 - **Curso activo:** la sidebar muestra el curso de la lección abierta y permite
   volver al catálogo.
 - **Progreso independiente:** lecciones, apuntes, marcadores e intentos se
@@ -42,12 +44,14 @@ ajustarlo para seguir instrucciones.
 - **Cursos generados:** el Estudio publica unidades con prefijo `gen-` que
   aparecen en el mismo catálogo, detalle, lección, quiz y progreso. Se pueden
   despublicar sin borrar el paquete.
-- **Curso por defecto:** `llm-desde-cero`; `/curso` sigue funcionando como alias
-  autenticado para enlaces históricos.
-- **Nuevos libros:** se incorporan como un `Program` con capítulos y una entrada
-  en `CATALOGS`; la interfaz y la API no cambian.
+- **Curso activo:** el pedido, el último abierto o el primero publicado; puede
+  no haber ninguno (estado vacío). `/curso` abre el curso activo.
+- **Glosario y recursos por curso:** cada curso tiene su glosario y sus recursos
+  (documentos fuente y descargas de código en los generados).
+- **Cursos estáticos:** se pueden añadir más ejemplos como un `Program` con
+  capítulos y una entrada en `CATALOGS`; no es el camino habitual.
 
-# Curso de referencia
+# Curso de ejemplo (`llm-desde-cero`)
 
 - **Capítulos:** 7 (entender los LLM, trabajar con texto, atención, arquitectura
   GPT, pretraining, clasificación e instrucciones).
@@ -65,8 +69,10 @@ ajustarlo para seguir instrucciones.
 
 # Recorrido del estudiante
 
-1. Landing pública → catálogo de cursos.
-2. Detalle público del curso → registro o cuenta demo.
+1. Landing pública → «Para quién» → registro como cuenta individual, academia o
+   alumno con código (o invitación).
+2. Cuenta individual o profesorado: Estudio → subir documento → temario →
+   generar → revisar → publicar. Alumno: cursos que publica o asigna su academia.
 3. Dashboard con siguiente lección, progreso del curso y acceso a «Tus cursos».
 4. Catálogo para cambiar de curso sin perder el avance.
 5. Curso con los capítulos agrupados y sus lecciones.
@@ -87,9 +93,11 @@ ajustarlo para seguir instrucciones.
 
 # Cuentas
 
-- Estudiante demo: `demo@aulallm.local / demo1234`.
-- Profesora: `profe@aulallm.local / profe1234`.
-- Registro abierto en `/registro`.
+- Alumno: `alumno@slanything.local / alumno1234` (Academia Demo).
+- Profesora y propietaria de la academia: `profe@slanything.local / profe1234`.
+- Cuenta individual: `autodidacta@slanything.local / auto1234`.
+- Superadmin: `admin@slanything.local / admin1234`.
+- Registro abierto en `/registro` (individual, academia o código de clase).
 
 # Fuera del curso
 

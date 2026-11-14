@@ -44,7 +44,7 @@ class RoleBody(BaseModel):
 
 
 @router.get("/admin/members")
-def list_members(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def list_members(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ws = _org(user)
     workspace = workspaces.get_workspace(conn, ws)
     groups_by_user: dict[int, list[str]] = {}
@@ -77,7 +77,7 @@ def change_role(
     body: RoleBody,
     request: Request,
     user: dict = Depends(require_admin),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     ensure_csrf(request, user)
     ws = _org(user)
@@ -104,7 +104,7 @@ def remove_member(
     member_id: int,
     request: Request,
     user: dict = Depends(require_admin),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     ensure_csrf(request, user)
     ws = _org(user)
@@ -122,7 +122,7 @@ def remove_member(
 
 
 @router.post("/admin/join-code")
-def rotate_join_code(request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def rotate_join_code(request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
     code = new_join_code()
@@ -157,7 +157,7 @@ def _group(conn: sqlite3.Connection, ws: int, group_id: int) -> sqlite3.Row:
 
 
 @router.get("/admin/groups")
-def list_groups(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def list_groups(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ws = _org(user)
     groups = []
     for row in conn.execute("SELECT * FROM groups WHERE workspace_id = ? ORDER BY name", (ws,)):
@@ -173,7 +173,7 @@ def list_groups(user: dict = Depends(require_admin), conn: sqlite3.Connection = 
 
 
 @router.post("/admin/groups")
-def create_group(body: GroupBody, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def create_group(body: GroupBody, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
     cursor = conn.execute(
@@ -185,7 +185,7 @@ def create_group(body: GroupBody, request: Request, user: dict = Depends(require
 
 
 @router.delete("/admin/groups/{group_id}")
-def delete_group(group_id: int, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def delete_group(group_id: int, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
     row = _group(conn, ws, group_id)
@@ -197,7 +197,7 @@ def delete_group(group_id: int, request: Request, user: dict = Depends(require_a
 @router.put("/admin/groups/{group_id}/members")
 def set_group_members(
     group_id: int, body: GroupMembersBody, request: Request,
-    user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     ensure_csrf(request, user)
     ws = _org(user)
@@ -215,7 +215,7 @@ def set_group_members(
 @router.post("/admin/groups/{group_id}/enrollments")
 def enroll_group(
     group_id: int, body: EnrollBody, request: Request,
-    user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     """Asigna un curso a un grupo (con fecha límite opcional)."""
     ensure_csrf(request, user)
@@ -244,16 +244,12 @@ class InviteBody(BaseModel):
 def _invite_payload(row: sqlite3.Row) -> dict:
     data = dict(row)
     data.pop("token_hash", None)
-    now = datetime.now(timezone.utc).isoformat()
-    data["state"] = (
-        "revoked" if row["revoked_at"] else "accepted" if row["accepted_at"]
-        else "expired" if row["expires_at"] < now else "pending"
-    )
+    data["state"] = workspaces.invitation_state(row)
     return data
 
 
 @router.get("/admin/invitations")
-def list_invitations(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def list_invitations(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ws = _org(user)
     rows = conn.execute(
         "SELECT * FROM invitations WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 200", (ws,)
@@ -262,7 +258,7 @@ def list_invitations(user: dict = Depends(require_admin), conn: sqlite3.Connecti
 
 
 @router.post("/admin/invitations")
-def create_invitation(body: InviteBody, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def create_invitation(body: InviteBody, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
     if body.role == "admin" and user["ws_role"] != "owner":
@@ -284,7 +280,7 @@ def create_invitation(body: InviteBody, request: Request, user: dict = Depends(r
 
 
 @router.delete("/admin/invitations/{invite_id}")
-def revoke_invitation(invite_id: int, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def revoke_invitation(invite_id: int, request: Request, user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     ws = _org(user)
     cursor = conn.execute(
@@ -297,42 +293,16 @@ def revoke_invitation(invite_id: int, request: Request, user: dict = Depends(req
     return {"ok": True}
 
 
-def _usable_invite(conn: sqlite3.Connection, token: str) -> sqlite3.Row:
-    row = conn.execute(
-        """SELECT i.*, w.name AS workspace_name FROM invitations i
-           JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?""",
-        (token_hash(token),),
-    ).fetchone()
-    if row is None or _invite_payload(row)["state"] != "pending":
-        raise HTTPException(status_code=404, detail="La invitación no existe o ya no es válida.")
-    return row
-
-
 @router.get("/invitations/{token}")
-def invitation_info(token: str, conn: sqlite3.Connection = Depends(get_db)):
-    row = _usable_invite(conn, token)
+def invitation_info(token: str, conn: sqlite3.Connection = Depends(get_db, scope="function")):
+    row = workspaces.usable_invitation(conn, token)
     return {"workspace": row["workspace_name"], "role": row["role"], "email": row["email"], "expires_at": row["expires_at"]}
 
 
 @router.post("/invitations/{token}/accept")
-def accept_invitation(token: str, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db)):
+def accept_invitation(token: str, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
-    row = _usable_invite(conn, token)
-    if row["email"] and row["email"] != user["email"].lower():
-        raise HTTPException(status_code=403, detail="Esta invitación es para otra dirección de correo.")
-    ws = int(row["workspace_id"])
-    current = workspaces.membership(conn, ws, user["id"])
-    if current is None or workspaces.ROLE_RANK[row["role"]] > workspaces.ROLE_RANK[current]:
-        workspace = workspaces.get_workspace(conn, ws)
-        if current is None and workspace and workspace["seat_limit"] and workspaces.seat_count(conn, ws) >= workspace["seat_limit"]:
-            raise HTTPException(status_code=409, detail="La academia no tiene plazas libres.")
-        workspaces.add_member(conn, ws, user["id"], row["role"])
-    if row["group_id"]:
-        conn.execute(
-            "INSERT OR IGNORE INTO group_members (group_id, user_id, created_at) VALUES (?, ?, ?)",
-            (row["group_id"], user["id"], utcnow()),
-        )
-    conn.execute("UPDATE invitations SET accepted_at = ?, accepted_by = ? WHERE id = ?", (utcnow(), user["id"], row["id"]))
+    ws = workspaces.accept_invitation(conn, token, user["id"], user["email"])
     audit.record(conn, actor_id=user["id"], action="invite.accept", workspace_id=ws, target=user["email"], request=request)
     return {"ok": True, "workspace_id": ws}
 
@@ -342,7 +312,7 @@ def accept_invitation(token: str, request: Request, user: dict = Depends(require
 # ---------------------------------------------------------------------------
 
 @router.get("/admin/audit")
-def audit_log(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+def audit_log(user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     return {"entries": audit.list_entries(conn, _org(user))}
 
 
@@ -360,7 +330,7 @@ class PasswordBody(BaseModel):
 
 
 @router.get("/account")
-def account(user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db)):
+def account(user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     row = repositories.get_user(conn, user["id"])
     sessions = conn.execute(
         "SELECT id, created_at, expires_at FROM sessions WHERE user_id = ? ORDER BY created_at DESC", (user["id"],)
@@ -379,14 +349,14 @@ def account(user: dict = Depends(require_user), conn: sqlite3.Connection = Depen
 
 
 @router.patch("/account")
-def update_profile(body: ProfileBody, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db)):
+def update_profile(body: ProfileBody, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     conn.execute("UPDATE users SET name = ? WHERE id = ?", (body.name.strip(), user["id"]))
     return {"ok": True}
 
 
 @router.post("/account/password")
-def change_password(body: PasswordBody, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db)):
+def change_password(body: PasswordBody, request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     row = repositories.get_user(conn, user["id"])
     if not verify_password(body.current, row["password_hash"]):
@@ -399,7 +369,7 @@ def change_password(body: PasswordBody, request: Request, user: dict = Depends(r
 
 
 @router.post("/account/sessions/revoke-others")
-def revoke_other_sessions(request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db)):
+def revoke_other_sessions(request: Request, user: dict = Depends(require_user), conn: sqlite3.Connection = Depends(get_db, scope="function")):
     ensure_csrf(request, user)
     cursor = conn.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user["id"], user["session_id"]))
     return {"ok": True, "closed": cursor.rowcount}

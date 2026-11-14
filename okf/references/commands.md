@@ -4,7 +4,7 @@ title: Comandos del proyecto
 description: Chuleta de comandos para instalar, arrancar, probar y mantener SLAnything.
 tags: [comandos, cheatsheet, uv, pytest, okf]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -67,9 +67,10 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3000/api/v1/public
 npm install -g @opencode/cli
 opencode --version
 
-# Abrir el Estudio con la cuenta de profesora
+# Abrir el Estudio con una cuenta individual o con la profesora
 # http://127.0.0.1:3000/estudio
-# profe@aulallm.local / profe1234
+# autodidacta@slanything.local / auto1234 · profe@slanything.local / profe1234
+# Sin red ni proveedor: arranca el backend con AULA_LLM_FAKE=1
 
 # Ver el estado del motor desde la API (con sesión docente)
 opencode models
@@ -98,8 +99,8 @@ uv run pytest -q                          # 111 tests
 uv run python tools/check_chapter.py ch02  # y ch03…ch07
 uv run python tools/validate_all_chapters.py
 cd frontend; npm run typecheck; npm run build
-cd frontend; npm run e2e                   # requiere ambos servidores
-cd frontend; npm run e2e:labs              # monta los 15 laboratorios
+cd frontend; npm run e2e                   # requiere ambos servidores; E2E_BASE para otra URL
+cd frontend; npm run e2e:labs              # 15 labs; requiere AULA_SAMPLE_COURSES=1
 ```
 
 # OKF

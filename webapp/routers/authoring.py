@@ -27,7 +27,8 @@ from pydantic import BaseModel, Field
 from webapp import audit, config, workspaces
 from webapp.authoring import extract, providers, runner, settings, store
 from webapp.authoring.package import parse_package, slugify
-from webapp.deps import ensure_csrf, require_platform_admin, require_teacher
+from webapp.db import session_scope
+from webapp.deps import ensure_csrf, require_author, require_platform_admin
 from webapp.generation import document as gen_document
 from webapp.generation import pipeline, worker
 from webapp.i18n import request_lang, translate
@@ -126,12 +127,19 @@ def _payload(user: dict) -> dict[str, Any]:
 
 
 def _quota(user: dict) -> dict[str, Any]:
+    """Cuota mensual del espacio: la fijada por la plataforma o la global."""
     workspace = user.get("workspace") or {}
     limit = (
         config.GEN_MONTHLY_ORGANIZATION
         if workspace.get("kind") == "organization"
         else config.GEN_MONTHLY_PERSONAL
     )
+    if workspace.get("id") is not None:
+        with session_scope() as conn:
+            stored = workspaces.get_workspace(conn, int(workspace["id"]))
+        custom = ((stored or {}).get("settings") or {}).get("gen_monthly")
+        if isinstance(custom, int) and custom >= 0:
+            limit = custom
     used = store.jobs_this_month(workspace.get("id"))
     return {"limit": limit, "used": used, "remaining": max(0, limit - used)}
 
@@ -282,12 +290,12 @@ async def _create_job(
 # ---------------------------------------------------------------------------
 
 @router.get("")
-def authoring_home(user: dict = Depends(require_teacher)):
+def authoring_home(user: dict = Depends(require_author)):
     return _payload(user)
 
 
 @router.get("/settings")
-def get_settings(user: dict = Depends(require_teacher)):
+def get_settings(user: dict = Depends(require_author)):
     return settings.public_settings()
 
 
@@ -312,12 +320,12 @@ def update_settings(
 
 
 @router.get("/jobs")
-def list_jobs(user: dict = Depends(require_teacher)):
+def list_jobs(user: dict = Depends(require_author)):
     return {"jobs": _visible_jobs(user)}
 
 
 @router.get("/jobs/{job_id}")
-def get_job(job_id: str, user: dict = Depends(require_teacher)):
+def get_job(job_id: str, user: dict = Depends(require_author)):
     return _job_for(job_id, user)
 
 
@@ -330,7 +338,7 @@ async def create_job(
     notes: str = Form(""),
     engine: str = Form(""),
     files: list[UploadFile] = File(...),
-    user: dict = Depends(require_teacher),
+    user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
     chosen = engine if engine in {"direct", "opencode"} else config.GEN_DEFAULT_ENGINE
@@ -352,7 +360,7 @@ async def create_job(
 def cancel_job(
     job_id: str,
     request: Request,
-    user: dict = Depends(require_teacher),
+    user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
     job = _job_for(job_id, user)
@@ -368,12 +376,12 @@ def cancel_job(
 
 
 @router.get("/courses")
-def list_generated(user: dict = Depends(require_teacher)):
+def list_generated(user: dict = Depends(require_author)):
     return {"courses": _visible_courses(user)}
 
 
 @router.get("/courses/{slug}")
-def get_generated(slug: str, user: dict = Depends(require_teacher)):
+def get_generated(slug: str, user: dict = Depends(require_author)):
     return _course_for(slug, user, with_package=True)
 
 
@@ -386,7 +394,7 @@ def publish_course(
     slug: str,
     request: Request,
     body: PublishBody | None = None,
-    user: dict = Depends(require_teacher),
+    user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
     course = _course_for(slug, user, with_package=True)
@@ -411,7 +419,7 @@ def publish_course(
 def unpublish_course(
     slug: str,
     request: Request,
-    user: dict = Depends(require_teacher),
+    user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
     course = _course_for(slug, user)
@@ -427,7 +435,7 @@ def unpublish_course(
 def delete_generated(
     slug: str,
     request: Request,
-    user: dict = Depends(require_teacher),
+    user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
     course = _course_for(slug, user)
@@ -480,7 +488,7 @@ def _direct_job(job_id: str, user: dict) -> dict[str, Any]:
 
 
 @router.get("/jobs/{job_id}/document")
-def job_document(job_id: str, user: dict = Depends(require_teacher)):
+def job_document(job_id: str, user: dict = Depends(require_author)):
     _direct_job(job_id, user)
     path = pipeline.job_path(job_id, "document.json")
     if not path.is_file():
@@ -489,7 +497,7 @@ def job_document(job_id: str, user: dict = Depends(require_teacher)):
 
 
 @router.post("/jobs/{job_id}/plan", status_code=202)
-def plan_job(job_id: str, body: PlanBody, request: Request, user: dict = Depends(require_teacher)):
+def plan_job(job_id: str, body: PlanBody, request: Request, user: dict = Depends(require_author)):
     ensure_csrf(request, user)
     job = _direct_job(job_id, user)
     if job["status"] not in {"awaiting_scope", "awaiting_outline", "failed"}:
@@ -508,7 +516,7 @@ def plan_job(job_id: str, body: PlanBody, request: Request, user: dict = Depends
 
 
 @router.get("/jobs/{job_id}/outline")
-def get_outline(job_id: str, user: dict = Depends(require_teacher)):
+def get_outline(job_id: str, user: dict = Depends(require_author)):
     _direct_job(job_id, user)
     if not pipeline.job_path(job_id, "outline.json").is_file():
         raise _error("El temario todavía no está listo.", 409)
@@ -516,7 +524,7 @@ def get_outline(job_id: str, user: dict = Depends(require_teacher)):
 
 
 @router.put("/jobs/{job_id}/outline")
-def put_outline(job_id: str, body: OutlineBody, request: Request, user: dict = Depends(require_teacher)):
+def put_outline(job_id: str, body: OutlineBody, request: Request, user: dict = Depends(require_author)):
     ensure_csrf(request, user)
     job = _direct_job(job_id, user)
     if job["status"] != "awaiting_outline":
@@ -528,7 +536,7 @@ def put_outline(job_id: str, body: OutlineBody, request: Request, user: dict = D
 
 
 @router.post("/jobs/{job_id}/generate", status_code=202)
-def generate_job(job_id: str, request: Request, user: dict = Depends(require_teacher)):
+def generate_job(job_id: str, request: Request, user: dict = Depends(require_author)):
     ensure_csrf(request, user)
     job = _direct_job(job_id, user)
     if job["status"] not in {"awaiting_outline", "failed"}:
@@ -541,7 +549,7 @@ def generate_job(job_id: str, request: Request, user: dict = Depends(require_tea
 
 
 @router.post("/jobs/{job_id}/retry", status_code=202)
-def retry_job(job_id: str, request: Request, user: dict = Depends(require_teacher)):
+def retry_job(job_id: str, request: Request, user: dict = Depends(require_author)):
     """Reanuda un trabajo fallido desde la última etapa completada."""
     ensure_csrf(request, user)
     job = _direct_job(job_id, user)
@@ -559,7 +567,7 @@ def retry_job(job_id: str, request: Request, user: dict = Depends(require_teache
 
 
 @router.get("/jobs/{job_id}/events")
-async def job_events(job_id: str, request: Request, user: dict = Depends(require_teacher)):
+async def job_events(job_id: str, request: Request, user: dict = Depends(require_author)):
     """Progreso en directo (Server-Sent Events): eventos + estado del trabajo."""
     _direct_job(job_id, user)
 
@@ -597,14 +605,14 @@ async def job_events(job_id: str, request: Request, user: dict = Depends(require
 
 
 @router.get("/jobs/{job_id}/history")
-def job_history(job_id: str, user: dict = Depends(require_teacher)):
+def job_history(job_id: str, user: dict = Depends(require_author)):
     _direct_job(job_id, user)
     events, _ = pipeline.read_events(job_id)
     return {"events": events[-200:]}
 
 
 @router.put("/courses/{slug}/package")
-def update_package(slug: str, body: PackageBody, request: Request, user: dict = Depends(require_teacher)):
+def update_package(slug: str, body: PackageBody, request: Request, user: dict = Depends(require_author)):
     """Guarda las ediciones del revisor. El paquete se valida entero."""
     ensure_csrf(request, user)
     course = _course_for(slug, user, with_package=True)
@@ -627,7 +635,7 @@ def update_package(slug: str, body: PackageBody, request: Request, user: dict = 
 
 
 @router.post("/courses/{slug}/regenerate", status_code=202)
-def regenerate(slug: str, body: RegenerateBody, request: Request, user: dict = Depends(require_teacher)):
+def regenerate(slug: str, body: RegenerateBody, request: Request, user: dict = Depends(require_author)):
     ensure_csrf(request, user)
     course = _course_for(slug, user)
     job_id = course.get("job_id")

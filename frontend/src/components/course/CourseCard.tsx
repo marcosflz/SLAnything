@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { Badge, Icon, ProgressBar } from "@/components/ui";
-import { t } from "@/lib/messages";
+import { formatDate } from "@/lib/utils";
+import { pick, t } from "@/lib/messages";
 import type { CourseSummary, Lang } from "@/lib/types";
 
 export function CourseCard({
@@ -24,7 +25,17 @@ export function CourseCard({
         <span className="course-card-icon">
           <Icon name="book" />
         </span>
-        <Badge tone="success">{t(lang, "Disponible")}</Badge>
+        {course.assigned ? (
+          <Badge tone="warning">
+            {course.due_at
+              ? pick(lang, "Asignado · {d}", "Assigned · {d}").replace("{d}", formatDate(course.due_at, lang))
+              : pick(lang, "Asignado", "Assigned")}
+          </Badge>
+        ) : course.is_sample ? (
+          <Badge tone="neutral">{pick(lang, "Curso de ejemplo", "Sample course")}</Badge>
+        ) : (
+          <Badge tone="success">{t(lang, "Disponible")}</Badge>
+        )}
       </div>
       <div className="course-card-body">
         <span className="eyebrow-dark">
@@ -37,8 +48,8 @@ export function CourseCard({
         <p>{course.subtitle}</p>
         {course.book ? (
           <p className="course-book">
-            {t(lang, "Basado en")} <em>{course.book.title}</em> ·{" "}
-            {course.book.author}
+            {pick(lang, "Fuente", "Source")}: <em>{course.book.title}</em>
+            {course.book.author ? ` · ${course.book.author}` : ""}
             {course.book.year ? ` (${course.book.year})` : ""}
           </p>
         ) : null}
@@ -46,13 +57,17 @@ export function CourseCard({
           <span>
             <Icon name="clock" /> {course.total_minutes} min
           </span>
-          <span>
-            <Icon name="sparkles" />{" "}
-            {t(lang, "{n} laboratorios", { n: course.lab_count })}
-          </span>
-          <span>
-            <Icon name="cpu" /> {course.level}
-          </span>
+          {course.lab_count ? (
+            <span>
+              <Icon name="sparkles" />{" "}
+              {t(lang, "{n} laboratorios", { n: course.lab_count })}
+            </span>
+          ) : null}
+          {course.level ? (
+            <span>
+              <Icon name="target" /> {course.level}
+            </span>
+          ) : null}
         </div>
 
         {showProgress ? (
@@ -82,34 +97,6 @@ export function CourseCard({
               : t(lang, "Empezar curso")
             : t(lang, "Ver el curso")}
         </Link>
-      </div>
-    </article>
-  );
-}
-
-export function ComingSoonCard({ lang }: { lang: Lang }) {
-  return (
-    <article className="course-card is-coming">
-      <div className="course-card-cover">
-        <span className="course-card-icon">
-          <Icon name="sparkles" />
-        </span>
-        <Badge tone="neutral">{t(lang, "En preparación")}</Badge>
-      </div>
-      <div className="course-card-body">
-        <span className="eyebrow-dark">{t(lang, "Nuevos cursos")}</span>
-        <h3>{t(lang, "El próximo libro")}</h3>
-        <p>
-          {t(
-            lang,
-            "Estamos preparando nuevos recorridos. La plataforma ya está lista para incorporarlos sin cambiar la experiencia."
-          )}
-        </p>
-        <div className="course-card-meta">
-          <span>
-            <Icon name="layers" /> {t(lang, "Mismo formato modular")}
-          </span>
-        </div>
       </div>
     </article>
   );

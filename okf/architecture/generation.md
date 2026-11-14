@@ -4,7 +4,7 @@ title: Generación por etapas
 description: Cómo un documento se convierte en una unidad didáctica revisable con el motor direct (ingesta, temario, lecciones, evaluación, verificación, cola y SSE).
 tags: [autoría, generación, llm, citas, cola, sse]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: pipeline
     resource: ../../webapp/generation/pipeline.py
@@ -78,3 +78,17 @@ bloques `unsupported` y referencias inválidas; la revisión los resalta.
 del temario, progreso en directo) y `/estudio/cursos/[slug]` (revisión con
 vista previa real, edición de bloques, quiz y glosario, regeneración y
 publicación).
+
+# Actualización 2026-11-14
+
+- Los prompts (`generation/prompts.py`) y el agente de OpenCode
+  (`authoring/agent/AGENTS.md`) ya no suponen temas técnicos: piden adaptar
+  tono y bloques a la materia y usar `code`/`python` solo en programación,
+  datos o cálculo.
+- El Estudio exige `require_author` (cuenta individual o profesorado); el
+  alumnado recibe 403 ([ADR-021](/decisions/adr-021-account-profiles.md)).
+- La cuota mensual del espacio puede fijarla la superadministración
+  (`workspaces.settings_json.gen_monthly`); si no, se usan
+  `AULA_GEN_MONTHLY_PERSONAL` / `_ORG`.
+- Al publicar, la unidad pasa a ser curso activo de quien la abre (último curso
+  visitado) y sus documentos fuente aparecen en `/recursos`.

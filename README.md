@@ -1,32 +1,33 @@
-# SLAnything · Biblioteca de cursos interactivos
+# SLAnything · Convierte cualquier material en un curso
 
-Plataforma web bilingüe (español e inglés), tipo aula virtual, con un **catálogo
-de cursos** basados en libros técnicos y un **Estudio de autoría** que convierte
-documentos en unidades didácticas. El primer curso convierte *Build a Large
-Language Model (From Scratch)* de Sebastian Raschka (Manning, 2024) en siete
-capítulos interactivos. La idea no es resumir el libro, sino **reconstruir las
-ideas con código ejecutable, visualizaciones y experimentos**. La interfaz es
-**Next.js 16 + React 19**; el backend es **FastAPI + SQLite** y la generación
-asistida corre sobre **OpenCode**.
+Aula virtual web, bilingüe (español e inglés), que convierte **cualquier material
+de aprendizaje** —apuntes, libros, manuales o artículos, de cualquier materia—
+en cursos con lecciones guiadas, citas a la fuente, cuestionarios, glosario y
+seguimiento del progreso. El **Estudio** lee el documento, propone un temario
+editable y genera cada lección; tú revisas y decides qué se publica.
 
-El proyecto incluye tres formas de aprender o enseñar:
+Funciona para dos tipos de cuenta:
 
-1. **Aula web** (recomendada): catálogo de cursos, siete capítulos, laboratorios
-   en el navegador, ejemplos de Python ejecutables en servidor, progreso aislado
-   por curso, apuntes, quizzes y panel del profesor.
-2. **Estudio de autoría** (`/estudio`, solo profesorado): sube PDF, DOCX, EPUB,
-   ODT, Markdown, HTML o TXT; OpenCode genera una unidad bilingüe que se valida,
-   se sanea y se publica en el catálogo.
-3. **Cuaderno de Jupyter**: material complementario del capítulo 1, con celdas y
-   widgets de `ipywidgets`.
+- **Cuenta individual**: aprendes por tu cuenta y creas tus propias unidades.
+- **Academia**: propietario y administración gestionan profesorado, alumnado,
+  grupos, matrículas con fecha límite, invitaciones y analítica de clase. El
+  profesorado crea unidades; el alumnado entra por invitación o código de clase
+  y solo estudia.
 
-La web se puede instalar como **PWA** y funciona igual en navegador, escritorio
-y móvil. La decisión y la ruta a un wrapper nativo están en
-[`docs/DESKTOP.md`](docs/DESKTOP.md). Los identificadores internos (`aula.db`,
-cookies, volumen `aula-llm-data`) se mantienen por compatibilidad; el nombre del
-producto es SLAnything.
+Por encima, la **superadministración** gestiona usuarios, espacios, cuotas,
+cursos abiertos y el proveedor de IA de toda la plataforma.
 
-![Portada de SLAnything con el programa del curso](docs/capturas/00b_landing_programa.png)
+La interfaz es **Next.js 16 + React 19**; el backend es **FastAPI + SQLite** y la
+generación usa un motor por etapas con salida JSON (OpenCode queda como motor
+opcional). La biblioteca empieza **vacía**: el repositorio incluye, como
+**curso de ejemplo opcional**, «Construye un LLM desde cero» (basado en *Build a
+Large Language Model (From Scratch)*), que se activa con `AULA_SAMPLE_COURSES=1`.
+
+La web se puede instalar como **PWA** ([`docs/DESKTOP.md`](docs/DESKTOP.md)). Los
+identificadores internos (`aula.db`, cookies `aula_*`, volumen `aula-llm-data`)
+se mantienen por compatibilidad; el producto es SLAnything.
+
+![Portada de SLAnything](docs/capturas/21_portada_generica.png)
 
 ---
 
@@ -60,8 +61,14 @@ npm install
 npm run dev
 ```
 
-Abre <http://127.0.0.1:3000>. La interfaz Jinja anterior sigue disponible en
-<http://127.0.0.1:8000> como fallback durante la migración.
+Abre <http://127.0.0.1:3000>. FastAPI (`:8000`) solo sirve la API.
+
+Variables útiles en local:
+
+```powershell
+$env:AULA_SAMPLE_COURSES="1"   # muestra el curso de ejemplo LLM
+$env:AULA_LLM_FAKE="1"         # Estudio sin red ni proveedor (modelo falso)
+```
 
 ### Docker
 
@@ -79,110 +86,84 @@ Abrir <http://127.0.0.1:3000>. La base SQLite vive en el volumen
 `aula-llm-data`; `docker compose down` la conserva y `down -v` la borra. Guía
 completa: [`docs/DOCKER.md`](docs/DOCKER.md).
 
-Cuentas sembradas:
+Cuentas sembradas (`AULA_SEED_DEMO=1`, una por perfil):
 
 | Perfil | Correo | Contraseña |
 |---|---|---|
-| Estudiante | `demo@aulallm.local` | `demo1234` |
-| Profesora | `profe@aulallm.local` | `profe1234` |
+| Alumno de la Academia Demo | `alumno@slanything.local` | `alumno1234` |
+| Profesora y propietaria de la academia | `profe@slanything.local` | `profe1234` |
+| Cuenta individual | `autodidacta@slanything.local` | `auto1234` |
+| Superadmin de la plataforma | `admin@slanything.local` | `admin1234` |
 
-También puedes crear una cuenta nueva desde `/registro`.
+En `/registro` puedes crear una cuenta individual, una academia o unirte a una
+clase con su código.
 
 ### Estudio de autoría
 
-Entra con `profe@aulallm.local / profe1234` y abre
+Entra con la cuenta individual o con la profesora y abre
 <http://127.0.0.1:3000/estudio>.
 
-1. Configura **OpenCode Go** (o OpenAI, Anthropic, OpenRouter, Gemini, DeepSeek,
-   Ollama/LM Studio o un endpoint OpenAI-compatible) y guarda la API key.
-2. Sube uno o varios documentos, elige ES/EN y pulsa **Generar unidad**.
-3. Revisa el log y la unidad en borrador; publícala cuando esté lista.
+1. La superadministración configura el proveedor en `/plataforma/ia` (OpenCode
+   Go, OpenAI, Anthropic, OpenRouter, Gemini, DeepSeek, Ollama/LM Studio o un
+   endpoint OpenAI-compatible). Para probar sin red: `AULA_LLM_FAKE=1`.
+2. Sube uno o varios documentos (PDF, DOCX, EPUB, ODT, Markdown, HTML o TXT),
+   elige idiomas y qué secciones convertir.
+3. Revisa y edita el temario, genera las lecciones y revisa la unidad: citas,
+   cuestionario y glosario.
+4. Publícala en tu espacio. En una academia, asígnala a un grupo con fecha
+   límite desde `/admin/grupos`.
 
-La imagen Docker del backend incluye OpenCode. La key se guarda en
-`/data/authoring/settings.json` (0600), nunca se devuelve al navegador y se
-inyecta al subproceso como variable de entorno. El agente no tiene shell, web ni
-acceso a directorios externos; el HTML generado se sanea y el contenido se valida
-antes de entrar en el catálogo.
-
-Guía completa: [`docs/AUTHORING.md`](docs/AUTHORING.md).
+La API key se guarda en `authoring-data/settings.json` (0600) y nunca se
+devuelve al navegador. El HTML generado se sanea y el contenido se valida antes
+de entrar en la biblioteca. Guía: [`docs/AUTHORING.md`](docs/AUTHORING.md).
 
 ### Qué incluye
 
-- **Catálogo multi-curso** (`/cursos` y `/cursos/{slug}`) con libro, nivel,
-  duración, progreso y acceso al curso. El curso de referencia es
-  `llm-desde-cero`; `/curso` sigue disponible como alias autenticado.
-- **7 capítulos · 56 lecciones** (584 minutos) con objetivos, figuras y diagramas,
-  tablas, código y autochequeos, en **español e inglés** (selector ES/EN en la cabecera).
-  El recorrido va de entender los LLM a tokenizar texto, atención, arquitectura GPT,
-  pretraining, clasificación y ajuste por instrucciones.
-- **26 ejemplos de Python ejecutables** desde las lecciones: edita, ejecuta en un
-  proceso aislado del servidor, ve stdout/tablas/gráficos y descarga el `.py` para
-  ejecutarlo en local.
-- **15 laboratorios interactivos** en JavaScript: memoria, etiquetas, transformer,
-  atención, n-gramas, prompts, coste, tokenizador BPE, ventana deslizante, embeddings,
-  Q/K/V, bloque GPT, pérdida, clasificador y plantilla de chat.
-- **Progreso persistente por curso** en SQLite: lecciones completadas, actividad,
-  racha, notas, marcadores e intentos. Cambiar de curso no mezcla el avance.
-- **7 quizzes de 10 preguntas** corregidos en servidor, con revisión razonada e intentos
-  ilimitados (80 % para aprobar).
-- **Apuntes privados** y marcadores por lección.
-- **Glosario** de 113 términos, buscador de lecciones y recursos descargables.
-- **Panel del profesor** con progreso, actividad y mejores notas.
-- **Catálogo de cursos** en `/cursos`, con un curso publicado y espacio para nuevos
-  libros; el progreso, las notas y los intentos se guardan por curso.
-- **Tema claro por defecto** y oscuro opcional, diseño responsive y navegación por teclado.
+- **Perfiles y permisos**: cuenta individual, alumno, profesorado,
+  administración de academia y superadmin, con una matriz de permisos única
+  (`learn`, `author`, `teach`, `manage`, `platform`).
+- **Biblioteca por espacio** (`/cursos`): cursos de tu espacio, cursos abiertos
+  de la plataforma y, si se activan, de ejemplo. Los asignados por la academia
+  aparecen primero con su fecha límite.
+- **Estudio de autoría** por etapas: estructura del documento, temario editable,
+  lecciones con citas «Fuente: p. N», preguntas de respuesta única, múltiple o
+  verdadero/falso, glosario, verificación de respaldo y regeneración por lección.
+- **Lecciones** con autocomprobaciones, apuntes privados, marcadores y progreso
+  por curso; cuestionarios corregidos en el servidor con revisión razonada.
+- **Analítica**: para cada persona, tiempo de estudio, racha, dominio por
+  capítulo y preguntas a repasar; para el profesorado, embudo, mapa de calor,
+  alumnado en riesgo y análisis de ítems; para la plataforma, uso global.
+- **Academias**: miembros y roles, grupos, matrículas, código de clase,
+  invitaciones de un solo uso y auditoría.
+- **Curso de ejemplo opcional** (`AULA_SAMPLE_COURSES=1`): 7 capítulos y 56
+  lecciones sobre LLM con 15 laboratorios interactivos y 26 ejemplos de Python
+  ejecutables en servidor.
+- Tema claro por defecto y oscuro opcional, responsive a 360 px y navegación por
+  teclado.
 
 ### Capturas
 
-Todas las imágenes están tomadas de la app en local: 1440 × 1000 px en
-escritorio y 390 × 844 px en móvil. La galería completa está en
-[`docs/capturas/`](docs/capturas/README.md), con una descripción por archivo.
-
-**Portada y catálogo**
-
-| Portada completa | Programa del curso |
+| Portada | Registro por tipo de cuenta |
 |---|---|
-| ![Portada](docs/capturas/00_landing_full.png) | ![Programa del curso](docs/capturas/02_curso.png) |
+| ![Portada](docs/capturas/21_portada_generica.png) | ![Registro](docs/capturas/22_registro_tipos.png) |
 
-**Aula**
-
-| Dashboard del estudiante | Lección |
+| Cuenta individual sin cursos | Alumno con curso asignado |
 |---|---|
-| ![Dashboard](docs/capturas/01_dashboard.png) | ![Lección](docs/capturas/03_leccion.png) |
+| ![Inicio de una cuenta individual](docs/capturas/23_inicio_cuenta_individual.png) | ![Inicio del alumno](docs/capturas/24_inicio_alumno_asignado.png) |
 
-| Progreso | Panel del profesorado |
+| Superadministración | Biblioteca con el curso de ejemplo |
 |---|---|
-| ![Progreso](docs/capturas/15_progreso.png) | ![Panel del profesorado](docs/capturas/20_profesor.png) |
+| ![Plataforma](docs/capturas/25_plataforma.png) | ![Biblioteca](docs/capturas/26_biblioteca_ejemplo.png) |
 
-**Evaluación y apoyo**
+**Curso de ejemplo** (capturas de la etapa anterior; la portada y el shell han
+cambiado, el contenido del curso no):
 
-| Quiz | Glosario |
-|---|---|
-| ![Quiz](docs/capturas/05_quiz.png) | ![Glosario](docs/capturas/06_glosario.png) |
-
-| Recursos descargables | Inicio de sesión | Registro |
+| Lección | Laboratorio de n-gramas | Quiz |
 |---|---|---|
-| ![Recursos](docs/capturas/07_recursos.png) | ![Inicio de sesión](docs/capturas/16_login.png) | ![Registro](docs/capturas/17_registro.png) |
+| ![Lección](docs/capturas/03_leccion.png) | ![N-gramas](docs/capturas/04_lab_ngram.png) | ![Quiz](docs/capturas/05_quiz.png) |
 
-**Laboratorios interactivos**
-
-| N-gramas | Memoria | Transformer |
-|---|---|---|
-| ![N-gramas](docs/capturas/04_lab_ngram.png) | ![Memoria](docs/capturas/09_lab_memoria.png) | ![Transformer](docs/capturas/10_lab_transformer.png) |
-
-| Atención | Constructor de prompts | Calculadora de coste |
-|---|---|---|
-| ![Atención](docs/capturas/11_lab_attention.png) | ![Prompts](docs/capturas/12_lab_prompt.png) | ![Coste](docs/capturas/13_lab_cost.png) |
-
-**Móvil**
-
-| Lección | Menú lateral |
-|---|---|
-| ![Lección en móvil](docs/capturas/08_movil.png) | ![Menú en móvil](docs/capturas/14_movil_menu.png) |
-
-**Tema oscuro**
-
-![Dashboard en tema oscuro](docs/capturas/19_dark.png)
+La galería completa, con una descripción por archivo, está en
+[`docs/capturas/`](docs/capturas/README.md).
 
 ### Estructura
 
@@ -219,17 +200,17 @@ webapp/
   i18n.py                 # traducciones ES→EN de interfaz
   execution.py            # límites, rate limit y subproceso de ejecución
   sandbox_runner.py       # runner Python aislado (`python -I`)
-  routers/                # api JSON, auth, curso, autoría, ejecución, idioma, quiz, progreso, glosario, recursos, búsqueda, profesor
-  authoring/              # Estudio: ajustes, extracción, contrato JSON, runner de OpenCode y agente
-  content/                # lecciones, quiz y glosario (ES/EN) como módulos Python
-  templates/              # Jinja2 (base, componentes y páginas)
+  workspaces.py           # espacios, invitaciones y código de clase
+  migrations.py           # migraciones versionadas (v4–v6)
+  analytics.py            # eventos de aprendizaje y KPIs
+  routers/                # api, authoring, admin, platform, analytics, workspaces, execution
+  generation/             # motor de generación por etapas
+  authoring/              # Estudio: ajustes, extracción, contrato JSON, almacén y OpenCode
+  content/                # curso de ejemplo (ES/EN) como módulos Python
   static/
-    css/app.css           # sistema de diseño
-    js/app.js             # tema, navegación, runner Python, laboratorios, quiz
-    js/i18n.js            # textos de interfaz generados desde JS
-    js/labs/              # 15 laboratorios + utilidades
-    img/ch01..ch07/       # figuras del libro y diagramas propios
-    data/                 # corpus de El Quijote
+    js/labs/              # 15 laboratorios del curso de ejemplo
+    img/ch01..ch07/       # figuras del curso de ejemplo
+    data/                 # corpus de El Quijote (curso de ejemplo)
   tests/                  # suite pytest
 docs/
   PLAN_PLATAFORMA_WEB.md  # plan de acción e implementación
@@ -238,13 +219,13 @@ docs/
   DESKTOP.md              # web + PWA y ruta a escritorio
   QA.md                   # estrategia y resultados de pruebas
 notebooks/
-  capitulo_01_entender_los_llms.ipynb
+  capitulo_01_entender_los_llms.ipynb   # cuaderno del curso de ejemplo
 ```
 
 ### Tests
 
 ```powershell
-uv run pytest -q
+uv run python -m pytest -q
 uv run python tools/check_okf.py
 
 cd frontend
@@ -252,20 +233,19 @@ npm run typecheck
 npm run build
 
 # Con ambos servidores arrancados
-uv run python tools/smoke_next.py
+uv run python tools/smoke_next.py          # --base para otra URL
 
-# Smoke E2E de navegador (la primera vez instala Chromium)
-npx playwright install chromium
-npm run e2e
-npm run e2e:labs   # monta los 15 laboratorios
+# E2E de navegador (la primera vez: npx playwright install chromium)
+npm run e2e                                # E2E_BASE para otra URL
+npm run e2e:labs                           # 15 laboratorios; requiere AULA_SAMPLE_COURSES=1
 ```
 
-La suite (111 tests) cubre contenido, catálogo de cursos, autenticación, CSRF,
-progreso, notas, quiz, permisos de profesor, buscador, glosario, recursos,
-errores, ejecución Python, descargas de código, contenido en inglés, la API JSON
-que consume Next.js y el Estudio de autoría (contrato, saneado, extracción,
-ajustes, publicación, reparación y runner simulado). El validador OKF comprueba
-frontmatter, enlaces, índices y el historial.
+La suite (181 tests) cubre perfiles y permisos, altas (individual, academia,
+código e invitación), biblioteca vacía, curso activo, aislamiento por espacio,
+superadministración, matrículas, autenticación, CSRF, progreso, quiz, analítica,
+generación por etapas con modelo falso, Estudio, ejecución Python, contenido del
+curso de ejemplo y la API JSON. El smoke y el E2E recorren los cuatro perfiles
+con y sin cursos de ejemplo.
 
 ### Producción mínima
 
@@ -286,7 +266,8 @@ npm start
 ```
 
 Pon un proxy inverso con TLS (Caddy o Nginx) delante de Next (puerto 3000),
-limita el acceso al panel del profesor y haz copias de seguridad de `aula.db`.
+desactiva la siembra demo (`AULA_SEED_DEMO=0`), define la superadministración
+con `AULA_PLATFORM_ADMINS` y haz copias de seguridad de `aula.db`.
 FastAPI puede quedar escuchando solo en loopback porque el navegador habla con
 Next; los rewrites se encargan del resto.
 
@@ -299,38 +280,25 @@ contenedor sin red y sin privilegios o desactívalo con `AULA_EXEC_ENABLED=0`. V
 
 ---
 
-## Cuaderno de Jupyter
+## Curso de ejemplo y cuaderno
+
+Con `AULA_SAMPLE_COURSES=1` la biblioteca incluye «Construye un LLM desde cero»
+(7 capítulos, 56 lecciones, 15 laboratorios, 7 quizzes, 113 términos y 26
+ejemplos de Python). Su cuaderno de Jupyter complementario:
 
 ```powershell
 uv sync
 uv run jupyter lab notebooks/capitulo_01_entender_los_llms.ipynb
 ```
 
-El cuaderno contiene 44 celdas, 17 de código, las figuras 1.1–1.9 y 8 demos con
-`ipywidgets`. Duración estimada: 75–90 minutos. No hace falta GPU.
-
----
-
-## Estado del proyecto
-
-| Capítulo | Cuaderno | Aula web |
-|---|---|---|
-| 1 · Entender los LLM | listo | **listo** |
-| 2 · Trabajar con texto | pendiente | pendiente |
-| 3 · Atención | pendiente | pendiente |
-| 4 · Arquitectura GPT | pendiente | pendiente |
-| 5 · Pretraining | pendiente | pendiente |
-| 6 · Clasificación | pendiente | pendiente |
-| 7 · Instrucciones | pendiente | pendiente |
-
-El motor web está preparado para añadir capítulos: cada lección es un módulo en
-`webapp/content/lessons/` y el curso se ensambla en `webapp/content/course.py`.
-
 ---
 
 ## Créditos y licencias
 
-Este material es de **uso educativo personal**. Las figuras 1.1–1.9 provienen de
+Cada curso generado acredita la fuente en la que se basa; los derechos del
+material original pertenecen a sus autores.
+
+**Curso de ejemplo.** Es de **uso educativo personal**. Las figuras 1.1–1.9 provienen de
 *Build a Large Language Model (From Scratch)* de Sebastian Raschka (Manning, 2024); todos
 los derechos pertenecen a Manning Publications y al autor. No redistribuyas esas figuras
 fuera de este contexto de estudio. Los diagramas `fig_es_*.png` son elaboración propia.

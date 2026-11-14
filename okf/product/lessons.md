@@ -1,10 +1,10 @@
 ---
 type: Syllabus
-title: Lecciones del curso de referencia
+title: Lecciones del curso de ejemplo LLM
 description: Los 7 capítulos y sus 56 lecciones del curso `llm-desde-cero`, con slug, duración, laboratorios y objetivo principal.
 tags: [lecciones, contenido, syllabus, capitulos]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T20:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: course
     resource: ../../webapp/content/course.py
@@ -16,6 +16,10 @@ sources:
     resource: ../../webapp/content/lessons/
     title: Lecciones del capítulo 1
 ---
+
+> Curso de **ejemplo** opcional ([ADR-020](/decisions/adr-020-generic-platform.md)):
+> solo se sirve con `AULA_SAMPLE_COURSES=1`. Los cursos de la plataforma se
+> generan en el Estudio y no se documentan aquí.
 
 # Capítulo 1 · Entender los LLM
 

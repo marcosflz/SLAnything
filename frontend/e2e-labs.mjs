@@ -1,6 +1,14 @@
+// Montaje de los 15 laboratorios del curso de ejemplo.
+// Requiere AULA_SAMPLE_COURSES=1 en el backend.
+//   E2E_BASE=http://127.0.0.1:3200 npm run e2e:labs
 import { chromium } from "playwright";
 
-const base = "http://127.0.0.1:3000";
+const base = process.env.E2E_BASE ?? "http://127.0.0.1:3000";
+const health = await fetch(`${base}/salud`).then((response) => response.json());
+if (!health.ejemplos) {
+  console.log("Cursos de ejemplo desactivados (AULA_SAMPLE_COURSES=0): no hay laboratorios que comprobar.");
+  process.exit(0);
+}
 
 // Una lección representativa por laboratorio. Cubre los 15 IDs del curso.
 const checks = [
@@ -24,7 +32,9 @@ const checks = [
 const failures = [];
 const errors = [];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
+});
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 page.on("console", (message) => {
   if (message.type() === "error") errors.push(message.text());
@@ -32,8 +42,8 @@ page.on("console", (message) => {
 page.on("pageerror", (error) => errors.push(String(error)));
 
 await page.goto(`${base}/entrar`, { waitUntil: "networkidle" });
-await page.fill("#email", "demo@aulallm.local");
-await page.fill("#password", "demo1234");
+await page.fill("#email", "alumno@slanything.local");
+await page.fill("#password", "alumno1234");
 await Promise.all([
   page.waitForURL(`${base}/`, { timeout: 15000 }),
   page.locator('button[type="submit"]').click(),

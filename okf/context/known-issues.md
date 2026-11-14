@@ -4,7 +4,7 @@ title: Problemas conocidos y limitaciones
 description: Bugs, deudas técnicas y limitaciones conscientes de SLAnything, con impacto y workaround.
 tags: [bugs, deuda-tecnica, limitaciones, operaciones]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: qa
     resource: ../../docs/QA.md
@@ -16,10 +16,10 @@ sources:
 
 # Bloqueantes
 
-No hay ningún bug bloqueante conocido a 24 de octubre de 2026. La suite de 111
-tests pasa, el build de Next compila y los flujos de estudiante, profesor y
-Estudio funcionan a través de los rewrites con el catálogo y los 7 capítulos. La
-generación real se validó en Docker con el modelo gratuito de OpenCode.
+No hay ningún bug bloqueante conocido a 14 de noviembre de 2026. La suite de 181
+tests pasa, el build de Next compila, el smoke y el E2E por perfiles pasan con y
+sin cursos de ejemplo (biblioteca vacía, alumno, autodidacta, academia y
+superadmin), y los 15 labs del ejemplo montan sin errores.
 
 # Limitaciones del MVP
 
@@ -33,21 +33,22 @@ generación real se validó en Docker con el modelo gratuito de OpenCode.
   están completos en inglés; los párrafos explicativos largos de transformer,
   atención, n-gramas, prompt y coste pueden seguir en español. Los controles
   principales sí se traducen. Los labs nuevos usan diccionario local bilingüe.
-- **Un solo curso estático publicado.** El catálogo soporta varios libros y
-  cursos generados, pero el contenido curado sigue siendo solo
-  `llm-desde-cero`; el Estudio puede publicar unidades nuevas. No hay matrículas
-  ni organizaciones.
+- **Curso de ejemplo opcional.** El único curso estático es `llm-desde-cero` y
+  solo aparece con `AULA_SAMPLE_COURSES=1`. Sin él la biblioteca empieza vacía
+  y el contenido llega del Estudio ([ADR-020](/decisions/adr-020-generic-platform.md)).
+  Los 15 laboratorios JS solo los usa ese ejemplo.
 - **Sin recuperación de contraseña ni OAuth.** Las cuentas se crean con correo y
   contraseña; no hay verificación de correo.
 - **SQLite y un solo proceso.** No está pensado para escritura concurrente intensa;
   el rate limit de login vive en memoria y no se comparte entre workers.
 - **Migración v2 manual en código.** `init_db()` renombra las tablas v1 sin
-  `course_slug`, copia sus datos al curso por defecto y las elimina. No hay un
-  sistema general de migraciones versionadas: un cambio de columna futuro requiere
-  otro paso idempotente.
-- **Sin suite E2E completa de interacciones.** `npm run e2e` cubre login, 7
-  capítulos, tema, idioma, quiz y revisión; `npm run e2e:labs` comprueba que los
-  15 labs montan sin errores de consola. La interacción profunda de cada control
+  `course_slug`, copia sus datos al curso de ejemplo y las elimina. Desde v4 los
+  cambios van en `webapp/migrations.py`.
+- **Sin suite E2E completa de interacciones.** `npm run e2e` recorre la portada,
+  el alta individual, los cuatro perfiles, el menú activo, el tema, el idioma y
+  el móvil a 360 px (y, con ejemplos, lección, lab, runner y quiz);
+  `npm run e2e:labs` comprueba que los 15 labs montan sin errores de consola.
+  El flujo del Estudio en navegador (subida, temario, revisión) sigue sin E2E. La interacción profunda de cada control
   sigue validándose con tests de DOM de los módulos, no con Playwright.
 - **Jinja sigue presente como fallback.** `webapp/templates/` y las rutas HTML
   del puerto 8000 se mantienen hasta cerrar la paridad. Hay dos interfaces y dos
@@ -141,18 +142,18 @@ generación real se validó en Docker con el modelo gratuito de OpenCode.
 
 # Deuda priorizada
 
-1. Publicar el segundo curso con contenido real y retirar el placeholder.
+1. Probar el Estudio con un proveedor real y documentos de materias no técnicas.
 2. Tests E2E de interacción profunda de los 15 laboratorios y del flujo completo.
 3. Revisión visual y responsive de los capítulos 2-7 en ES/EN.
-4. Un sistema general de migraciones si se añaden campos nuevos.
+4. PostgreSQL y SQLAlchemy/Alembic si crece la concurrencia.
 5. Rate limit persistente si se despliega con más de un worker.
 6. Revisión con lector de pantalla (axe o VoiceOver/NVDA).
 
 # Tras la evolución 2026-11-13
 
-- **Sin verificar en navegador** el flujo completo del Estudio nuevo, la
-  analítica y la administración (solo typecheck, build y tests de API). Los E2E
-  de Playwright (`npm run e2e`) no se han actualizado al shell nuevo.
+- **Estudio en navegador sin E2E.** El flujo completo se probó por API contra
+  los servidores reales (LLM falso): generar, publicar, asignar a un grupo y
+  verlo como alumno. Falta automatizar el asistente en Playwright.
 - **Motor direct sin probar con un proveedor real.** Los tests usan
   `FakeLLM`. Las URLs base de OpenCode Zen/Go en `generation/llm.py` son una
   suposición; se pueden fijar con `base_url`.
@@ -160,9 +161,24 @@ generación real se validó en Docker con el modelo gratuito de OpenCode.
 - **Sin correo**: las invitaciones son enlaces que la administración copia.
 - **Sin recuperación de contraseña, verificación de correo, OAuth ni 2FA.**
 - **SQLite y un proceso**; PostgreSQL pendiente ([ADR-015](/decisions/adr-015-versioned-migrations.md)).
-- **Matrículas** se guardan por grupo, pero el catálogo aún no restringe ni
-  muestra fechas límite al alumno.
+- **Matrículas**: el catálogo marca los cursos asignados y su fecha límite y los
+  pone primero, pero no restringe el resto de cursos publicados de la academia.
 - **Páginas heredadas** (lección, quiz, progreso, glosario, catálogo, landing,
   `/profesor`) siguen con estilos de `app.css` dentro del shell nuevo.
 - Los ajustes del proveedor siguen siendo globales de plataforma (no por
-  espacio) y la API key sigue en `settings.json`.
+  espacio) y la API key sigue en `settings.json`. La cuota mensual sí se puede
+  fijar por espacio desde `/plataforma/espacios`.
+
+# Tras la plataforma genérica (2026-11-14)
+
+- **`users.role` heredado.** Ya no se lee ni se envía al frontend; la columna se
+  conserva en el esquema.
+- **Biblioteca por espacio activo.** Un curso de la academia no aparece en la
+  cuenta individual del mismo usuario (y viceversa); para verlo hay que cambiar
+  de espacio.
+- **El superadmin no hereda la gestión de academias ajenas.** Desde
+  `/plataforma` ajusta plan, plazas, cuotas y visibilidad, pero no entra en los
+  grupos ni la analítica de una academia de la que no es miembro.
+- **Cuentas demo antiguas.** La migración v6 renombra `demo@`/`profe@aulallm.local`
+  y les pone las contraseñas nuevas; cualquier otra cuenta `@aulallm.local` se
+  conserva tal cual.

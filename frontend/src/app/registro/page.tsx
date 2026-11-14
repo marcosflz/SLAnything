@@ -3,9 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PublicShell } from "@/components/PublicShell";
-import { RegisterForm } from "@/components/auth/RegisterForm";
-import { getPublic, getSession } from "@/lib/api";
-import { t } from "@/lib/messages";
+import { RegisterForm, type AccountType } from "@/components/auth/RegisterForm";
+import { roleLabel } from "@/components/shell/WorkspaceSwitcher";
+import { ApiError, apiGet, getPublic, getSession } from "@/lib/api";
+import { pick, t } from "@/lib/messages";
 
 export const metadata: Metadata = { title: "Crear cuenta" };
 
@@ -21,6 +22,16 @@ function safeNext(value: string | string[] | undefined): string {
   return next;
 }
 
+const TYPE_PARAM: Record<string, AccountType> = {
+  individual: "individual",
+  academia: "academy",
+  codigo: "join",
+};
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function RegisterPage({ searchParams }: RegisterPageProps) {
   const session = await getSession();
   if (session.user) {
@@ -30,27 +41,42 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   const [publicData, params] = await Promise.all([getPublic(), searchParams]);
   const { site, lang } = publicData;
   const next = safeNext(params.next);
-  const fullPath =
-    next === "/" ? "/registro" : `/registro?next=${encodeURIComponent(next)}`;
+  const initialType = TYPE_PARAM[first(params.tipo) ?? ""] ?? "individual";
+  const invite = first(params.invite);
+  let inviteInfo: { workspace: string; role: string; email: string | null } | null = null;
+  if (invite) {
+    try {
+      inviteInfo = await apiGet(`/api/v1/invitations/${encodeURIComponent(invite)}`);
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 404)) throw error;
+    }
+  }
+  const query = new URLSearchParams();
+  if (next !== "/") query.set("next", next);
+  if (first(params.tipo)) query.set("tipo", first(params.tipo) as string);
+  if (invite) query.set("invite", invite);
+  const fullPath = query.toString() ? `/registro?${query.toString()}` : "/registro";
 
   return (
     <PublicShell site={site} lang={lang} fullPath={fullPath}>
       <div className="auth-wrap">
         <section className="auth-art">
           <div>
-            <span className="eyebrow">{t(lang, "Aula LLM · Curso completo")}</span>
-            <h2>{t(lang, "Empieza por entender. Termina construyendo.")}</h2>
+            <span className="eyebrow">{site.name}</span>
+            <h2>{pick(lang, "Tu material, convertido en un curso.", "Your material, turned into a course.")}</h2>
             <p>
-              {t(
+              {pick(
                 lang,
-                "Ocho lecciones, siete laboratorios y un quiz. Sin instalar nada y sin GPU. Tu progreso se guarda automáticamente."
+                "Con una cuenta individual estudias y creas tus propias unidades. Con una academia, además, gestionas profesorado, alumnado, grupos y analítica.",
+                "With an individual account you study and create your own units. With an academy you also manage teachers, students, groups and analytics."
               )}
             </p>
           </div>
           <div className="auth-quote">
-            {t(
+            {pick(
               lang,
-              "“Predecir la siguiente palabra parece simple. De esa tarea emergen la gramática, el estilo y buena parte del razonamiento.”"
+              "“Si algo no está en tu documento, no aparece en la lección: cada bloque cita su página.”",
+              "“If something isn't in your document, it isn't in the lesson: every block cites its page.”"
             )}
           </div>
         </section>
@@ -63,7 +89,24 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
               "Gratis, sin tarjeta. Solo necesitas un correo y una contraseña."
             )}
           </p>
-          <RegisterForm lang={lang} next={next} />
+          {invite && !inviteInfo ? (
+            <div className="flash flash-danger" role="alert">
+              {pick(lang, "La invitación ha caducado o ya se usó. Puedes crear una cuenta normal.", "The invitation expired or was already used. You can create a regular account.")}
+            </div>
+          ) : null}
+          <RegisterForm
+            lang={lang}
+            next={next}
+            initialType={initialType}
+            invite={inviteInfo ? invite : undefined}
+            inviteLabel={
+              inviteInfo
+                ? pick(lang, "Te unirás a {w} como {r}.", "You will join {w} as {r}.")
+                    .replace("{w}", inviteInfo.workspace)
+                    .replace("{r}", roleLabel(inviteInfo.role, lang).toLowerCase())
+                : undefined
+            }
+          />
           <p className="auth-alt">
             {t(lang, "¿Ya tienes cuenta?")}{" "}
             <Link href="/entrar">{t(lang, "Entrar")}</Link>

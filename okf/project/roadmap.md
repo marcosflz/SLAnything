@@ -5,7 +5,7 @@ description: Plan de evolución desde el curso de siete capítulos entregado has
 tags: [roadmap, capitulos, planificacion]
 status: stable
 stale_after: 2026-12-31T00:00:00Z
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T20:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: plan
     resource: ../../docs/PLAN_PLATAFORMA_WEB.md
@@ -46,7 +46,9 @@ Entregado el 24 de octubre de 2026:
 
 Pendiente:
 
-1. Publicar el segundo curso y retirar el placeholder `coming_soon`.
+1. ~~Publicar el segundo curso y retirar el placeholder `coming_soon`.~~ Sustituido
+   por la plataforma genérica (v2.1): el placeholder desaparece y el contenido
+   llega del Estudio.
 2. Automatizar la interacción visual de los 15 labs con Playwright.
 3. Revisión de accesibilidad con axe y lector de pantalla.
 4. Exportación de apuntes y progreso a Markdown/PDF.
@@ -68,6 +70,26 @@ Pendiente:
 - Matrículas, foros y varios cursos publicados.
 - Más idiomas sobre el mismo modelo de bundles.
 
+# v2.0 · SaaS multi-organización (2026-11-13)
+
+- Jinja retirado, espacios de trabajo, generación por etapas, KPIs y sistema de
+  diseño (ADR-013 a ADR-019).
+
+# v2.1 · plataforma genérica y perfiles (2026-11-14)
+
+- Biblioteca sin curso obligatorio; curso LLM como ejemplo opcional
+  ([ADR-020](/decisions/adr-020-generic-platform.md)).
+- Perfiles: cuenta individual, academia (alumnado, profesorado, administración)
+  y superadmin con `/plataforma` ([ADR-021](/decisions/adr-021-account-profiles.md)).
+- Matrículas visibles con fecha límite; migración v6; 181 tests y E2E por perfiles.
+
+# v2.2 · siguiente
+
+- Proveedor real en el Estudio con materias no técnicas; E2E del asistente.
+- Páginas heredadas al sistema de diseño nuevo.
+- Correo: invitaciones, verificación y recuperación de contraseña.
+- Restricción opcional del catálogo del alumnado a los cursos asignados.
+
 # Regla de crecimiento
 
 Añadir un capítulo no debe requerir cambios en los routers ni en el esquema. Se
@@ -75,7 +97,7 @@ resuelve con un paquete autocontenido en `webapp/content/chapters/chNN/`, sus
 exports (`CHAPTER_ES/EN`, quizzes, glosario y labs) y, si hace falta, nuevos labs,
 ejemplos Python y estilos.
 
-Añadir un curso tampoco debe requerir cambios en el motor: se crea un `Program`,
-se envuelve en un `Course` con su `Book` y se registra en `CATALOGS`. El catálogo,
-la sidebar, la API y el progreso por `course_slug` ya están preparados. El
-contenido nuevo debe funcionar en Next y en Jinja.
+Añadir un curso no requiere cambios en el motor: lo normal es generarlo en el
+Estudio y publicarlo en su espacio. Un curso estático de ejemplo se crea como
+`Program` + `Course(is_sample=True)` registrado en `CATALOGS`. Ningún texto fijo
+de la interfaz debe referirse a una materia concreta.

@@ -250,6 +250,17 @@ def _completed(conn: sqlite3.Connection, user_ids: list[int], course_slug: str) 
 # KPIs del estudiante
 # ---------------------------------------------------------------------------
 
+class _NoCourse:
+    """Curso vacío: los KPIs se calculan igual con la biblioteca vacía."""
+
+    slug = ""
+    chapters: tuple = ()
+    lesson_count = 0
+
+
+NO_COURSE = _NoCourse()
+
+
 def student_kpis(
     conn: sqlite3.Connection,
     user_id: int,
@@ -257,6 +268,7 @@ def student_kpis(
     quizzes: dict,
     weekly_goal: int = DEFAULT_WEEKLY_GOAL_MIN,
 ) -> dict:
+    course = course or NO_COURSE
     days28 = _days(28)
     minutes = _minutes_by_day(conn, [user_id], days28[0])
     daily = [
@@ -456,6 +468,7 @@ def course_analytics(
     quizzes: dict,
     days: int = 30,
 ) -> dict:
+    course = course or NO_COURSE
     ids = [int(student["id"]) for student in students]
     names = {int(student["id"]): student["name"] for student in students}
     progress = _completed(conn, ids, course.slug)

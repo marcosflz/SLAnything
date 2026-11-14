@@ -4,7 +4,7 @@ title: API JSON v1
 description: Contrato entre FastAPI y Next.js para sesión, curso, progreso, quiz, recursos y profesor.
 tags: [api, json, nextjs, fastapi, contrato]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T13:30:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: api
     resource: ../../webapp/routers/api.py
@@ -110,7 +110,19 @@ metadatos, sin duplicar el contenido completo.
 - Los intentos y notas se filtran por `user_id` y `course_slug`.
 - El progreso se indexa por `(user_id, course_slug, lesson_slug)`; los slugs de
   curso, lección y quiz son únicos en toda la plataforma.
-- `?course=slug` fija el curso activo; sin parámetro se usa el curso por defecto.
+- `?course=slug` fija el curso activo; sin parámetro se usa el último curso
+  abierto (`users.last_course_slug`) si sigue visible y, si no, el primer curso
+  publicado. Puede no haber curso: shell, dashboard, progreso, glosario,
+  recursos, búsqueda, profesorado y analítica devuelven `course: null`;
+  `/course`, lecciones y quizzes devuelven 404.
+- La biblioteca es la del **espacio activo** (más cursos públicos y ejemplos).
+- `/public` añade `demo_accounts` (solo con siembra demo) y `formats`.
+- El usuario serializado lleva `profile`, `is_platform_admin` y `permissions`
+  (`learn`, `author`, `teach`, `manage`, `admin`, `owner`, `platform`); ya no
+  lleva `role`.
+- Cada curso del catálogo lleva `is_sample`, `assigned` y `due_at`.
+- `/resources` devuelve los recursos del curso activo y su `source`;
+  `/downloads/plan` ya no existe y `/downloads/notebook` exige ejemplos activos.
 - Los tipos TypeScript espejo están en `frontend/src/lib/types.ts`.
 
 # Cambios

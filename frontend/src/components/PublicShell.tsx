@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import type { Lang, Site } from "@/lib/types";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
 import { Icon } from "./ui";
 import { ThemeToggle } from "./ThemeToggle";
 import { Lightbox } from "./Lightbox";
@@ -25,16 +25,16 @@ export function PublicShell({
       <div className="public-shell">
         <header className="public-nav">
           <Link className="brand brand-public" href="/">
-            <span className="brand-mark">λ</span>
+            <span className="brand-mark">S</span>
             <span className="brand-text">
               <strong>{site.name}</strong>
-              <small>{t(lang, "De cero a GPT")}</small>
+              <small>{pick(lang, "Aula virtual", "Virtual classroom")}</small>
             </span>
           </Link>
           <nav className="public-links" aria-label={t(lang, "Navegación principal")}>
-            <Link href="/cursos">{t(lang, "Cursos")}</Link>
             <Link href="/#como-funciona">{t(lang, "Cómo funciona")}</Link>
-            <Link href="/#creditos">{t(lang, "Créditos")}</Link>
+            <Link href="/#para-quien">{pick(lang, "Para quién", "Who it's for")}</Link>
+            <Link href="/cursos">{pick(lang, "Biblioteca", "Library")}</Link>
           </nav>
           <div className="public-actions">
             <div className="lang-switch" aria-label={t(lang, "Idioma")}>
@@ -70,16 +70,17 @@ export function PublicShell({
         <footer className="public-footer" id="creditos">
           <div>
             <Link className="brand brand-public" href="/">
-              <span className="brand-mark">λ</span>
+              <span className="brand-mark">S</span>
               <span className="brand-text">
                 <strong>{site.name}</strong>
-                <small>{t(lang, "De cero a GPT")}</small>
+                <small>{pick(lang, "Aula virtual", "Virtual classroom")}</small>
               </span>
             </Link>
             <p>
-              {t(
+              {pick(
                 lang,
-                "Cursos interactivos para entender y construir inteligencia artificial desde los libros que la explican."
+                "Convierte apuntes, libros y manuales en cursos con lecciones, cuestionarios y seguimiento del progreso.",
+                "Turn notes, books and manuals into courses with lessons, quizzes and progress tracking."
               )}
             </p>
           </div>
@@ -89,9 +90,10 @@ export function PublicShell({
             <Link href="/salud">{t(lang, "Estado")}</Link>
           </div>
           <p className="footer-credit">
-            {t(
+            {pick(
               lang,
-              "Material didáctico con fines educativos. Cada curso acredita el libro en el que se basa."
+              "Material didáctico con fines educativos. Cada curso acredita la fuente en la que se basa.",
+              "Educational material. Every course credits the source it is based on."
             )}{" "}
             {site.year}
           </p>

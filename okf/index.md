@@ -13,7 +13,7 @@ la documentación fuente mandan si hay contradicciones.
 * [Playbook de sesión](/context/session-playbook.md) - Cómo arrancar, trabajar y cerrar una sesión sin perder contexto.
 * [Estado actual](/project/status.md) - Qué está entregado, qué se está tocando y qué falta.
 * [Problemas conocidos](/context/known-issues.md) - Limitaciones y deudas que no deben redescubrirse.
-* [Siguientes pasos](/context/next-steps.md) - Backlog priorizado tras abrir la biblioteca multi-curso.
+* [Siguientes pasos](/context/next-steps.md) - Backlog priorizado tras convertir la plataforma en genérica.
 * [Glosario del proyecto](/context/glossary.md) - Vocabulario interno para leer el resto del bundle.
 
 ## Proyecto
@@ -24,8 +24,8 @@ la documentación fuente mandan si hay contradicciones.
 
 ## Producto
 
-* [Cursos](/product/course.md) - Catálogo modular, curso de referencia y experiencia de aprendizaje.
-* [Lecciones](/product/lessons.md) - Las 56 lecciones del curso de referencia, con slugs, labs y figuras.
+* [Cursos](/product/course.md) - Biblioteca por espacio, cursos generados y curso de ejemplo opcional.
+* [Lecciones](/product/lessons.md) - Las 56 lecciones del curso de ejemplo LLM, con slugs, labs y figuras.
 * [Laboratorios](/product/labs.md) - Los 15 labs interactivos y su contrato.
 * [Ejemplos Python](/product/python-examples.md) - Los 26 ejemplos ejecutables y descargables.
 * [Quizzes](/product/quiz.md) - Siete evaluaciones, corrección y revisión.
@@ -45,13 +45,13 @@ la documentación fuente mandan si hay contradicciones.
 * [Modelo de contenido](/architecture/content-model.md) - Cómo se escribe y valida una lección.
 * [Estudio de autoría](/architecture/authoring.md) - Documentos, OpenCode, contrato JSON y catálogo dinámico.
 * [Generación por etapas](/architecture/generation.md) - Ingesta, temario, lecciones, verificación, cola y SSE.
-* [Espacios, usuarios y analítica](/architecture/tenancy-analytics.md) - Roles, grupos, invitaciones, auditoría y KPIs.
+* [Espacios, usuarios y analítica](/architecture/tenancy-analytics.md) - Perfiles, permisos, superadmin, grupos, invitaciones, auditoría y KPIs.
 
 ## Operaciones
 
 * [Arranque](/operations/run.md) - Comandos, cuentas, variables y problemas típicos.
 * [Frontend Next.js](/operations/frontend.md) - Arranque, build, smoke y troubleshooting.
-* [Pruebas](/operations/testing.md) - Suite de 95 tests, validadores de capítulo y E2E.
+* [Pruebas](/operations/testing.md) - Suite de 181 tests, validadores de capítulo, smoke y E2E por perfiles.
 * [Despliegue](/operations/deployment.md) - Producción mínima con SQLite y TLS.
 * [Mapa del repositorio](/operations/repository-map.md) - Qué vive en cada carpeta.
 
@@ -77,6 +77,8 @@ la documentación fuente mandan si hay contradicciones.
 * [ADR-017 · Generación por etapas con salida JSON](/decisions/adr-017-staged-generation.md)
 * [ADR-018 · Eventos de aprendizaje como fuente de los KPIs](/decisions/adr-018-learning-events.md)
 * [ADR-019 · Cola de generación persistente y reanudable](/decisions/adr-019-generation-queue.md)
+* [ADR-020 · Plataforma genérica y curso LLM como ejemplo](/decisions/adr-020-generic-platform.md)
+* [ADR-021 · Perfiles de cuenta](/decisions/adr-021-account-profiles.md)
 
 ## Referencias e historial
 

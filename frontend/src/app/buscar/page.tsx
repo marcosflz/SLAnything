@@ -126,7 +126,7 @@ export default async function SearchPage({
                     </span>
                     <span>
                       <Icon name="grid" />{" "}
-                      {result.lesson.course_title ?? data.course.title}
+                      {result.lesson.course_title ?? data.course?.title}
                     </span>
                     <span>
                       <Icon name="book" />{" "}

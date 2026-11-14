@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BarChart3,
   BookOpenCheck,
   Clock3,
   Download,
@@ -74,6 +75,22 @@ export default async function AnalyticsPage({
     );
   }
 
+  if (!data.course) {
+    return (
+      <ShellPage shell={shell} path={path} title={title} kicker={shell.user.workspace?.name ?? ""}>
+        <EmptyState
+          icon={BarChart3}
+          title={pick(lang, "Aún no hay cursos que analizar", "No courses to analyse yet")}
+          description={pick(
+            lang,
+            "Publica un curso en esta academia desde el Estudio y aquí verás el progreso y los resultados de tus estudiantes.",
+            "Publish a course in this academy from the Studio and you will see your students' progress and results here."
+          )}
+        />
+      </ShellPage>
+    );
+  }
+  const course = data.course;
   const { kpis } = data;
   const daily = data.daily_active.map((item) => ({ day: formatDate(item.day, lang), active: item.active }));
   const funnelSteps = data.funnel.map((step) => ({
@@ -87,7 +104,7 @@ export default async function AnalyticsPage({
     <ShellPage shell={shell} path={path} title={title} kicker={shell.user.workspace?.name ?? ""}>
       <PageHeader
         eyebrow={pick(lang, "Analítica", "Analytics")}
-        title={data.course.title}
+        title={course.title}
         description={pick(
           lang,
           "Progreso, participación, resultados y calidad de las preguntas de tus estudiantes.",
@@ -96,7 +113,7 @@ export default async function AnalyticsPage({
         actions={
           <>
             <form className="flex flex-wrap items-center gap-2" method="get">
-              <NativeSelect name="course" defaultValue={data.course.slug} aria-label={pick(lang, "Curso", "Course")}>
+              <NativeSelect name="course" defaultValue={course.slug} aria-label={pick(lang, "Curso", "Course")}>
                 {data.courses.map((course) => (
                   <option key={course.slug} value={course.slug}>
                     {course.title}

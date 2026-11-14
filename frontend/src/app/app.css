@@ -1384,6 +1384,10 @@ button.token-chip:hover { border-color: var(--brand); color: var(--brand); }
 
 @media (max-width: 420px) {
   .public-actions .btn-ghost { display: none; }
+  /* En 360 px el nombre de marca empujaba el selector de idioma fuera de pantalla. */
+  .public-nav { gap: 8px; }
+  .public-nav > .brand-public .brand-text { display: none; }
+  .public-actions { gap: 6px; }
   .lang-link { min-width: 26px; padding: 3px 5px; font-size: 9.5px; }
   .py-head .code-caption { display: none; }
 }

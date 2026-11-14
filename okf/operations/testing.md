@@ -4,7 +4,7 @@ title: Pruebas de SLAnything
 description: Suite pytest de 111 tests, cobertura por área y comprobaciones manuales.
 tags: [testing, pytest, qa, cobertura]
 status: stable
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T12:00:00Z }
 sources:
   - id: qa
     resource: ../../docs/QA.md
@@ -113,9 +113,35 @@ completa.
 - Si añades una ruta o contenido, amplía la suite y actualiza
   [testing](/operations/testing.md) y [status](/project/status.md).
 
+# Actualización 2026-11-14
+
+La suite tiene **181 tests**. La fixture `db_path` activa los cursos de ejemplo
+(`config.SAMPLE_COURSES = True`) porque gran parte de la suite ejercita el curso
+LLM; `no_samples` los desactiva. Helpers nuevos: `admin_login` y
+`self_learner_login`. Ficheros nuevos:
+
+- `test_profiles.py`: matriz de permisos, perfiles, altas individual, academia,
+  código e invitación, alumnado sin Estudio y usuario sin espacio.
+- `test_empty_library.py`: todas las rutas con la biblioteca vacía, curso
+  activo por último abierto, biblioteca por espacio activo y glosario por curso.
+- `test_platform.py`: superadmin (usuarios, último superadmin, cuotas,
+  espacios) y matrículas visibles en el catálogo.
+- `test_db_scope.py`: todas las rutas usan `get_db` con `scope="function"`.
+
+Fuera de pytest:
+
+- `uv run python tools/smoke_next.py [--base URL]`: páginas públicas,
+  alumno, idioma y los perfiles profe, autodidacta y admin; añade las páginas
+  del curso de ejemplo si `/salud` devuelve `ejemplos: true`.
+- `npm run e2e` (`E2E_BASE`, `PLAYWRIGHT_CHROMIUM_EXECUTABLE` opcionales):
+  portada genérica, alta individual, menús por perfil, menú activo, tema,
+  idioma y 360 px sin desbordar; con ejemplos, lección, lab, runner y quiz.
+- `npm run e2e:labs`: los 15 labs (sale sin error si los ejemplos están
+  desactivados).
+
 # Actualización 2026-11-13
 
-La suite tiene **140 tests** y ya no usa HTML: los helpers de `conftest.py`
+Entonces la suite tenía 140 tests y ya no usaba HTML: los helpers de `conftest.py`
 (`login`, `register`, `csrf`, `login_and_csrf`, `teacher_login`) van contra la
 API JSON. Nuevos ficheros: `test_workspaces.py` (migraciones y aislamiento),
 `test_analytics.py`, `test_generation.py` (pipeline completo con `FakeLLM`,

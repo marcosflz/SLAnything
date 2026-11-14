@@ -67,7 +67,7 @@ def create_organization(
     body: CreateOrgBody,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     """Crea una academia. Quien la crea es su owner."""
     ensure_csrf(request, user)
@@ -88,24 +88,16 @@ def join_with_code(
     body: JoinBody,
     request: Request,
     user: dict = Depends(require_user),
-    conn: sqlite3.Connection = Depends(get_db),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
 ):
     """Unirse a una academia como estudiante con su código de clase."""
     ensure_csrf(request, user)
-    workspace = workspaces.get_workspace_by_join_code(conn, body.code)
-    if workspace is None or workspace["kind"] != "organization":
-        raise HTTPException(
-            status_code=404,
-            detail=translate("Código de clase no válido.", request_lang(request)),
-        )
-    if workspaces.membership(conn, workspace["id"], user["id"]) is None:
-        limit = workspace.get("seat_limit")
-        if limit and workspaces.seat_count(conn, workspace["id"]) >= limit:
-            raise HTTPException(
-                status_code=409,
-                detail=translate("La academia no tiene plazas libres.", request_lang(request)),
-            )
-        workspaces.add_member(conn, workspace["id"], user["id"], "student")
+    lang = request_lang(request)
+    try:
+        workspace, created = workspaces.join_with_code(conn, body.code, user["id"])
+    except HTTPException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=translate(exc.detail, lang)) from exc
+    if created:
         audit.record(
             conn, actor_id=user["id"], action="member.join_code",
             workspace_id=workspace["id"], target=user["email"], request=request,
@@ -115,3 +107,28 @@ def join_with_code(
         JSONResponse({"ok": True, "workspace": {"id": workspace["id"], "name": workspace["name"]}}),
         workspace["id"],
     )
+
+
+@router.post("/personal")
+def create_personal_workspace(
+    request: Request,
+    user: dict = Depends(require_user),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
+    """Crea (o recupera) la cuenta individual del usuario.
+
+    Un alumno de academia no tiene espacio personal; si quiere generar unidades
+    para sí mismo, lo crea de forma explícita. Dentro de la academia sigue
+    siendo estudiante.
+    """
+    ensure_csrf(request, user)
+    existing = workspaces.personal_workspace_id(conn, user["id"])
+    workspace_id = workspaces.ensure_personal_workspace(conn, user["id"], user["name"])
+    if existing is None:
+        audit.record(
+            conn, actor_id=user["id"], action="workspace.personal",
+            workspace_id=workspace_id, target=user["email"], request=request,
+        )
+    conn.commit()
+    workspace = workspaces.get_workspace(conn, workspace_id)
+    return _set_active(JSONResponse({"ok": True, "workspace": workspace}), workspace_id)

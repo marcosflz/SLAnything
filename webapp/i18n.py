@@ -25,18 +25,13 @@ EN: dict[str, str] = {
     "Navegación principal": "Main navigation",
     "Cerrar": "Close",
     "material didáctico basado en": "teaching material based on",
-    "de Sebastian Raschka.": "by Sebastian Raschka.",
     "Uso educativo": "Educational use",
     "Créditos": "Credits",
     "Basado en": "Based on",
-    "de Sebastian Raschka (Manning, 2024). Figuras con fines educativos; todos los derechos pertenecen a Manning y al autor.": (
-        "by Sebastian Raschka (Manning, 2024). Figures are used for educational purposes; all rights belong to Manning and the author."
-    ),
     "Cerrar menú": "Close menu",
     "Abrir menú": "Open menu",
     "Colapsar barra lateral": "Collapse sidebar",
     "Expandir barra lateral": "Expand sidebar",
-    "De cero a GPT": "From zero to GPT",
     "Capítulo 1": "Chapter 1",
     "Capítulo {n}": "Chapter {n}",
     "{n} lecciones": "{n} lessons",
@@ -63,15 +58,6 @@ EN: dict[str, str] = {
         "Interactive course · {n} chapters available"
     ),
     "Empezar el curso": "Start the course",
-    "El libro, en {n} capítulos": "The book, in {n} chapters",
-    "Del texto tokenizado a la atención, el pretraining y las instrucciones. Cada capítulo termina con su propio quiz.": (
-        "From tokenized text to attention, pretraining, and instructions. "
-        "Each chapter ends with its own quiz."
-    ),
-    "Siete capítulos y {n} lecciones breves que construyen intuición: del texto tokenizado a la atención, el pretraining y las instrucciones.": (
-        "Seven chapters and {n} short lessons that build intuition: from tokenized "
-        "text to attention, pretraining, and instructions."
-    ),
     "Lecciones del curso": "Course lessons",
     "del curso": "of the course",
     "Vocabulario del curso": "Course vocabulary",
@@ -97,15 +83,7 @@ EN: dict[str, str] = {
     "Cambiar a tema oscuro": "Switch to dark theme",
     "Buscar en el curso": "Search the course",
     "Buscar lecciones…": "Search lessons…",
-    "Aula LLM · curso interactivo para construir un modelo de lenguaje desde cero.": (
-        "Aula LLM: an interactive course on building a language model from scratch."
-    ),
-    "Construye un LLM desde cero, una idea a la vez.": (
-        "Build an LLM from scratch, one idea at a time."
-    ),
     "Construye un LLM desde cero": "Build an LLM from Scratch",
-    "Capítulo 1 · Entender los LLM": "Chapter 1 · Understanding LLMs",
-    "Capítulo 1 · {title}": "Chapter 1 · {title}",
     "Curso interactivo en español para entender y construir un modelo de lenguaje desde cero.": (
         "Interactive course to understand and build a language model from scratch."
     ),
@@ -193,30 +171,20 @@ EN: dict[str, str] = {
     "Lección {n} de {total}": "Lesson {n} of {total}",
 
     # ---------------------------------------------------------------- portada
-    "Curso interactivo · Capítulo 1 disponible": (
-        "Interactive course · Chapter 1 available"
-    ),
-    "Entiende cómo funciona ChatGPT. Luego constrúyelo.": (
-        "Understand how ChatGPT works. Then build it."
-    ),
-    "Entiende cómo funciona ChatGPT. Luego": "Understand how ChatGPT works. Then",
     "Un aula online en español para estudiar Build a Large Language Model (From Scratch) sin instalar nada. Lecciones guiadas, laboratorios que se ejecutan en tu navegador y un quiz que comprueba lo que has aprendido.": (
         "An online classroom to study Build a Large Language Model (From Scratch) "
         "without installing anything. Guided lessons, labs that run in your browser, "
         "and a quiz that checks what you have learned."
     ),
-    "constrúyelo": "build it",
     "Un aula online en español para estudiar": "An online classroom to study",
     "sin instalar nada. Lecciones guiadas, laboratorios que se ejecutan en tu navegador y un quiz que comprueba lo que has aprendido.": (
         "without installing anything. Guided lessons, labs that run in your browser, "
         "and a quiz that checks what you have learned."
     ),
-    "Empezar el capítulo 1": "Start chapter 1",
     "Ya tengo cuenta": "I already have an account",
     "{n} minutos": "{n} minutes",
     "Sin GPU": "No GPU needed",
     "100 % en el navegador": "100% in the browser",
-    "Aula LLM · predicción en vivo": "Aula LLM · live prediction",
     "Progreso guardado": "Progress saved",
     "Continúa donde lo dejaste": "Pick up where you left off",
     "Cómo funciona": "How it works",
@@ -226,30 +194,17 @@ EN: dict[str, str] = {
         "If something is unclear, you go back to the lab and change a parameter."
     ),
     "Lecciones con hilo": "Lessons with a thread",
-    "Ocho lecciones breves que construyen intuición: qué es un LLM, cómo se entrena, qué hace la atención y cómo se genera texto.": (
-        "Eight short lessons that build intuition: what an LLM is, how it is trained, "
-        "what attention does, and how text is generated."
-    ),
     "Laboratorios reales": "Real labs",
-    "Entrena un modelo de n-gramas con El Quijote, ajusta la temperatura, explora la atención y calcula el coste de entrenar a escala.": (
-        "Train an n-gram model on Don Quixote, adjust the temperature, explore "
-        "attention, and estimate the cost of training at scale."
-    ),
     "Progreso y quiz": "Progress and quiz",
     "Marca lecciones, guarda apuntes y comprueba tu comprensión con diez preguntas corregidas en el servidor.": (
         "Mark lessons, save notes, and check your understanding with ten questions "
         "graded on the server."
     ),
     "Programa": "Syllabus",
-    "El capítulo 1, en ocho paradas": "Chapter 1, in eight stops",
-    'Del "juego de la siguiente palabra" al mapa completo de lo que construirás en el resto del libro.': (
-        'From the "next-word game" to the full map of what you will build in the rest of the book.'
-    ),
     "Crea tu cuenta": "Create your account",
     "Treinta segundos. Tu progreso, apuntes y notas quedan guardados en el aula.": (
         "Thirty seconds. Your progress, notes, and bookmarks are saved in the classroom."
     ),
-    "Estudia y experimenta": "Study and experiment",
     "Lee, mueve los controles de los laboratorios y marca cada lección al terminarla.": (
         "Read, move the lab controls, and mark each lesson when you finish it."
     ),
@@ -257,26 +212,10 @@ EN: dict[str, str] = {
     "Haz el quiz final. Con un 80 % superas el capítulo y desbloqueas el siguiente.": (
         "Take the final quiz. With 80% you pass the chapter and unlock the next one."
     ),
-    "Tu primer LLM empieza por entender el primero.": (
-        "Your first LLM starts by understanding the first one."
-    ),
-    "Sin GPU, sin instalar Python y sin perderte en terminología. Solo tú, el texto y un navegador.": (
-        "No GPU, no Python install, no getting lost in terminology. Just you, text, and a browser."
-    ),
     "Entrar al aula": "Enter the classroom",
 
     # ---------------------------------------------------------------- acceso
-    "Aula LLM · Capítulo 1": "Aula LLM · Chapter 1",
-    "Aula LLM · Curso completo": "Aula LLM · Full course",
     "Vuelve a donde lo dejaste.": "Return to where you left off.",
-    "Tu progreso, tus apuntes y tus intentos de quiz te esperan. Entra y continúa construyendo intuición sobre los LLM.": (
-        "Your progress, notes, and quiz attempts are waiting. Sign in and keep "
-        "building intuition about LLMs."
-    ),
-    "“Un LLM no devuelve una única palabra: devuelve una probabilidad para cada token posible y elige una.”": (
-        "“An LLM does not return a single word: it returns a probability for every "
-        "possible token and picks one.”"
-    ),
     "Accede con tu correo y contraseña.": "Sign in with your email and password.",
     "Correo electrónico": "Email",
     "Contraseña": "Password",
@@ -286,9 +225,6 @@ EN: dict[str, str] = {
     "Cuenta de demostración": "Demo account",
     "Correo": "Email",
     "Empieza por entender. Termina construyendo.": "Start by understanding. Finish by building.",
-    "Ocho lecciones, siete laboratorios y un quiz. Sin instalar nada y sin GPU. Tu progreso se guarda automáticamente.": (
-        "Eight lessons, seven labs, and a quiz. No installs, no GPU. Your progress is saved automatically."
-    ),
     "“Predecir la siguiente palabra parece simple. De esa tarea emergen la gramática, el estilo y buena parte del razonamiento.”": (
         "“Predicting the next word sounds simple. Grammar, style, and much of "
         "reasoning emerge from that task.”"
@@ -321,7 +257,6 @@ EN: dict[str, str] = {
     "{n} objetivos": "{n} objectives",
     "{n} laboratorio": "{n} lab",
     "{n} laboratorios": "{n} labs",
-    "Has llegado al final del capítulo 1.": "You have reached the end of chapter 1.",
     "Repasa las ideas clave o vuelve a intentar el quiz para consolidar.": (
         "Review the key ideas or retake the quiz to consolidate."
     ),
@@ -378,10 +313,6 @@ EN: dict[str, str] = {
     ),
     "Hacer el quiz": "Take the quiz",
     "Consejo de estudio": "Study tip",
-    "Si una idea no queda clara, vuelve al laboratorio y cambia un parámetro. Aprender LLMs es construir intuición, no memorizar siglas.": (
-        "If an idea is unclear, go back to the lab and change a parameter. Learning "
-        "LLMs is about building intuition, not memorizing acronyms."
-    ),
     "Al terminar sabrás…": "By the end you will be able to…",
     "Objetivos de la lección": "Lesson objectives",
     "Comprueba lo aprendido": "Check what you learned",
@@ -414,9 +345,6 @@ EN: dict[str, str] = {
         "Before moving on, try to anticipate the answer. The brain learns more when it errs and corrects."
     ),
     "2 · Toca los laboratorios": "2 · Play with the labs",
-    "Mueve la temperatura, cambia el contexto, prueba otra precisión. Cada control enseña algo.": (
-        "Move the temperature, change the context, try another precision. Every control teaches something."
-    ),
     "3 · Cierra con el quiz": "3 · Finish with the quiz",
     "El quiz no es un examen: es una forma de detectar qué idea necesita otra pasada.": (
         "The quiz is not an exam: it is a way to spot which idea needs another pass."
@@ -528,25 +456,13 @@ EN: dict[str, str] = {
     "Este material es de": "This material is for",
     "uso educativo personal": "personal educational use",
     "y está basado en": "and is based on",
-    "de Sebastian Raschka (Manning, 2024). Las figuras 1.1–1.9 pertenecen a Manning Publications y al autor; se incluyen únicamente como apoyo al estudio. No las redistribuyas fuera de este contexto.": (
-        "by Sebastian Raschka (Manning, 2024). Figures 1.1–1.9 belong to Manning "
-        "Publications and the author; they are included only as study support. Do not "
-        "redistribute them outside this context."
-    ),
     "Los diagramas": "The",
     "son elaboración propia. El fragmento de": "diagrams are our own work. The excerpt from",
     "procede de Project Gutenberg y es de dominio público; se usa como corpus didáctico para el laboratorio de n-gramas.": (
         "comes from Project Gutenberg and is in the public domain; it is used as a teaching "
         "corpus for the n-gram lab."
     ),
-    "Las estimaciones de tokens, memoria y coste son aproximadas y de orden de magnitud. No sustituyen una medición sobre hardware real.": (
-        "Token, memory, and cost estimates are approximate and order-of-magnitude. They do "
-        "not replace a measurement on real hardware."
-    ),
     "Cuaderno interactivo": "Interactive notebook",
-    "El capítulo completo en Jupyter, con las celdas y experimentos originales del libro.": (
-        "The full chapter in Jupyter, with the book's original cells and experiments."
-    ),
     "Corpus de El Quijote": "Don Quixote corpus",
     "Fragmento de texto en dominio público para entrenar el generador de n-gramas del laboratorio.": (
         "Public-domain text excerpt for training the lab's n-gram generator."
@@ -652,12 +568,7 @@ EN: dict[str, str] = {
 
     # ------------------------------------------------------- catálogo de cursos
     "Biblioteca de cursos": "Course library",
-    "Aprende IA desde los libros que": "Learn AI from the books that",
     "la explican": "explain it",
-    "Un aula online con cursos guiados, laboratorios que se ejecutan en el navegador y evaluación integrada. Empieza por el libro que quieras y continúa donde lo dejaste.": (
-        "An online classroom with guided courses, browser-based labs, and integrated "
-        "assessment. Start with any book and pick up where you left off."
-    ),
     "Explorar cursos": "Explore courses",
     "1 curso": "1 course",
     "1 curso disponible": "1 course available",
@@ -666,44 +577,20 @@ EN: dict[str, str] = {
         "Course library · {n} courses available"
     ),
     "{n} cursos": "{n} courses",
-    "Elige tu próximo libro": "Choose your next book",
-    "Cada curso es un recorrido completo con lecciones, laboratorios y quizzes. La biblioteca crecerá con nuevos libros.": (
-        "Each course is a complete path with lessons, labs, and quizzes. The library "
-        "will grow with new books."
-    ),
     "Disponible": "Available",
     "Ver el curso": "View course",
     "En preparación": "Coming soon",
     "Nuevos cursos": "New courses",
-    "El próximo libro": "The next book",
     "Estamos preparando nuevos recorridos. La plataforma ya está lista para incorporarlos sin cambiar la experiencia.": (
         "We are preparing new paths. The platform is ready to add them without "
         "changing the experience."
     ),
     "Mismo formato modular": "Same modular format",
-    "Capítulos breves que construyen intuición: del texto tokenizado a la atención, el pretraining y las instrucciones.": (
-        "Short chapters that build intuition: from tokenized text to attention, "
-        "pretraining, and instructions."
-    ),
     "Dentro del curso": "Inside the course",
-    "Entiende cómo funciona ChatGPT. Luego constrúyelo.": (
-        "Understand how ChatGPT works. Then build it."
-    ),
-    "El curso de referencia recorre el libro en {n} capítulos. Del texto tokenizado a la atención, el pretraining y las instrucciones.": (
-        "The flagship course follows the book across {n} chapters. From tokenized "
-        "text to attention, pretraining, and instructions."
-    ),
     "Elige un curso": "Choose a course",
-    "Explora la biblioteca y abre el libro que quieras estudiar. Cada curso tiene su propio temario y progreso.": (
-        "Explore the library and open the book you want to study. Each course has its "
-        "own syllabus and progress."
-    ),
     "Haz el quiz final. Con un 80 % superas el capítulo y consolidas lo aprendido.": (
         "Take the final quiz. With 80% you pass the chapter and consolidate what you "
         "learned."
-    ),
-    "Tu próximo tema empieza por el libro adecuado.": (
-        "Your next topic starts with the right book."
     ),
     "Curso actual": "Current course",
     "Cambiar de curso": "Switch course",
@@ -720,16 +607,6 @@ EN: dict[str, str] = {
     "Cursos": "Courses",
     "Curso no encontrado.": "Course not found.",
     "Migas de pan": "Breadcrumbs",
-    "Biblioteca de cursos interactivos para aprender IA construyendo.": (
-        "A library of interactive courses for learning AI by building."
-    ),
-    "Material didáctico con fines educativos. Cada curso acredita el libro en el que se basa.": (
-        "Educational material. Each course credits the book it is based on."
-    ),
-    "Cursos interactivos para entender y construir inteligencia artificial desde los libros que la explican.": (
-        "Interactive courses to understand and build artificial intelligence from "
-        "the books that explain it."
-    ),
     "Acceso abierto": "Open access",
     "Crea una cuenta para guardar tu progreso, apuntes y resultados.": (
         "Create an account to save your progress, notes, and results."
@@ -737,16 +614,7 @@ EN: dict[str, str] = {
     "Inicia sesión para empezar": "Sign in to start",
     "Otros cursos": "Other courses",
     "Cómo se organiza la biblioteca": "How the library is organised",
-    "Un curso, un libro": "One course, one book",
-    "Cada curso parte de un libro y mantiene su propio temario, figuras, laboratorios y quizzes.": (
-        "Each course starts from a book and keeps its own syllabus, figures, labs, "
-        "and quizzes."
-    ),
     "Progreso independiente": "Independent progress",
-    "Tus lecciones, apuntes, marcadores e intentos se guardan por curso. Cambiar de libro no mezcla tu avance.": (
-        "Your lessons, notes, bookmarks, and attempts are stored per course. "
-        "Switching books does not mix your progress."
-    ),
     "Misma experiencia": "Same experience",
     "Todos los cursos comparten navegación, buscador, glosario y panel de progreso.": (
         "All courses share navigation, search, glossary, and the progress dashboard."
@@ -833,19 +701,12 @@ EN: dict[str, str] = {
         "The result is validated and sanitized before entering the catalog. Nothing "
         "from the document is executed."
     ),
-    "SLAnything · aprende IA desde los libros que la explican.": (
-        "SLAnything: learn AI from the books that explain it."
-    ),
     "OpenCode · autoría asistida": "OpenCode · assisted authoring",
     "Del documento a una unidad publicable": "From document to a publishable unit",
     "Qué ocurre al generar": "What happens when you generate",
     "El resultado se valida y se sanea antes de entrar en el catálogo. Nada del documento se ejecuta. La unidad queda en borrador hasta que la publiques.": (
         "The result is validated and sanitized before entering the catalog. Nothing "
         "from the document is executed. The unit stays as a draft until you publish it."
-    ),
-    "Redes neuronales en 4 lecciones": "Neural networks in 4 lessons",
-    "Enfoca la unidad en el capítulo 3; nivel intermedio.": (
-        "Focus the unit on chapter 3; intermediate level."
     ),
     "Máximo {n} MB por archivo y {m} archivos. El texto se recorta si supera el límite de contexto.": (
         "Up to {n} MB per file and {m} files. Text is truncated if it exceeds the "
@@ -861,6 +722,31 @@ EN: dict[str, str] = {
         "and navigation keeps your progress."
     ),
     "Máximo {n} MB por archivo y {m} archivos.": "Up to {n} MB per file and {m} files.",
+    # ------------------------------------- plataforma genérica y perfiles (ADR-020/021)
+    "Convierte cualquier material en un curso.": "Turn any material into a course.",
+    "Aún no hay cursos en este espacio.": "There are no courses in this space yet.",
+    "El nombre de la academia debe tener entre 2 y 80 caracteres.": (
+        "The academy name must be between 2 and 80 characters."
+    ),
+    "Introduce el código de clase.": "Enter the class code.",
+    "Código de clase no válido.": "Invalid class code.",
+    "La academia no tiene plazas libres.": "The academy has no free seats.",
+    "La invitación no existe o ya no es válida.": "The invitation does not exist or is no longer valid.",
+    "Esta invitación es para otra dirección de correo.": "This invitation is for a different email address.",
+    "Documento original del que se generó el curso.": "Original document the course was generated from.",
+    "Documento fuente": "Source document",
+    "Ejemplos de código ejecutables de la lección.": "Runnable code examples from the lesson.",
+    "Python · {n} ejemplos": "Python · {n} examples",
+    "El Estudio es para cuentas individuales y profesorado.": (
+        "The Studio is for individual accounts and teachers."
+    ),
+    "Esta sección es solo para el profesorado de una academia.": (
+        "This section is only for an academy's teachers."
+    ),
+    "Esta sección es solo para la administración de la academia.": (
+        "This section is only for the academy's administrators."
+    ),
+    "Solo para la administración de la plataforma.": "Platform administrators only.",
 }
 
 

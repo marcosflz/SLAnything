@@ -4,8 +4,8 @@ SLAnything se empaqueta en dos imágenes:
 
 | Imagen | Contenido | Puerto |
 |---|---|---|
-| `aula-llm-backend:local` | FastAPI, contenido, SQLite, API JSON, runner Python y OpenCode portable | 8000 interno |
-| `aula-llm-frontend:local` | Next.js 16 en modo `standalone` + PWA | 3000 público |
+| `slanything-backend:local` | FastAPI, contenido, SQLite, API JSON, runner Python y OpenCode portable | 8000 interno |
+| `slanything-frontend:local` | Next.js 16 en modo `standalone` + PWA | 3000 público |
 
 `compose.yaml` las conecta en una red privada. El navegador solo habla con el
 frontend; Next reescribe `/api/v1/*`, `/api/ejecutar` y `/static/*` al servicio
@@ -26,13 +26,22 @@ Cuentas de demostración:
 
 | Perfil | Correo | Contraseña |
 |---|---|---|
-| Estudiante | `demo@aulallm.local` | `demo1234` |
-| Profesora | `profe@aulallm.local` | `profe1234` |
+| Alumno de la Academia Demo | `alumno@slanything.local` | `alumno1234` |
+| Profesora y propietaria de la academia | `profe@slanything.local` | `profe1234` |
+| Cuenta individual | `autodidacta@slanything.local` | `auto1234` |
+| Superadmin | `admin@slanything.local` | `admin1234` |
+
+La biblioteca empieza vacía. Para incluir el curso de ejemplo «Construye un LLM
+desde cero», pon `AULA_SAMPLE_COURSES=1` en `.env`. En producción usa
+`AULA_SEED_DEMO=0` y define `AULA_PLATFORM_ADMINS`. El proyecto de Compose se
+llama ahora `slanything`, pero el volumen conserva su nombre histórico
+`aula-llm-data`, así que los datos de instalaciones previas se mantienen.
 
 El frontend espera a que el backend esté `healthy`. El primer arranque crea
 `/data/aula.db` y `/data/authoring/` en el volumen `aula-llm-data` y siembra las
 cuentas demo. La imagen del backend incluye OpenCode (`/usr/local/bin/opencode`)
-para el Estudio; configura el proveedor en `/estudio`.
+para el Estudio; la superadministración configura el proveedor en
+`/plataforma/ia`.
 
 ## Comandos habituales
 
@@ -140,11 +149,11 @@ aula.example.com {
 
 ```powershell
 # Backend (contexto raíz)
-docker build -t aula-llm-backend:local .
+docker build -t slanything-backend:local .
 
 # Frontend (contexto frontend)
 docker build `
-  -t aula-llm-frontend:local `
+  -t slanything-frontend:local `
   --build-arg API_INTERNAL_URL=http://backend:8000 `
   .\frontend
 ```

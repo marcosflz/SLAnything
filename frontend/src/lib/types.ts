@@ -11,34 +11,53 @@ export interface WorkspaceRef {
   role: WorkspaceRole;
 }
 
+/** Matriz de permisos del espacio activo (ADR-021). */
 export interface Permissions {
+  /** Aprender: biblioteca, progreso y cuenta. */
+  learn: boolean;
+  /** Estudio: cuenta individual o profesorado de una academia. */
   author: boolean;
+  /** Analítica de curso y panel de estudiantes (solo academias). */
   teach: boolean;
+  /** Miembros, grupos, invitaciones y auditoría de una academia. */
+  manage: boolean;
+  /** Alias histórico de `manage`. */
   admin: boolean;
   owner: boolean;
+  /** Superadministración de toda la plataforma. */
   platform: boolean;
 }
+
+/** Perfil de presentación en el espacio activo. */
+export type Profile = "self_learner" | "student" | "teacher" | "academy_admin";
 
 export interface User {
   id: number;
   email: string;
   name: string;
-  role: "student" | "teacher";
   initials: string;
   csrf_token: string;
   workspace?: WorkspaceRef | null;
   workspaces?: WorkspaceRef[];
   ws_role?: WorkspaceRole | null;
+  profile?: Profile | null;
+  is_platform_admin?: boolean;
   permissions?: Permissions;
 }
 
 export interface Site {
   name: string;
   tagline: string;
-  course_title: string;
-  course_chapter: string;
+  course_title: string | null;
+  course_chapter: string | null;
   catalog_count: number;
   year: number;
+}
+
+export interface DemoAccount {
+  profile: Profile | "platform";
+  email: string;
+  password: string;
 }
 
 export interface Book {
@@ -86,6 +105,7 @@ export interface Course {
   cover: string | null;
   book: Book | null;
   tags: string[];
+  is_sample?: boolean;
   total_minutes: number;
   lesson_count: number;
   chapter_count: number;
@@ -105,12 +125,16 @@ export interface CourseSummary {
   cover: string | null;
   book: Book | null;
   tags: string[];
+  is_sample?: boolean;
   total_minutes: number;
   lesson_count: number;
   chapter_count: number;
   lab_count: number;
   stats: Stats;
   next_lesson: LessonSummary | null;
+  /** Asignado al usuario por su academia (grupo o matrícula directa). */
+  assigned?: boolean;
+  due_at?: string | null;
 }
 
 export type Block = {
@@ -194,25 +218,27 @@ export interface SessionPayload {
 }
 
 export interface PublicPayload {
-  course: Course;
+  course: Course | null;
   catalog: CourseSummary[];
   site: Site;
   lab_meta: LabMap;
+  demo_accounts: DemoAccount[];
+  formats: string[];
   lang: Lang;
 }
 
 export interface CatalogPayload {
   courses: CourseSummary[];
-  featured: Course;
+  featured: Course | null;
   site: Site;
   lang: Lang;
 }
 
 export interface ShellPayload {
   user: User;
-  course: Course;
+  course: Course | null;
   courses: CourseSummary[];
-  default_course_slug: string;
+  default_course_slug: string | null;
   progress: ProgressMap;
   stats: Stats;
   next_lesson: LessonSummary | null;
@@ -222,7 +248,7 @@ export interface ShellPayload {
 }
 
 export interface DashboardPayload {
-  course: Course;
+  course: Course | null;
   courses: CourseSummary[];
   progress: ProgressMap;
   stats: Stats;
@@ -293,7 +319,7 @@ export interface AttemptReviewPayload {
 }
 
 export interface ProgressPayload {
-  course: Course;
+  course: Course | null;
   courses: CourseSummary[];
   progress: ProgressMap;
   stats: Stats;
@@ -312,7 +338,7 @@ export interface GlossaryTerm {
 
 export interface GlossaryPayload {
   groups: Array<{ letter: string; terms: GlossaryTerm[] }>;
-  course: Course;
+  course: Course | null;
   courses: CourseSummary[];
   progress: ProgressMap;
 }
@@ -328,7 +354,8 @@ export interface ResourceItem {
 
 export interface ResourcesPayload {
   resources: ResourceItem[];
-  course: Course;
+  source: Book | null;
+  course: Course | null;
   courses: CourseSummary[];
   progress: ProgressMap;
 }
@@ -336,7 +363,7 @@ export interface ResourcesPayload {
 export interface SearchPayload {
   query: string;
   results: Array<{ lesson: LessonSummary; snippet: string }>;
-  course: Course;
+  course: Course | null;
   courses: CourseSummary[];
   progress: ProgressMap;
 }
@@ -361,7 +388,7 @@ export interface TeacherPayload {
     active_week: number;
     total_lessons: number;
   };
-  course: Course;
+  course: Course | null;
   courses: CourseSummary[];
   progress: ProgressMap;
 }
@@ -621,7 +648,7 @@ export interface MutationResult {
 // ---------------------------------------------------------------------------
 
 export interface StudentKpis {
-  course: { slug: string; title: string };
+  course: { slug: string; title: string } | null;
   study: {
     week_minutes: number;
     prev_week_minutes: number;
@@ -664,7 +691,7 @@ export interface StudentRow {
 }
 
 export interface CourseAnalytics {
-  course: { slug: string; title: string };
+  course: { slug: string; title: string } | null;
   courses: { slug: string; title: string }[];
   groups: { id: number; name: string }[];
   group: number | null;
@@ -700,4 +727,41 @@ export interface WorkspaceMetrics {
   daily_active: { day: string; active: number }[];
   courses: Record<string, number>;
   jobs: { by_status: Record<string, number>; success_rate: number | null; avg_minutes: number | null };
+}
+
+// ---------------------------------------------------------------------------
+// Superadministración de la plataforma
+// ---------------------------------------------------------------------------
+
+export interface PlatformOverview {
+  users: { total: number; disabled: number; platform_admins: number; wau: number; dau: number };
+  workspaces: { personal: number; organization: number };
+  courses: { published: number; draft: number; public: number };
+  jobs: { month: number; failed_month: number };
+}
+
+export interface PlatformUser {
+  id: number;
+  name: string;
+  email: string;
+  created_at: string;
+  last_login_at: string | null;
+  disabled_at: string | null;
+  is_platform_admin: boolean;
+  workspaces: WorkspaceRef[];
+}
+
+export interface PlatformWorkspace {
+  id: number;
+  kind: "personal" | "organization";
+  name: string;
+  slug: string;
+  owner_email: string | null;
+  plan: string;
+  seat_limit: number | null;
+  settings: { gen_monthly?: number };
+  members: number;
+  courses: number;
+  jobs_month: number;
+  created_at: string;
 }

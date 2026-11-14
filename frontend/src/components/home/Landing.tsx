@@ -1,128 +1,133 @@
 import Link from "next/link";
 
-import { CourseCard, ComingSoonCard } from "@/components/course/CourseCard";
+import { CourseCard } from "@/components/course/CourseCard";
 import { Icon } from "@/components/ui";
-import { pick, t } from "@/lib/messages";
-import type { Course, CourseSummary, Lang } from "@/lib/types";
+import { pick } from "@/lib/messages";
+import type { CourseSummary, Lang } from "@/lib/types";
 
-const HERO_TOKENS: Record<Lang, string[]> = {
-  es: ["El", "caballero", "miró", "hacia", "la", "llanura", "y", "vio"],
-  en: ["The", "knight", "looked", "at", "the", "plain", "and", "saw"],
+/** Ejemplo del flujo documento → temario → unidad, sin atarlo a ninguna materia. */
+const SAMPLE_DOC: Record<Lang, { file: string; pages: string; outline: string[] }> = {
+  es: {
+    file: "apuntes-historia-contemporanea.pdf",
+    pages: "48 páginas",
+    outline: ["La Revolución industrial", "Liberalismo y nacionalismo", "El movimiento obrero"],
+  },
+  en: {
+    file: "modern-history-notes.pdf",
+    pages: "48 pages",
+    outline: ["The Industrial Revolution", "Liberalism and nationalism", "The labour movement"],
+  },
 };
 
-const HERO_BARS: Record<
-  Lang,
-  Array<{ label: string; width: number; percent: number }>
-> = {
-  es: [
-    { label: "un", width: 74, percent: 34 },
-    { label: "una", width: 52, percent: 24 },
-    { label: "que", width: 38, percent: 17 },
-    { label: "en", width: 21, percent: 9 },
-  ],
-  en: [
-    { label: "a", width: 74, percent: 34 },
-    { label: "the", width: 52, percent: 24 },
-    { label: "that", width: 38, percent: 17 },
-    { label: "in", width: 21, percent: 9 },
-  ],
-};
+const AUDIENCES = [
+  {
+    key: "individual",
+    icon: "user",
+    title: ["Aprendo por mi cuenta", "I learn on my own"],
+    text: [
+      "Crea tu cuenta individual, sube tus apuntes o un libro y estudia con lecciones, cuestionarios y tu propio progreso.",
+      "Create an individual account, upload your notes or a book and study with lessons, quizzes and your own progress.",
+    ],
+    cta: ["Crear cuenta individual", "Create an individual account"],
+  },
+  {
+    key: "academia",
+    icon: "graduation",
+    title: ["Enseño a un grupo", "I teach a group"],
+    text: [
+      "Crea una academia, invita a tu profesorado y alumnado, asigna cursos por grupo y sigue la analítica de clase.",
+      "Create an academy, invite teachers and students, assign courses by group and follow class analytics.",
+    ],
+    cta: ["Crear una academia", "Create an academy"],
+  },
+  {
+    key: "codigo",
+    icon: "key",
+    title: ["Soy alumno", "I'm a student"],
+    text: [
+      "Únete a tu clase con el código o el enlace de invitación que te dé tu profesor. Verás los cursos que te asignen.",
+      "Join your class with the code or invitation link from your teacher. You will see the courses assigned to you.",
+    ],
+    cta: ["Tengo un código de clase", "I have a class code"],
+  },
+] as const;
 
 export function Landing({
   catalog,
-  featured,
+  formats,
   lang,
 }: {
   catalog: CourseSummary[];
-  featured: Course;
+  formats: string[];
   lang: Lang;
 }) {
-  const totalLessons = catalog.reduce((sum, course) => sum + course.lesson_count, 0);
-  const totalMinutes = catalog.reduce((sum, course) => sum + course.total_minutes, 0);
-  const catalogLabel =
-    catalog.length === 1
-      ? t(lang, "Biblioteca de cursos · 1 curso disponible")
-      : t(lang, "Biblioteca de cursos · {n} cursos disponibles", {
-          n: catalog.length,
-        });
+  const doc = SAMPLE_DOC[lang];
+  const p = (pair: readonly [string, string]) => pick(lang, pair[0], pair[1]);
 
   return (
     <>
       <section className="hero">
         <div className="hero-copy">
           <span className="eyebrow-dark">
-            <Icon name="grid" /> {catalogLabel}
+            <Icon name="sparkles" /> {pick(lang, "Aula virtual para cualquier materia", "A virtual classroom for any subject")}
           </span>
           <h1>
-            {t(lang, "Aprende IA desde los libros que")}{" "}
-            <em>{t(lang, "la explican")}</em>.
+            {pick(lang, "Convierte cualquier material en", "Turn any material into")}{" "}
+            <em>{pick(lang, "un curso", "a course")}</em>.
           </h1>
           <p className="hero-lead">
-            {t(
+            {pick(
               lang,
-              "Un aula online con cursos guiados, laboratorios que se ejecutan en el navegador y evaluación integrada. Empieza por el libro que quieras y continúa donde lo dejaste."
+              "Sube apuntes, un libro o un manual y SLAnything lo transforma en lecciones guiadas, cuestionarios y glosario, siempre con su fuente citada. Aprende por tu cuenta o enseña a toda una clase.",
+              "Upload notes, a book or a manual and SLAnything turns it into guided lessons, quizzes and a glossary, always citing its source. Learn on your own or teach a whole class."
             )}
           </p>
           <div className="hero-actions">
-            <Link className="btn btn-primary btn-lg" href="/cursos">
-              <Icon name="grid" /> {t(lang, "Explorar cursos")}
+            <Link className="btn btn-primary btn-lg" href="/registro">
+              <Icon name="arrow-right" /> {pick(lang, "Empezar gratis", "Start for free")}
             </Link>
             <Link className="btn btn-secondary btn-lg" href="/entrar">
-              <Icon name="lock" /> {t(lang, "Ya tengo cuenta")}
+              <Icon name="lock" /> {pick(lang, "Ya tengo cuenta", "I have an account")}
             </Link>
           </div>
           <div className="hero-meta">
             <span>
-              <Icon name="grid" />{" "}
-              {catalog.length === 1
-                ? t(lang, "1 curso")
-                : t(lang, "{n} cursos", { n: catalog.length })}
+              <Icon name="folder" /> {formats.join(" · ")}
             </span>
             <span>
-              <Icon name="layers" />{" "}
-              {t(lang, "{n} capítulos", { n: featured.chapter_count })}
-            </span>
-            <span>
-              <Icon name="book" />{" "}
-              {t(lang, "{n} lecciones", { n: totalLessons })}
-            </span>
-            <span>
-              <Icon name="clock" />{" "}
-              {t(lang, "{n} minutos", { n: totalMinutes })}
+              <Icon name="globe" /> {pick(lang, "Español e inglés", "Spanish and English")}
             </span>
           </div>
         </div>
 
-        <div className="hero-visual">
+        <div className="hero-visual" aria-hidden="true">
           <div className="hero-card">
             <div className="hero-card-top">
-              <span className="dot" />{" "}
-              {t(lang, "Aula LLM · predicción en vivo")}
+              <span className="dot" /> {pick(lang, "Del documento al curso", "From document to course")}
             </div>
             <p className="hero-prompt">
-              <strong>{pick(lang, "El caballero", "The knight")}</strong>{" "}
-              {pick(
-                lang,
-                "miró hacia la llanura y vio…",
-                "looked at the plain and saw…"
-              )}
+              <strong>{doc.file}</strong> · {doc.pages}
             </p>
             <div className="hero-tokens">
-              {HERO_TOKENS[lang].map((token, index) => (
-                <span className="hero-token" key={`${token}-${index}`}>
-                  {token}
+              {doc.outline.map((item, index) => (
+                <span className="hero-token" key={item}>
+                  {index + 1}. {item}
                 </span>
               ))}
-              <span className="hero-token is-next">…</span>
+              <span className="hero-token is-next">+ {pick(lang, "cuestionario", "quiz")}</span>
             </div>
             <div className="hero-bars">
-              {HERO_BARS[lang].map((bar) => (
+              {[
+                { label: pick(lang, "Lecciones", "Lessons"), width: 100, value: "9" },
+                { label: pick(lang, "Con cita", "Cited"), width: 92, value: "92 %" },
+                { label: pick(lang, "Preguntas", "Questions"), width: 60, value: "24" },
+              ].map((bar) => (
                 <div className="hero-bar" key={bar.label}>
                   <span>{bar.label}</span>
                   <div className="hero-bar-track">
                     <span style={{ width: `${bar.width}%` }} />
                   </div>
-                  <span>{bar.percent} %</span>
+                  <span>{bar.value}</span>
                 </div>
               ))}
             </div>
@@ -130,64 +135,98 @@ export function Landing({
           <div className="hero-float">
             <Icon name="check-circle" />{" "}
             <span>
-              <strong>{t(lang, "Progreso guardado")}</strong>
+              <strong>{pick(lang, "Tú revisas el temario", "You review the outline")}</strong>
               <br />
-              {t(lang, "Continúa donde lo dejaste")}
+              {pick(lang, "Nada se publica sin tu visto bueno", "Nothing is published without your approval")}
             </span>
           </div>
         </div>
       </section>
 
-      <section className="landing-section" id="cursos">
-        <span className="eyebrow-dark">{t(lang, "Cursos")}</span>
-        <h2 className="section-title">{t(lang, "Elige tu próximo libro")}</h2>
+      <section className="landing-section" id="como-funciona">
+        <span className="eyebrow-dark">{pick(lang, "Cómo funciona", "How it works")}</span>
+        <h2 className="section-title">{pick(lang, "Del documento a la evaluación en tres pasos.", "From document to assessment in three steps.")}</h2>
         <p className="section-sub">
-          {t(
+          {pick(
             lang,
-            "Cada curso es un recorrido completo con lecciones, laboratorios y quizzes. La biblioteca crecerá con nuevos libros."
+            "El Estudio lee tu material, propone un temario que puedes editar y genera cada lección citando las páginas en las que se apoya.",
+            "The Studio reads your material, proposes an outline you can edit and writes each lesson citing the pages it relies on."
           )}
         </p>
-        <div className="catalog-grid">
-          {catalog.map((course) => (
-            <CourseCard key={course.slug} course={course} lang={lang} />
-          ))}
-          <ComingSoonCard lang={lang} />
+        <div className="steps">
+          <article className="step">
+            <h3>{pick(lang, "Sube tu material", "Upload your material")}</h3>
+            <p>
+              {pick(
+                lang,
+                "Apuntes, libros, manuales o artículos en PDF, Word, EPUB, Markdown o texto. Elige idioma y nivel.",
+                "Notes, books, manuals or articles in PDF, Word, EPUB, Markdown or text. Choose language and level."
+              )}
+            </p>
+          </article>
+          <article className="step">
+            <h3>{pick(lang, "Revisa el temario", "Review the outline")}</h3>
+            <p>
+              {pick(
+                lang,
+                "Reordena capítulos y lecciones, ajusta los objetivos y decide qué se genera antes de gastar un solo minuto.",
+                "Reorder chapters and lessons, adjust the objectives and decide what gets generated before spending a single minute."
+              )}
+            </p>
+          </article>
+          <article className="step">
+            <h3>{pick(lang, "Aprende y evalúate", "Learn and assess")}</h3>
+            <p>
+              {pick(
+                lang,
+                "Lecciones con comprobaciones, cuestionario por capítulo, glosario, apuntes y un panel con tu progreso.",
+                "Lessons with checks, a quiz per chapter, glossary, notes and a dashboard with your progress."
+              )}
+            </p>
+          </article>
         </div>
       </section>
 
-      <section className="landing-section" id="como-funciona">
-        <span className="eyebrow-dark">{t(lang, "Cómo funciona")}</span>
-        <h2 className="section-title">
-          {t(lang, "Menos vídeos. Más entender haciendo.")}
-        </h2>
+      <section className="landing-section" id="para-quien">
+        <span className="eyebrow-dark">{pick(lang, "Para quién", "Who it's for")}</span>
+        <h2 className="section-title">{pick(lang, "Una cuenta individual o una academia.", "An individual account or an academy.")}</h2>
         <p className="section-sub">
-          {t(
+          {pick(
             lang,
-            "Cada lección combina una idea, una imagen o una demo, y una comprobación. Si algo no queda claro, vuelves al laboratorio y cambias un parámetro."
+            "Elige cómo vas a usar SLAnything. Siempre puedes unirte más tarde a una clase o abrir tu cuenta individual.",
+            "Choose how you will use SLAnything. You can always join a class later or open your individual account."
           )}
         </p>
+        <div className="feature-grid">
+          {AUDIENCES.map((audience) => (
+            <article className="feature" key={audience.key}>
+              <div className="feature-icon">
+                <Icon name={audience.icon} />
+              </div>
+              <h3>{p(audience.title)}</h3>
+              <p>{p(audience.text)}</p>
+              <Link className="btn btn-secondary" style={{ marginTop: 14 }} href={`/registro?tipo=${audience.key}`}>
+                <Icon name="arrow-right" /> {p(audience.cta)}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-section" id="funciones">
+        <span className="eyebrow-dark">{pick(lang, "Qué incluye", "What's included")}</span>
+        <h2 className="section-title">{pick(lang, "Menos copiar y pegar. Más entender.", "Less copy and paste. More understanding.")}</h2>
         <div className="feature-grid">
           <article className="feature">
             <div className="feature-icon">
               <Icon name="book" />
             </div>
-            <h3>{t(lang, "Lecciones con hilo")}</h3>
+            <h3>{pick(lang, "Lecciones con fuente", "Lessons with sources")}</h3>
             <p>
-              {t(
+              {pick(
                 lang,
-                "Capítulos breves que construyen intuición: del texto tokenizado a la atención, el pretraining y las instrucciones."
-              )}
-            </p>
-          </article>
-          <article className="feature">
-            <div className="feature-icon">
-              <Icon name="sparkles" />
-            </div>
-            <h3>{t(lang, "Laboratorios reales")}</h3>
-            <p>
-              {t(
-                lang,
-                "Entrena un modelo de n-gramas con El Quijote, ajusta la temperatura, explora la atención y calcula el coste de entrenar a escala."
+                "Cada bloque cita la página del documento en la que se basa. Si algo no está en tu material, no se inventa.",
+                "Every block cites the page of the document it is based on. If something isn't in your material, it isn't made up."
               )}
             </p>
           </article>
@@ -195,92 +234,57 @@ export function Landing({
             <div className="feature-icon">
               <Icon name="target" />
             </div>
-            <h3>{t(lang, "Progreso y quiz")}</h3>
+            <h3>{pick(lang, "Evaluación integrada", "Built-in assessment")}</h3>
             <p>
-              {t(
+              {pick(
                 lang,
-                "Marca lecciones, guarda apuntes y comprueba tu comprensión con preguntas corregidas en el servidor."
+                "Preguntas de respuesta única, múltiple o verdadero/falso, corregidas en el servidor y con explicación.",
+                "Single-answer, multiple-answer or true/false questions, graded on the server and explained."
+              )}
+            </p>
+          </article>
+          <article className="feature">
+            <div className="feature-icon">
+              <Icon name="chart" />
+            </div>
+            <h3>{pick(lang, "Progreso y analítica", "Progress and analytics")}</h3>
+            <p>
+              {pick(
+                lang,
+                "Tiempo de estudio, racha, dominio por capítulo y, para el profesorado, embudo, alumnado en riesgo y análisis de preguntas.",
+                "Study time, streak, mastery by chapter and, for teachers, funnel, students at risk and item analysis."
               )}
             </p>
           </article>
         </div>
       </section>
 
-      <section className="landing-section" id="programa">
-        <span className="eyebrow-dark">{t(lang, "Dentro del curso")}</span>
-        <h2 className="section-title">
-          {t(lang, "Entiende cómo funciona ChatGPT. Luego constrúyelo.")}
-        </h2>
-        <p className="section-sub">
-          {t(
-            lang,
-            "El curso de referencia recorre el libro en {n} capítulos. Del texto tokenizado a la atención, el pretraining y las instrucciones.",
-            { n: featured.chapter_count }
-          )}
-        </p>
-        <div className="program-grid">
-          {featured.chapters.map((chapter) => (
-            <article className="program-item" key={chapter.slug}>
-              <span className="program-num">
-                {String(chapter.number).padStart(2, "0")}
-              </span>
-              <div>
-                <h3>{chapter.title}</h3>
-                <p>{chapter.subtitle}</p>
-              </div>
-              <span className="minutes">
-                {chapter.lesson_count} lecciones · {chapter.total_minutes} min
-              </span>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="landing-section">
-        <div className="steps">
-          <article className="step">
-            <h3>{t(lang, "Elige un curso")}</h3>
-            <p>
-              {t(
-                lang,
-                "Explora la biblioteca y abre el libro que quieras estudiar. Cada curso tiene su propio temario y progreso."
-              )}
-            </p>
-          </article>
-          <article className="step">
-            <h3>{t(lang, "Estudia y experimenta")}</h3>
-            <p>
-              {t(
-                lang,
-                "Lee, mueve los controles de los laboratorios y marca cada lección al terminarla."
-              )}
-            </p>
-          </article>
-          <article className="step">
-            <h3>{t(lang, "Demuéstralo")}</h3>
-            <p>
-              {t(
-                lang,
-                "Haz el quiz final. Con un 80 % superas el capítulo y consolidas lo aprendido."
-              )}
-            </p>
-          </article>
-        </div>
-      </section>
+      {catalog.length ? (
+        <section className="landing-section" id="cursos">
+          <span className="eyebrow-dark">{pick(lang, "Biblioteca abierta", "Open library")}</span>
+          <h2 className="section-title">{pick(lang, "Cursos disponibles para todos", "Courses available to everyone")}</h2>
+          <div className="catalog-grid">
+            {catalog.map((course) => (
+              <CourseCard key={course.slug} course={course} lang={lang} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="landing-section">
         <div className="cta-band">
           <div>
-            <h2>{t(lang, "Tu próximo tema empieza por el libro adecuado.")}</h2>
+            <h2>{pick(lang, "Tu próximo curso ya está en tus apuntes.", "Your next course is already in your notes.")}</h2>
             <p>
-              {t(
+              {pick(
                 lang,
-                "Sin GPU, sin instalar Python y sin perderte en terminología. Solo tú, el texto y un navegador."
+                "Sin instalar nada. Solo tu material, un navegador y unos minutos de revisión.",
+                "Nothing to install. Just your material, a browser and a few minutes of review."
               )}
             </p>
           </div>
           <Link className="btn btn-primary btn-lg" href="/registro">
-            <Icon name="arrow-right" /> {t(lang, "Entrar al aula")}
+            <Icon name="arrow-right" /> {pick(lang, "Crear mi cuenta", "Create my account")}
           </Link>
         </div>
       </section>

@@ -241,9 +241,82 @@ def _m0005_staged_generation(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA foreign_keys = ON")
 
 
+# ---------------------------------------------------------------------------
+# v6 · Perfiles de cuenta (ADR-021) y curso activo
+# ---------------------------------------------------------------------------
+
+# Cuentas demo de la etapa «Aula LLM». Se renombran a las de SLAnything para
+# que una base local antigua no conserve una profesora superadministradora.
+_LEGACY_DEMO_ACCOUNTS = (
+    ("demo@aulallm.local", "alumno@slanything.local", "alumno1234"),
+    ("profe@aulallm.local", "profe@slanything.local", "profe1234"),
+)
+
+
+def _m0006_account_profiles(conn: sqlite3.Connection) -> None:
+    """Separa la cuenta individual del alumnado de academia.
+
+    - ``users.last_course_slug`` guarda el último curso abierto.
+    - Los alumnos que solo pertenecen a academias pierden su espacio personal
+      si está vacío (sin trabajos ni cursos generados): el alumno solo consume.
+    - Los usuarios sin ningún espacio (bases v3) reciben su cuenta individual,
+      como hacía hasta ahora el arranque.
+    - Las cuentas demo antiguas se renombran y dejan de ser superadmin.
+    """
+    from webapp.security import hash_password
+
+    _add_column(conn, "users", "last_course_slug", "TEXT")
+
+    conn.execute(
+        """DELETE FROM workspaces
+           WHERE kind = 'personal'
+             AND owner_id IN (
+                 SELECT m.user_id FROM memberships m
+                 JOIN workspaces w ON w.id = m.workspace_id
+                 WHERE w.kind = 'organization'
+                 GROUP BY m.user_id
+                 HAVING SUM(CASE WHEN m.role != 'student' THEN 1 ELSE 0 END) = 0
+             )
+             AND NOT EXISTS (SELECT 1 FROM generated_courses g WHERE g.workspace_id = workspaces.id)
+             AND NOT EXISTS (SELECT 1 FROM authoring_jobs j WHERE j.workspace_id = workspaces.id)"""
+    )
+
+    orphans = conn.execute(
+        """SELECT u.id FROM users u
+           WHERE NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id)"""
+    ).fetchall()
+    for (user_id,) in orphans:
+        slug = f"personal-{user_id}"
+        candidate, n = slug, 2
+        while conn.execute("SELECT 1 FROM workspaces WHERE slug = ?", (candidate,)).fetchone():
+            candidate = f"{slug}-{n}"
+            n += 1
+        cursor = conn.execute(
+            """INSERT INTO workspaces (kind, name, slug, owner_id, created_at)
+               VALUES ('personal', 'Mi espacio', ?, ?, datetime('now'))""",
+            (candidate, user_id),
+        )
+        conn.execute(
+            """INSERT INTO memberships (workspace_id, user_id, role, created_at)
+               VALUES (?, ?, 'owner', datetime('now'))""",
+            (cursor.lastrowid, user_id),
+        )
+
+    for old, new, password in _LEGACY_DEMO_ACCOUNTS:
+        taken = conn.execute("SELECT 1 FROM users WHERE email = ?", (new,)).fetchone()
+        if taken:
+            continue
+        conn.execute(
+            """UPDATE users SET email = ?, password_hash = ?, is_platform_admin = 0
+               WHERE email = ?""",
+            (new, hash_password(password), old),
+        )
+
+
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (4, _m0004_workspaces_and_events),
     (5, _m0005_staged_generation),
+    (6, _m0006_account_profiles),
 ]
 
 LATEST_VERSION = MIGRATIONS[-1][0]

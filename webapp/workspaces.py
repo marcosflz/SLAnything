@@ -1,8 +1,14 @@
 """Espacios de trabajo (tenancy), membresías y roles.
 
-Cada usuario tiene un espacio **personal** del que es ``owner``: ahí puede subir
-documentos y generar unidades para sí mismo. Una academia es un espacio de tipo
-``organization`` con miembros ``owner``, ``admin``, ``teacher`` y ``student``.
+Hay dos formas de darse de alta (ADR-021):
+
+- **Cuenta individual**: un espacio ``personal`` del que el usuario es
+  ``owner``. Es el perfil *autodidacta*: aprende y genera unidades para sí
+  mismo, sin gestión de aula.
+- **Academia**: un espacio ``organization`` con miembros ``owner``, ``admin``,
+  ``teacher`` y ``student``. Quien entra por invitación o código de clase solo
+  pertenece a la academia; no recibe espacio personal.
+
 Todo el contenido generado, los trabajos del Estudio, los grupos y las
 invitaciones cuelgan de ``workspace_id``.
 """
@@ -11,9 +17,13 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
+
+from fastapi import HTTPException
 
 from webapp.db import utcnow
 from webapp.migrations import new_join_code, slugify_name
+from webapp.security import token_hash
 
 ROLES = ("student", "teacher", "admin", "owner")
 ROLE_RANK = {role: rank for rank, role in enumerate(ROLES)}
@@ -103,16 +113,6 @@ def ensure_personal_workspace(conn: sqlite3.Connection, user_id: int, name: str)
     )
 
 
-def ensure_all_personal_workspaces(conn: sqlite3.Connection) -> None:
-    rows = conn.execute(
-        """SELECT u.id, u.name FROM users u
-           WHERE NOT EXISTS (SELECT 1 FROM workspaces w
-                             WHERE w.kind = 'personal' AND w.owner_id = u.id)"""
-    ).fetchall()
-    for row in rows:
-        ensure_personal_workspace(conn, int(row[0]), row[1])
-
-
 def get_workspace(conn: sqlite3.Connection, workspace_id: int) -> dict | None:
     row = conn.execute("SELECT * FROM workspaces WHERE id = ?", (workspace_id,)).fetchone()
     return _workspace_dict(row) if row else None
@@ -193,6 +193,82 @@ def seat_count(conn: sqlite3.Connection, workspace_id: int) -> int:
         ).fetchone()[0]
     )
 
+
+# ---------------------------------------------------------------------------
+# Entrar en una academia: invitación de un solo uso o código de clase
+# ---------------------------------------------------------------------------
+
+def invitation_state(row: sqlite3.Row) -> str:
+    now = datetime.now(timezone.utc).isoformat()
+    if row["revoked_at"]:
+        return "revoked"
+    if row["accepted_at"]:
+        return "accepted"
+    if row["expires_at"] < now:
+        return "expired"
+    return "pending"
+
+
+def usable_invitation(conn: sqlite3.Connection, token: str) -> sqlite3.Row:
+    row = conn.execute(
+        """SELECT i.*, w.name AS workspace_name FROM invitations i
+           JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?""",
+        (token_hash(token),),
+    ).fetchone()
+    if row is None or invitation_state(row) != "pending":
+        raise HTTPException(status_code=404, detail="La invitación no existe o ya no es válida.")
+    return row
+
+
+def _check_seats(conn: sqlite3.Connection, workspace_id: int) -> None:
+    workspace = get_workspace(conn, workspace_id)
+    limit = workspace.get("seat_limit") if workspace else None
+    if limit and seat_count(conn, workspace_id) >= limit:
+        raise HTTPException(status_code=409, detail="La academia no tiene plazas libres.")
+
+
+def accept_invitation(conn: sqlite3.Connection, token: str, user_id: int, email: str) -> int:
+    """Aplica una invitación pendiente y devuelve el id de la academia.
+
+    Nunca rebaja un rol: si el usuario ya es miembro con un rol mayor, lo
+    conserva.
+    """
+    row = usable_invitation(conn, token)
+    if row["email"] and row["email"] != email.lower():
+        raise HTTPException(status_code=403, detail="Esta invitación es para otra dirección de correo.")
+    workspace_id = int(row["workspace_id"])
+    current = membership(conn, workspace_id, user_id)
+    if current is None:
+        _check_seats(conn, workspace_id)
+    if current is None or ROLE_RANK[row["role"]] > ROLE_RANK[current]:
+        add_member(conn, workspace_id, user_id, row["role"])
+    if row["group_id"]:
+        conn.execute(
+            "INSERT OR IGNORE INTO group_members (group_id, user_id, created_at) VALUES (?, ?, ?)",
+            (row["group_id"], user_id, utcnow()),
+        )
+    conn.execute(
+        "UPDATE invitations SET accepted_at = ?, accepted_by = ? WHERE id = ?",
+        (utcnow(), user_id, row["id"]),
+    )
+    return workspace_id
+
+
+def join_with_code(conn: sqlite3.Connection, code: str, user_id: int) -> tuple[dict, bool]:
+    """Entra como estudiante con el código de clase. Devuelve (academia, nuevo)."""
+    workspace = get_workspace_by_join_code(conn, code)
+    if workspace is None or workspace["kind"] != "organization":
+        raise HTTPException(status_code=404, detail="Código de clase no válido.")
+    if membership(conn, workspace["id"], user_id) is not None:
+        return workspace, False
+    _check_seats(conn, workspace["id"])
+    add_member(conn, workspace["id"], user_id, "student")
+    return workspace, True
+
+
+# ---------------------------------------------------------------------------
+# Demostración
+# ---------------------------------------------------------------------------
 
 def ensure_demo_organization(conn: sqlite3.Connection, teacher_email: str, student_email: str) -> None:
     """Academia de demostración: la profesora es owner y el alumno demo, student."""

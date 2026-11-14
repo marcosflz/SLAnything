@@ -43,7 +43,7 @@ Actualiza el OKF en la misma sesión en la que ocurra el cambio. Como mínimo:
 | Autenticación, sesiones o CSRF | `okf/architecture/security.md` |
 | Diseño, plantillas o responsive | `okf/product/ux.md`, `okf/architecture/frontend.md` |
 | Frontend Next.js o API JSON | `okf/architecture/nextjs-frontend.md`, `okf/architecture/api.md` |
-| Espacios, roles, administración o KPIs | `okf/architecture/tenancy-analytics.md` |
+| Espacios, perfiles, permisos, superadmin o KPIs | `okf/architecture/tenancy-analytics.md`, ADR-021 |
 | Generación por etapas | `okf/architecture/generation.md` |
 | Estudio de autoría, OpenCode o generación desde documentos | `okf/architecture/authoring.md`, `okf/decisions/adr-012-authoring-opencode.md` |
 | Traducciones ES/EN o contenido inglés | `okf/architecture/i18n.md`, `okf/product/lessons.md` |
@@ -93,7 +93,7 @@ Además, **siempre**:
 ```powershell
 uv sync
 uv run python aula.py                 # backend FastAPI · http://127.0.0.1:8000
-uv run python -m pytest -q           # suite del proyecto (140 tests)
+uv run python -m pytest -q           # suite del proyecto (181 tests)
 uv run python tools/check_chapter.py ch02   # valida un paquete de capítulo
 uv run python tools/validate_all_chapters.py
 uv run python tools/check_okf.py     # conformidad y enlaces del OKF
@@ -114,8 +114,10 @@ uv run python tools/smoke_next.py
 `aula.py` no recarga automáticamente. Si cambias Python o routers, reinicia el
 backend antes de probar. Para probar el Estudio sin red usa `AULA_LLM_FAKE=1`.
 
-Cuentas de demostración: `demo@aulallm.local / demo1234` y
-`profe@aulallm.local / profe1234`.
+Cuentas de demostración (una por perfil): `alumno@slanything.local / alumno1234`,
+`profe@slanything.local / profe1234`, `autodidacta@slanything.local / auto1234`
+y `admin@slanything.local / admin1234` (superadmin). El curso de ejemplo LLM solo
+aparece con `AULA_SAMPLE_COURSES=1`.
 
 ## Cierre de sesión
 
@@ -132,13 +134,14 @@ Si la respuesta a 2, 3 o 4 es no, el trabajo **no** está terminado.
 
 ## Contexto de producto en una frase
 
-SLAnything es una plataforma web **bilingüe (ES/EN)**, tipo aula virtual, con un
-catálogo de cursos y un **Estudio de autoría** que convierte documentos en
-unidades didácticas con OpenCode. El curso publicado convierte los 7 capítulos de
-*Build a Large Language Model (From Scratch)* en 56 lecciones, 15 laboratorios
-interactivos, 26 ejemplos de Python ejecutables, 7 quizzes de 10 preguntas y un
-panel de progreso. Es SaaS multi-organización (espacios personales y academias
-con roles, grupos e invitaciones) con paneles de KPIs. La única interfaz es
+SLAnything es un aula virtual **genérica y bilingüe (ES/EN)** que convierte
+cualquier material de aprendizaje en cursos mediante un **Estudio de autoría**
+(lecciones con citas, cuestionarios y glosario). Hay dos altas: **cuenta
+individual** (aprende y crea sus unidades, sin gestión de aula) o **academia**
+(owner/admin, profesorado y alumnado; el alumnado solo consume), más una
+**superadministración** de plataforma (`/plataforma`). La biblioteca empieza
+vacía; el curso «Construye un LLM desde cero» (56 lecciones, 15 labs) es solo un
+**ejemplo opcional** (`AULA_SAMPLE_COURSES=1`). Ver ADR-020 y ADR-021. La única interfaz es
 **Next.js 16 + React 19** (Tailwind v4); el backend es **FastAPI + SQLite** y
 solo expone API. Los identificadores internos `aula_*` se mantienen por
 compatibilidad.
@@ -149,9 +152,13 @@ compatibilidad.
   `src/components/ui/`, gráficos en `src/components/charts/`, shell en
   `src/components/shell/`. `app.css` es estilo heredado en la capa `legacy`.
 - **API JSON (`/api/v1`)** es la frontera; FastAPI no sirve HTML.
-- **Contenido** vive en `webapp/content/`, en módulos ES y EN.
-- **Espacios, roles y administración**: `webapp/workspaces.py`,
-  `webapp/deps.py` (`require_role`), `webapp/routers/admin.py`.
+- **Contenido**: los cursos llegan del Estudio (`generated_courses`); el curso de
+  ejemplo vive en `webapp/content/` (módulos ES y EN). Ningún texto fijo de la
+  interfaz debe asumir una materia.
+- **Espacios, perfiles y administración**: `webapp/workspaces.py`,
+  `webapp/deps.py` (`permissions_for`, `require_author`, `require_teaching`,
+  `require_admin`, `require_platform_admin`), `webapp/routers/admin.py` y
+  `webapp/routers/platform.py`. Usa siempre `Depends(get_db, scope="function")`.
 - **Analítica**: `webapp/analytics.py` y `webapp/routers/analytics.py`.
 - **Generación por etapas**: `webapp/generation/` (motor `direct`); el motor
   OpenCode sigue en `webapp/authoring/` y su agente en

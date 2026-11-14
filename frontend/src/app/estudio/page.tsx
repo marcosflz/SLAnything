@@ -38,8 +38,8 @@ export default async function StudioPage() {
           lang={lang}
           message={pick(
             lang,
-            "En esta academia solo el profesorado crea unidades. Cambia a tu espacio personal para crear las tuyas.",
-            "In this academy only teachers create units. Switch to your personal space to create your own."
+            "El alumnado no crea unidades: estudia los cursos de su academia. Si quieres generar las tuyas, abre tu cuenta individual desde «Mi cuenta».",
+            "Students don't create units: they study their academy's courses. To generate your own, open your individual account from “My account”."
           )}
         />
       )}
