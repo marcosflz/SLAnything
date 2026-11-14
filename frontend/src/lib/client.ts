@@ -63,6 +63,14 @@ export async function apiPut<T>(
   return apiSend<T>(path, "PUT", body, csrf);
 }
 
+export async function apiSendPatch<T>(
+  path: string,
+  body: unknown,
+  csrf?: string
+): Promise<T> {
+  return apiSend<T>(path, "PATCH", body, csrf);
+}
+
 export async function apiDelete<T>(path: string, csrf?: string): Promise<T> {
   return apiSend<T>(path, "DELETE", undefined, csrf);
 }

@@ -4,7 +4,7 @@ title: Diseño y experiencia de SLAnything
 description: Identidad, sistema visual, pantallas, responsive, modo oscuro y accesibilidad.
 tags: [ux, diseno, css, accesibilidad, responsive]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-27T10:30:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: css
     resource: ../../webapp/static/css/app.css
@@ -94,3 +94,24 @@ En `docs/capturas/` hay 21 imágenes de referencia (landing, dashboard, curso,
 lección, labs, quiz, glosario, recursos, progreso, login, registro, móvil y modo
 oscuro). El README usa `00b_landing_programa.png` como portada y muestra el
 resto agrupado por área; `docs/capturas/README.md` describe cada archivo.
+
+# Rediseño 2026-11-13 · «Moodle moderno»
+
+- Sistema de diseño en [ADR-014](/decisions/adr-014-design-system.md):
+  Tailwind v4, componentes propios (Radix), gráficos Recharts con tabla
+  alternativa, iconos lucide.
+- **Shell**: sidebar clara con selector de espacio (personal/academias, crear
+  academia, unirse con código), navegación por rol (Aprender · Crear y enseñar ·
+  Administrar), temario del curso actual con estado por lección; topbar con
+  búsqueda/comandos ⌘K o «/», idioma, tema y menú de usuario.
+- **Inicio**: saludo con «Continuar», KPIs (estudio semanal, progreso, nota
+  media, racha), tiempo de estudio 28 días, preguntas a repasar, dominio por
+  capítulo, evolución de notas y cursos del espacio.
+- **Analítica**, **Estudio** (asistente por pasos y revisión) y
+  **Administración** descritos en [generation](/architecture/generation.md) y
+  [tenancy-analytics](/architecture/tenancy-analytics.md).
+- `loading.tsx` con esqueletos en las rutas principales.
+- Las lecciones generadas muestran «Fuente: p. N» bajo cada bloque citado; el
+  quiz admite respuesta múltiple.
+- Pendiente: migrar lección, quiz, progreso, glosario y catálogo a componentes
+  nuevos; revisión visual a 360/768/1440 px y con lector de pantalla.

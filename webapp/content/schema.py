@@ -207,17 +207,54 @@ class Chapter:
         return None, None
 
 
+QUESTION_KINDS = ("single", "multiple", "true_false")
+
+
 @dataclass(frozen=True)
 class Question:
+    """Pregunta autocorregible.
+
+    - ``single`` y ``true_false``: una opción correcta (``correct``).
+    - ``multiple``: varias correctas (``answers``); se acierta solo si se marcan
+      exactamente esas. ``correct`` es la primera, por compatibilidad.
+    """
+
     id: str
     prompt: str
     options: tuple[str, ...]
     correct: int
     explanation: str
+    kind: str = "single"
+    answers: tuple[int, ...] = ()
+    difficulty: str | None = None
+    source: str | None = None
+
+    @property
+    def correct_set(self) -> tuple[int, ...]:
+        return self.answers if self.kind == "multiple" and self.answers else (self.correct,)
 
     @property
     def correct_option(self) -> str:
-        return self.options[self.correct]
+        return " · ".join(self.options[index] for index in self.correct_set)
+
+    def normalize(self, raw) -> int | list[int] | None:
+        """Respuesta del alumno saneada: índice, lista de índices o None."""
+        valid = range(len(self.options))
+        if self.kind == "multiple":
+            if isinstance(raw, int) and not isinstance(raw, bool):
+                raw = [raw]
+            if not isinstance(raw, (list, tuple)):
+                return None
+            picked = sorted({item for item in raw if isinstance(item, int) and not isinstance(item, bool) and item in valid})
+            return picked or None
+        if isinstance(raw, int) and not isinstance(raw, bool) and raw in valid:
+            return raw
+        return None
+
+    def is_correct(self, selected) -> bool:
+        if self.kind == "multiple":
+            return isinstance(selected, list) and sorted(selected) == sorted(self.correct_set)
+        return selected == self.correct
 
 
 @dataclass(frozen=True)

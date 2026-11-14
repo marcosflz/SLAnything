@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request
 
-from webapp import config
+from webapp import config, workspaces
 from webapp.db import get_db, utcnow
 from webapp.security import csrf_matches, token_hash
 
@@ -22,10 +22,10 @@ def get_current_user(
     if token:
         row = conn.execute(
             """SELECT s.id AS session_id, s.csrf_token, s.expires_at,
-                      u.id, u.email, u.name, u.role
+                      u.id, u.email, u.name, u.role, u.is_platform_admin
                FROM sessions s
                JOIN users u ON u.id = s.user_id
-               WHERE s.id = ? AND s.expires_at > ?""",
+               WHERE s.id = ? AND s.expires_at > ? AND u.disabled_at IS NULL""",
             (token_hash(token), utcnow()),
         ).fetchone()
         if row:
@@ -48,8 +48,34 @@ def get_current_user(
                     )
             except (TypeError, ValueError):
                 pass
+            _attach_workspace(request, conn, user)
     request.state.user = user
     return user
+
+
+def _attach_workspace(request: Request, conn: sqlite3.Connection, user: dict) -> None:
+    """Añade al usuario sus membresías, el espacio activo y sus permisos."""
+    memberships = workspaces.memberships_for_user(conn, user["id"])
+    requested = request.headers.get("X-Workspace") or request.cookies.get(
+        config.WORKSPACE_COOKIE
+    )
+    active = workspaces.resolve_active(memberships, requested)
+    user["memberships"] = memberships
+    user["workspace_ids"] = frozenset(item["id"] for item in memberships)
+    user["workspace"] = active
+    role = active["role"] if active else None
+    user["ws_role"] = role
+    user["permissions"] = permissions_for(role, bool(user.get("is_platform_admin")))
+
+
+def permissions_for(role: str | None, platform_admin: bool = False) -> dict:
+    return {
+        "author": workspaces.role_at_least(role, "teacher"),
+        "teach": workspaces.role_at_least(role, "teacher"),
+        "admin": workspaces.role_at_least(role, "admin"),
+        "owner": workspaces.role_at_least(role, "owner"),
+        "platform": platform_admin,
+    }
 
 
 def require_user(user: dict | None = Depends(get_current_user)) -> dict:
@@ -58,9 +84,29 @@ def require_user(user: dict | None = Depends(get_current_user)) -> dict:
     return user
 
 
-def require_teacher(user: dict = Depends(require_user)) -> dict:
-    if user.get("role") != "teacher":
-        raise HTTPException(status_code=403, detail="Esta sección es solo para el profesorado.")
+def require_role(minimum: str, detail: str | None = None):
+    """Dependencia: exige un rol mínimo en el espacio de trabajo activo."""
+
+    def dependency(user: dict = Depends(require_user)) -> dict:
+        if not workspaces.role_at_least(user.get("ws_role"), minimum):
+            raise HTTPException(
+                status_code=403,
+                detail=detail or "No tienes permiso para ver esta página.",
+            )
+        return user
+
+    return dependency
+
+
+# Profesorado: teacher, admin u owner del espacio activo. En un espacio personal
+# el usuario es owner, así que también puede usar el Estudio para sí mismo.
+require_teacher = require_role("teacher", "Esta sección es solo para el profesorado.")
+require_admin = require_role("admin", "Esta sección es solo para la administración del espacio.")
+
+
+def require_platform_admin(user: dict = Depends(require_user)) -> dict:
+    if not user.get("is_platform_admin"):
+        raise HTTPException(status_code=403, detail="Solo para la administración de la plataforma.")
     return user
 
 

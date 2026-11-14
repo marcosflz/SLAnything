@@ -1,8 +1,11 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
+import { LearningTracker } from "@/components/lesson/LearningTracker";
 import { BlockRenderer } from "@/components/BlockRenderer";
+import { SourceNote } from "@/components/lesson/SourceNote";
 import { LessonAside } from "@/components/lesson/LessonAside";
 import { Badge, Icon } from "@/components/ui";
 import { ApiError, apiGet, getShell } from "@/lib/api";
@@ -141,17 +144,22 @@ export default async function LessonPage({
           </section>
 
           <div className="prose">
-            {lesson.blocks.map((block, position) => (
-              <BlockRenderer
-                key={position}
-                block={block}
-                index={position + 1}
-                lessonSlug={lesson.slug}
-                labMeta={data.lab_meta}
-                csrf={shell.user.csrf_token}
-                lang={lang}
-              />
-            ))}
+            {lesson.blocks.map((block, position) => {
+              const sources = Array.isArray(block.sources) ? (block.sources as string[]) : [];
+              return (
+                <Fragment key={position}>
+                  <BlockRenderer
+                    block={block}
+                    index={position + 1}
+                    lessonSlug={lesson.slug}
+                    labMeta={data.lab_meta}
+                    csrf={shell.user.csrf_token}
+                    lang={lang}
+                  />
+                  {sources.length ? <SourceNote sources={sources} lang={lang} /> : null}
+                </Fragment>
+              );
+            })}
           </div>
 
           {data.quiz ? (
@@ -245,6 +253,11 @@ export default async function LessonPage({
           lang={lang}
         />
       </div>
+      <LearningTracker
+        course={data.course.slug}
+        lesson={data.lesson.slug}
+        csrf={shell.user.csrf_token}
+      />
     </AppShell>
   );
 }

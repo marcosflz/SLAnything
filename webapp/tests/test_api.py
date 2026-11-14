@@ -189,7 +189,7 @@ def test_api_attempt_review_is_private(client):
         headers={"X-CSRF-Token": token},
     ).json()
 
-    assert register(client, "api-intruso@example.com").status_code == 303
+    assert register(client, "api-intruso@example.com").status_code == 200
     other = client.get(f"/api/v1/quiz/attempts/{result['attempt_id']}")
     assert other.status_code == 404
 

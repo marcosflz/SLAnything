@@ -4,7 +4,7 @@ title: Seguridad de la plataforma
 description: Controles de autenticación, sesión, CSRF, autorización y cabeceras, con sus límites.
 tags: [seguridad, auth, csrf, sesiones, privacidad]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: security
     resource: ../../webapp/security.py
@@ -119,3 +119,23 @@ sources:
   de privacidad y control de acceso.
 - El aislamiento de Python es defensa en profundidad; un fallo de CPython o de una
   biblioteca podría escapar. No lo expongas como servicio público sin contenedor.
+
+# Actualización 2026-11-13 · roles por espacio
+
+- La autorización ya no usa `users.role`: `deps.require_role` comprueba el rol
+  del **espacio activo** (cookie `aula_ws` o cabecera `X-Workspace`, validada
+  contra `memberships`). Matriz de permisos en
+  [tenancy-analytics](/architecture/tenancy-analytics.md).
+- Los recursos del Estudio se filtran por espacio y por autor/admin; los
+  cursos generados de otros espacios no aparecen en el catálogo.
+- Cuentas desactivadas (`disabled_at`) no pueden iniciar sesión (se comprueba
+  tras validar la contraseña, para no filtrar existencia).
+- Invitaciones: el token solo se muestra una vez; se guarda su hash.
+- Cambiar la contraseña cierra las demás sesiones; hay cierre remoto de sesiones.
+- Acciones sensibles en `audit_log` (sin secretos).
+- `POST /api/v1/events` acepta el CSRF en el cuerpo (necesario para
+  `sendBeacon`) y solo verbos de cliente; los verbos de servidor no se pueden
+  falsificar.
+- Ajustes del proveedor de IA: solo `is_platform_admin`
+  (`AULA_PLATFORM_ADMINS`; la profesora demo lo es con `AULA_SEED_DEMO=1`).
+- Pendiente: verificación de correo, recuperación de contraseña, OAuth y 2FA.

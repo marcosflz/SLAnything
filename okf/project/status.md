@@ -5,7 +5,7 @@ description: Foto del proyecto a 24 de octubre de 2026 con el catálogo multi-cu
 tags: [estado, entrega, handoff, tests, cursos, catalogo]
 status: stable
 stale_after: 2026-11-30T00:00:00Z
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T17:49:24Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -34,15 +34,25 @@ sources:
 | Glosario | 113 términos (ES/EN) |
 | Idiomas | Español e inglés |
 | Ejemplos Python | 26 ejecutables en servidor + descarga |
-| Tests | 111 passed |
+| Tests | 140 passed |
 | Repositorio | GitHub privado · `marcosflz/SLAnything` |
 | Servidor local | Next `http://127.0.0.1:3000` · FastAPI `http://127.0.0.1:8000` |
 | Empaquetado | Docker Compose (`aula-llm-backend`, `aula-llm-frontend`) con OpenCode |
 | Base de datos | `aula.db` (SQLite v3, ignorada por git) |
 | Autoría | `/estudio` · OpenCode portable + proveedor configurable + PWA |
-| Última verificación | 2026-10-24 |
+| Última verificación | 2026-11-13 |
 
 # Qué está hecho
+
+**Evolución 2026-11-13 (SLAnything 2.0, en curso):** interfaz Jinja retirada;
+espacios de trabajo con roles (cuentas personales y academias), grupos,
+invitaciones, auditoría y cuenta; eventos de aprendizaje y paneles de KPIs
+(alumno, profesorado, administración); generación por etapas con citas,
+temario editable, quiz de varios tipos, verificación, cola reanudable y SSE;
+sistema de diseño Tailwind con shell nuevo. Ver
+[generation](/architecture/generation.md),
+[tenancy-analytics](/architecture/tenancy-analytics.md) y ADR-013 a ADR-019.
+
 
 - **Estudio de autoría** (`/estudio`, solo profesorado): subida de PDF, DOCX,
   EPUB, ODT, Markdown, HTML o TXT; extracción y troceado; generación con OpenCode

@@ -129,7 +129,7 @@ class ContentBundle:
         return replace(self, course=selected)
 
 
-def _dynamic_content(code: str):
+def _dynamic_content(code: str, workspace_ids: frozenset[int] | None = None):
     """Cursos publicados desde el Estudio, sin romper el catálogo estático.
 
     Se importa aquí para evitar un ciclo: el paquete de autoría usa los modelos
@@ -140,16 +140,27 @@ def _dynamic_content(code: str):
     try:
         from webapp.authoring.store import dynamic_content
 
-        return dynamic_content(code)
+        return dynamic_content(code, workspace_ids)
     except Exception:  # noqa: BLE001 - el sitio debe seguir vivo sin el Estudio
         logger.exception("No se pudo cargar el contenido generado para %s", code)
         return [], {}, ()
 
 
-def content_for(lang: str | None, course_slug: str | None = None) -> ContentBundle:
+def content_for(
+    lang: str | None,
+    course_slug: str | None = None,
+    workspace_ids: frozenset[int] | None = frozenset(),
+) -> ContentBundle:
+    """Bundle de contenido para un idioma.
+
+    ``workspace_ids`` limita los cursos generados a los espacios del usuario
+    (más los públicos). ``None`` desactiva el filtro (scripts y tareas internas).
+    """
     code = lang if lang in CATALOGS else DEFAULT_LANG
     static_catalog = CATALOGS[code]
-    dynamic_courses, dynamic_quizzes, dynamic_glossary = _dynamic_content(code)
+    dynamic_courses, dynamic_quizzes, dynamic_glossary = _dynamic_content(
+        code, workspace_ids
+    )
     static_slugs = {item.slug for item in static_catalog}
     catalog = static_catalog + tuple(
         course for course in dynamic_courses if course.slug not in static_slugs

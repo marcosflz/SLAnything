@@ -1,10 +1,11 @@
-"""Selector de idioma y contenido en inglés."""
+"""Contenido en inglés servido por la API."""
 
 from __future__ import annotations
 
-from webapp.content import COURSES, GLOSSARIES, QUIZZES_BY_LANG, validate_program
 from webapp import config
-from conftest import csrf_from, login
+from webapp.content import COURSES, GLOSSARIES, QUIZZES_BY_LANG, validate_program
+
+from conftest import login, login_and_csrf
 
 
 def test_both_languages_are_valid():
@@ -20,59 +21,45 @@ def test_both_languages_are_valid():
         assert len(program.lessons) == 56
 
 
-def test_english_landing(client):
-    response = client.get("/?lang=en")
-    assert response.status_code == 200
-    assert 'lang="en"' in response.text
-    assert "Understand how ChatGPT works" in response.text
-    assert "7 chapters" in response.text
+def test_english_public_payload(client):
+    body = client.get("/api/v1/public?lang=en").json()
+    assert body["lang"] == "en"
+    assert body["course"]["title"] == "Build an LLM from Scratch"
 
 
 def test_english_lessons(client):
     login(client)
-    page = client.get("/leccion/que-es-un-llm?lang=en")
-    assert page.status_code == 200
-    assert "What is an LLM?" in page.text
-    assert "By the end you will be able to" in page.text
-    assert "Chapter 1" in page.text
+    payload = client.get("/api/v1/lessons/que-es-un-llm?lang=en").json()
+    assert payload["lesson"]["title"] == "What is an LLM?"
+    assert payload["chapter"]["number"] == 1
 
 
 def test_english_quiz_and_glossary(client):
     login(client)
-    quiz = client.get("/quiz/quiz-capitulo-1?lang=en")
+    quiz = client.get("/api/v1/quiz/quiz-capitulo-1?lang=en")
     assert quiz.status_code == 200
-    assert "Self-assessment" in quiz.text
     assert "What two things does the “large”" in quiz.text
 
-    glossary = client.get("/glosario?lang=en")
+    glossary = client.get("/api/v1/glossary?lang=en")
     assert glossary.status_code == 200
     assert "hallucination" in glossary.text
     assert "context window" in glossary.text
 
 
-def test_language_switch_sets_cookie(client):
+def test_language_cookie_selects_content(client):
     login(client)
-    response = client.get("/idioma/en?next=/curso")
-    assert response.status_code == 200
-    assert client.cookies.get("aula_lang") == "en"
-    page = client.get("/curso")
-    assert "Lessons" in page.text
-    assert "Programa del curso" not in page.text
-
-    response = client.get("/idioma/es?next=/curso")
-    assert response.status_code == 200
-    page = client.get("/curso")
-    assert "Programa del curso" in page.text
+    client.cookies.set("aula_lang", "en")
+    assert client.get("/api/v1/lessons/que-es-un-llm").json()["lesson"]["title"] == "What is an LLM?"
+    client.cookies.set("aula_lang", "es")
+    assert client.get("/api/v1/lessons/que-es-un-llm").json()["lesson"]["title"] == "¿Qué es un LLM?"
 
 
-def test_english_lesson_has_english_example(client):
-    login(client)
-    page = client.get("/leccion/que-es-un-llm?lang=en")
-    csrf = csrf_from(page.text)
+def test_english_lesson_can_run_code(client):
+    token = login_and_csrf(client)
     response = client.post(
         "/api/ejecutar",
         json={"code": "print('hello')"},
-        headers={"X-CSRF-Token": csrf},
+        headers={"X-CSRF-Token": token},
     )
     assert response.status_code == 200
     assert response.json()["stdout"] == "hello\n"

@@ -4,7 +4,7 @@ title: Problemas conocidos y limitaciones
 description: Bugs, deudas técnicas y limitaciones conscientes de SLAnything, con impacto y workaround.
 tags: [bugs, deuda-tecnica, limitaciones, operaciones]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: qa
     resource: ../../docs/QA.md
@@ -147,3 +147,22 @@ generación real se validó en Docker con el modelo gratuito de OpenCode.
 4. Un sistema general de migraciones si se añaden campos nuevos.
 5. Rate limit persistente si se despliega con más de un worker.
 6. Revisión con lector de pantalla (axe o VoiceOver/NVDA).
+
+# Tras la evolución 2026-11-13
+
+- **Sin verificar en navegador** el flujo completo del Estudio nuevo, la
+  analítica y la administración (solo typecheck, build y tests de API). Los E2E
+  de Playwright (`npm run e2e`) no se han actualizado al shell nuevo.
+- **Motor direct sin probar con un proveedor real.** Los tests usan
+  `FakeLLM`. Las URLs base de OpenCode Zen/Go en `generation/llm.py` son una
+  suposición; se pueden fijar con `base_url`.
+- **Respaldo de citas léxico**: solo compara vocabulario en el idioma principal.
+- **Sin correo**: las invitaciones son enlaces que la administración copia.
+- **Sin recuperación de contraseña, verificación de correo, OAuth ni 2FA.**
+- **SQLite y un proceso**; PostgreSQL pendiente ([ADR-015](/decisions/adr-015-versioned-migrations.md)).
+- **Matrículas** se guardan por grupo, pero el catálogo aún no restringe ni
+  muestra fechas límite al alumno.
+- **Páginas heredadas** (lección, quiz, progreso, glosario, catálogo, landing,
+  `/profesor`) siguen con estilos de `app.css` dentro del shell nuevo.
+- Los ajustes del proveedor siguen siendo globales de plataforma (no por
+  espacio) y la API key sigue en `settings.json`.

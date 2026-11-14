@@ -1,9 +1,11 @@
 export function ThemeScript() {
+  // Sin elección guardada se respeta la preferencia del sistema.
   const script = `
 (function () {
   try {
     var saved = localStorage.getItem("aula-theme");
-    document.documentElement.dataset.theme = saved === "dark" ? "dark" : "light";
+    var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.documentElement.classList.toggle(
       "sidebar-collapsed",
       localStorage.getItem("aula-sidebar-collapsed") === "1"

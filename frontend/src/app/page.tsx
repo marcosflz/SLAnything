@@ -9,7 +9,7 @@ import {
   getShell,
 } from "@/lib/api";
 import { t } from "@/lib/messages";
-import type { DashboardPayload } from "@/lib/types";
+import type { DashboardPayload, StudentKpis } from "@/lib/types";
 
 export default async function HomePage() {
   const session = await getSession();
@@ -23,9 +23,10 @@ export default async function HomePage() {
     );
   }
 
-  const [shell, data] = await Promise.all([
+  const [shell, data, kpis] = await Promise.all([
     getShell("/"),
     apiGet<DashboardPayload>("/api/v1/dashboard"),
+    apiGet<StudentKpis>("/api/v1/analytics/me"),
   ]);
 
   return (
@@ -42,12 +43,7 @@ export default async function HomePage() {
       title={t(shell.lang, "Inicio")}
       kicker={t(shell.lang, "Tu aula")}
     >
-      <DashboardHome
-        data={data}
-        progress={shell.progress}
-        lang={shell.lang}
-        user={shell.user}
-      />
+      <DashboardHome data={data} kpis={kpis} lang={shell.lang} user={shell.user} />
     </AppShell>
   );
 }

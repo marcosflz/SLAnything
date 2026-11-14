@@ -1,5 +1,24 @@
 export type Lang = "es" | "en";
 
+export type WorkspaceRole = "owner" | "admin" | "teacher" | "student";
+
+export interface WorkspaceRef {
+  id: number;
+  kind: "personal" | "organization";
+  name: string;
+  slug: string;
+  plan?: string;
+  role: WorkspaceRole;
+}
+
+export interface Permissions {
+  author: boolean;
+  teach: boolean;
+  admin: boolean;
+  owner: boolean;
+  platform: boolean;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -7,6 +26,10 @@ export interface User {
   role: "student" | "teacher";
   initials: string;
   csrf_token: string;
+  workspace?: WorkspaceRef | null;
+  workspaces?: WorkspaceRef[];
+  ws_role?: WorkspaceRole | null;
+  permissions?: Permissions;
 }
 
 export interface Site {
@@ -148,6 +171,7 @@ export interface QuizQuestion {
   id: string;
   prompt: string;
   options: string[];
+  kind?: "single" | "multiple" | "true_false";
 }
 
 export interface QuizFull extends QuizMeta {
@@ -371,19 +395,39 @@ export interface AuthoringSettings {
   engine: AuthoringEngine;
 }
 
+export type JobStatus =
+  | "queued"
+  | "extracting"
+  | "awaiting_scope"
+  | "outlining"
+  | "awaiting_outline"
+  | "generating"
+  | "validating"
+  | "ready"
+  | "failed"
+  | "cancelled";
+
 export interface AuthoringJob {
   id: string;
   title: string;
   source_names: string[];
-  status:
-    | "queued"
-    | "extracting"
-    | "generating"
-    | "validating"
-    | "ready"
-    | "failed"
-    | "cancelled";
+  status: JobStatus;
   status_label: string;
+  owner_id?: number;
+  workspace_id?: number | null;
+  engine: "direct" | "opencode";
+  stage: string;
+  progress: {
+    sections?: number;
+    chunks?: number;
+    pages?: number | null;
+    chapters?: number;
+    lessons_total?: number;
+    lessons_done?: number;
+  };
+  config: Record<string, unknown>;
+  tokens_in: number;
+  tokens_out: number;
   provider: string;
   model: string;
   languages: string[];
@@ -396,10 +440,28 @@ export interface AuthoringJob {
   log: string;
 }
 
+export interface QualityReport {
+  lessons?: number;
+  content_blocks?: number;
+  cited_blocks?: number;
+  cited_pct?: number;
+  unsupported?: { lesson: string; block: number; score: number; excerpt: string }[];
+  invalid_refs?: { lesson: string; lang: string; block: number; refs: string[] }[];
+  warnings?: string[];
+  repaired_lessons?: string[];
+  questions?: number;
+  generated_at?: string;
+}
+
 export interface AuthoringCourse {
   slug: string;
   title: string;
   status: "draft" | "published";
+  visibility?: "workspace" | "public";
+  owner_id?: number;
+  workspace_id?: number | null;
+  report?: QualityReport;
+  package?: CoursePackage;
   job_id: string | null;
   created_at: string;
   updated_at: string;
@@ -416,10 +478,117 @@ export interface AuthoringCourse {
   };
 }
 
+export type Localized<T = string> = Record<string, T>;
+
+export interface PackageBlock {
+  type: string;
+  sources?: string[];
+  unsupported?: boolean;
+  [key: string]: unknown;
+}
+
+export interface PackageQuestion {
+  id: string;
+  kind?: "single" | "multiple" | "true_false";
+  prompt: Localized;
+  options: Localized<string[]>;
+  correct: number | number[];
+  explanation: Localized;
+  difficulty?: string;
+  source?: string;
+}
+
+export interface PackageLesson {
+  number: number;
+  slug: string;
+  title: Localized;
+  summary: Localized;
+  minutes: number;
+  objectives: Localized<string[]>;
+  key_points: Localized<string[]>;
+  blocks: Localized<PackageBlock[]>;
+}
+
+export interface PackageChapter {
+  number: number;
+  slug: string;
+  title: Localized;
+  subtitle: Localized;
+  description: Localized;
+  lessons: PackageLesson[];
+  quiz: { id: string; title: Localized; description: Localized; pass_score: number; questions: PackageQuestion[] };
+  glossary: { term: Localized; definition: Localized; lesson: string | null }[];
+}
+
+export interface CoursePackage {
+  schema_version: number;
+  languages: string[];
+  course: { title: Localized; subtitle: Localized; description: Localized; [key: string]: unknown };
+  chapters: PackageChapter[];
+  [key: string]: unknown;
+}
+
+export interface DocumentSection {
+  id: string;
+  title: string;
+  level: number;
+  parent: string | null;
+  source: string;
+  page_start: number | null;
+  page_end: number | null;
+  chars: number;
+  words: number;
+  chunks: number;
+}
+
+export interface DocumentOutline {
+  sources: { key: string; name: string; pages: number | null }[];
+  sections: DocumentSection[];
+  stats: { chars: number; chunks: number; sections: number; pages: number | null; truncated: boolean };
+  warnings: string[];
+}
+
+export interface OutlineLesson {
+  slug: string;
+  title: Localized;
+  summary: Localized;
+  objectives: string[];
+  chunk_ids: string[];
+}
+
+export interface OutlineChapter {
+  number: number;
+  section_id: string;
+  slug: string;
+  title: Localized;
+  subtitle: Localized;
+  description: Localized;
+  objectives: { id: string; text: Localized }[];
+  lessons: OutlineLesson[];
+}
+
+export interface CourseOutline {
+  course: { title?: Localized; subtitle?: Localized; description?: Localized; [key: string]: unknown };
+  chapters: OutlineChapter[];
+}
+
+export interface JobEvent {
+  ts: string;
+  type: "stage" | "progress" | "done" | "warning" | "error" | "ready" | "cancelled";
+  message: string;
+  stage?: string;
+  done?: number;
+  total?: number;
+  course_slug?: string;
+}
+
 export interface AuthoringPayload {
   settings: AuthoringSettings;
   jobs: AuthoringJob[];
   courses: AuthoringCourse[];
+  can_configure: boolean;
+  default_engine: "direct" | "opencode";
+  quota: { limit: number; used: number; remaining: number };
   limits: {
     max_upload_mb: number;
     max_files: number;
@@ -445,4 +614,90 @@ export interface MutationResult {
   bookmarked?: boolean;
   stats?: Stats;
   progress?: ProgressMap;
+}
+
+// ---------------------------------------------------------------------------
+// Analítica (KPIs)
+// ---------------------------------------------------------------------------
+
+export interface StudentKpis {
+  course: { slug: string; title: string };
+  study: {
+    week_minutes: number;
+    prev_week_minutes: number;
+    goal_minutes: number;
+    goal_pct: number;
+    daily: { day: string; minutes: number }[];
+  };
+  streak: number;
+  completion: { done: number; total: number; pct: number; eta: string | null; pace_per_week: number };
+  chapters: { number: number; title: string; completion: number; quiz_score: number | null; mastery: number }[];
+  score_trend: { id: number; quiz_id: string; date: string; percent: number }[];
+  avg_score: number | null;
+  review: { quiz_id: string; question_id: string; prompt: string; answer: string; explanation: string }[];
+  review_count: number;
+  practice: { code_runs: number; lab_interactions: number; checks: number };
+  continue_lesson: string | null;
+}
+
+export interface ItemStat {
+  number: number;
+  question_id: string;
+  prompt: string;
+  p_value: number;
+  discrimination: number | null;
+  responses: number;
+  top_distractor: string | null;
+  top_distractor_rate: number | null;
+  flag: "hard" | "easy" | "low_discrimination" | null;
+}
+
+export interface StudentRow {
+  user_id: number;
+  name: string;
+  completion: number;
+  avg_score: number | null;
+  minutes: number;
+  last_seen: string | null;
+  inactive_days: number | null;
+  risk: ("never_started" | "inactive" | "low_score")[];
+}
+
+export interface CourseAnalytics {
+  course: { slug: string; title: string };
+  courses: { slug: string; title: string }[];
+  groups: { id: number; name: string }[];
+  group: number | null;
+  days: number;
+  kpis: {
+    students: number;
+    active_week: number;
+    active_days_week: number;
+    avg_completion: number;
+    avg_score: number | null;
+    pass_rate: number | null;
+    study_hours: number;
+    at_risk: number;
+  };
+  funnel: { slug: string; title: string; chapter: number; started: number; completed: number }[];
+  drop_off: { slug: string; title: string; loss: number } | null;
+  heatmap: { chapters: number[]; rows: { user_id: number; name: string; chapters: number[] }[] };
+  daily_active: { day: string; active: number }[];
+  time_distribution: { label: string; students: number }[];
+  quizzes: { quiz_id: string; title: string; chapter: number; attempts: number; items: ItemStat[] }[];
+  students: StudentRow[];
+  at_risk: StudentRow[];
+}
+
+export interface WorkspaceMetrics {
+  workspace: WorkspaceRef;
+  members: number;
+  roles: Record<string, number>;
+  seat_limit: number | null;
+  plan: string;
+  dau: number;
+  wau: number;
+  daily_active: { day: string; active: number }[];
+  courses: Record<string, number>;
+  jobs: { by_status: Record<string, number>; success_rate: number | null; avg_minutes: number | null };
 }

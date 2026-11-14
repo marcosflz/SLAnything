@@ -4,7 +4,7 @@ title: Visión de SLAnything
 description: Plataforma web bilingüe (ES/EN) con Next.js y FastAPI para aprender a construir un LLM y convertir documentos en unidades didácticas con OpenCode.
 tags: [producto, vision, educacion, llm]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -50,7 +50,8 @@ conserva el contenido, la autenticación, la autoría y la ejecución de Python.
 
 # No objetivos del MVP
 
-- LMS multi-institución, foros, vídeo o matrículas de pago.
+- Foros, vídeo o matrículas de pago. (Desde 2026-11-13 la plataforma sí es
+  multi-organización: academias y cuentas personales, ver ADR-016.)
 - Ejecución de Python en el navegador (se ejecuta en servidor).
 - Certificados oficiales o analítica avanzada.
 - Sustituir al libro: cada curso lo acompaña y cita.

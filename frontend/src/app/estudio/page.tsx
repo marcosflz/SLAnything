@@ -1,92 +1,48 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { AppShell } from "@/components/AppShell";
-import { StudioPanel } from "@/components/authoring/StudioPanel";
-import { Icon } from "@/components/ui";
-import { ApiError, apiGet, getLang, getShell } from "@/lib/api";
-import { t } from "@/lib/messages";
+import { PageHeader } from "@/components/charts/Kpi";
+import { Forbidden, ShellPage, allowForbidden } from "@/components/shell/ShellPage";
+import { StudioHome } from "@/components/studio/StudioHome";
+import { apiGet, getLang, getShell } from "@/lib/api";
+import { pick } from "@/lib/messages";
 import type { AuthoringPayload } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
-  return { title: t(lang, "Estudio") };
+  return { title: pick(lang, "Estudio", "Studio") };
 }
 
 export default async function StudioPage() {
   const shell = await getShell("/estudio");
   const { lang } = shell;
-
-  let data: AuthoringPayload | null = null;
-  try {
-    data = await apiGet<AuthoringPayload>("/api/v1/authoring");
-  } catch (error) {
-    if (!(error instanceof ApiError && error.status === 403)) throw error;
-  }
-
-  if (!data) {
-    return (
-      <AppShell
-        user={shell.user}
-        course={shell.course}
-        courses={shell.courses}
-        progress={shell.progress}
-        stats={shell.stats}
-        site={shell.site}
-        lang={lang}
-        pathname="/estudio"
-        fullPath="/estudio"
-        title={t(lang, "Acceso restringido")}
-        kicker={t(lang, "Error {code}", { code: 403 })}
-      >
-        <div className="error-page">
-          <div className="error-code">403</div>
-          <h1>{t(lang, "Acceso restringido")}</h1>
-          <p>{t(lang, "No tienes permiso para ver esta página.")}</p>
-          <div className="row" style={{ justifyContent: "center" }}>
-            <Link className="btn btn-primary" href="/">
-              <Icon name="home" /> {t(lang, "Volver al inicio")}
-            </Link>
-            <Link className="btn btn-secondary" href="/curso">
-              <Icon name="book" /> {t(lang, "Ir al curso")}
-            </Link>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
+  const data = await allowForbidden(apiGet<AuthoringPayload>("/api/v1/authoring"));
+  const title = pick(lang, "Estudio de autoría", "Authoring studio");
 
   return (
-    <AppShell
-      user={shell.user}
-      course={shell.course}
-      courses={shell.courses}
-      progress={shell.progress}
-      stats={shell.stats}
-      site={shell.site}
-      lang={lang}
-      pathname="/estudio"
-      fullPath="/estudio"
-      title={t(lang, "Convierte documentos en unidades")}
-      kicker={t(lang, "Estudio de autoría")}
-    >
-      <div className="page-head">
-        <span className="eyebrow-dark">
-          <Icon name="sparkles" /> {t(lang, "OpenCode · autoría asistida")}
-        </span>
-        <h2>{t(lang, "Del documento a una unidad publicable")}</h2>
-        <p>
-          {t(
+    <ShellPage shell={shell} path="/estudio" title={title} kicker={shell.user.workspace?.name ?? ""}>
+      {data ? (
+        <>
+          <PageHeader
+            eyebrow={pick(lang, "Estudio", "Studio")}
+            title={pick(lang, "Del documento a una unidad de aprendizaje", "From document to learning unit")}
+            description={pick(
+              lang,
+              "Convierte apuntes, PDFs y libros en lecciones guiadas con citas a la fuente, autoevaluación y glosario. Tú revisas y decides qué se publica.",
+              "Turn notes, PDFs and books into guided lessons with source citations, self-assessment and glossary. You review and decide what gets published."
+            )}
+          />
+          <StudioHome initial={data} csrf={shell.user.csrf_token} lang={lang} />
+        </>
+      ) : (
+        <Forbidden
+          lang={lang}
+          message={pick(
             lang,
-            "Sube un PDF, DOCX, EPUB, Markdown o TXT y OpenCode lo convierte en una unidad didáctica revisable antes de publicarla."
+            "En esta academia solo el profesorado crea unidades. Cambia a tu espacio personal para crear las tuyas.",
+            "In this academy only teachers create units. Switch to your personal space to create your own."
           )}
-        </p>
-      </div>
-      <StudioPanel
-        initial={data}
-        csrf={shell.user.csrf_token}
-        lang={lang}
-      />
-    </AppShell>
+        />
+      )}
+    </ShellPage>
   );
 }

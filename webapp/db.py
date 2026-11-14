@@ -127,7 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_generated_courses_status
 """
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 3  # línea base; las versiones nuevas viven en migrations.py
 
 
 def utcnow() -> str:
@@ -221,16 +221,20 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 
 def init_db(db_path: Path | None = None) -> None:
-    """Crea el esquema y siembra las cuentas de demostración.
+    """Crea el esquema, aplica migraciones y siembra los datos de demostración.
 
-    Es idempotente: se puede llamar en cada arranque y en los tests.
+    Es idempotente: se puede llamar en cada arranque y en los tests. Las cuentas
+    demo solo se crean con ``AULA_SEED_DEMO=1`` (por defecto en desarrollo).
     """
     conn = connect(db_path)
     try:
         _prepare_legacy_tables(conn)
         conn.executescript(SCHEMA)
         _copy_legacy_tables(conn)
-        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        conn.commit()
+        from webapp import migrations, workspaces
+
+        migrations.migrate(conn)
         now = utcnow()
         demo = (
             config.DEMO_EMAIL,
@@ -246,11 +250,24 @@ def init_db(db_path: Path | None = None) -> None:
             "teacher",
             now,
         )
-        conn.executemany(
-            """INSERT OR IGNORE INTO users (email, name, password_hash, role, created_at)
-               VALUES (?, ?, ?, ?, ?)""",
-            [demo, teacher],
-        )
+        if config.SEED_DEMO:
+            conn.executemany(
+                """INSERT OR IGNORE INTO users (email, name, password_hash, role, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                [demo, teacher],
+            )
+        workspaces.ensure_all_personal_workspaces(conn)
+        if config.SEED_DEMO:
+            workspaces.ensure_demo_organization(
+                conn, config.TEACHER_EMAIL, config.DEMO_EMAIL
+            )
+        admins = list(config.PLATFORM_ADMINS)
+        if config.SEED_DEMO:
+            admins.append(config.TEACHER_EMAIL)
+        for email in admins:
+            conn.execute(
+                "UPDATE users SET is_platform_admin = 1 WHERE email = ?", (email,)
+            )
         conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now,))
         conn.commit()
     finally:

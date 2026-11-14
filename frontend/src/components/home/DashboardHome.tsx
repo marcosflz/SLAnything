@@ -1,384 +1,293 @@
+import {
+  ArrowRight,
+  BookOpenCheck,
+  Clock3,
+  Code2,
+  Flame,
+  FlaskConical,
+  GraduationCap,
+  LayoutGrid,
+  ListChecks,
+  RotateCcw,
+  Sparkles,
+  Target,
+} from "lucide-react";
 import Link from "next/link";
 
-import { Icon, Ring, Stat } from "@/components/ui";
-import { formatDate } from "@/lib/format";
-import { t } from "@/lib/messages";
-import type { DashboardPayload, Lang, ProgressMap, User } from "@/lib/types";
+import { AreaTrend, ScoreLine } from "@/components/charts/Charts";
+import { EmptyState, KpiCard } from "@/components/charts/Kpi";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pill } from "@/components/ui/pill";
+import { Progress } from "@/components/ui/progress";
+import { pick } from "@/lib/messages";
+import type { DashboardPayload, Lang, ProgressMap, StudentKpis, User } from "@/lib/types";
+import { formatDate, formatMinutes } from "@/lib/utils";
 
 export function DashboardHome({
   data,
-  progress,
+  kpis,
   lang,
   user,
 }: {
   data: DashboardPayload;
-  progress: ProgressMap;
+  kpis: StudentKpis;
+  progress?: ProgressMap;
   lang: Lang;
   user: User;
 }) {
-  const {
-    course,
-    courses,
-    stats,
-    next_lesson,
-    avg_score,
-    streak,
-    activity,
-    attempts,
-  } = data;
-  const maxActivity = Math.max(1, ...activity.map((day) => day.count));
+  const { course, courses, next_lesson } = data;
   const firstName = user.name.trim().split(/\s+/)[0] || user.name;
+  const titles = new Map(
+    course.chapters.flatMap((chapter) => chapter.lessons.map((lesson) => [lesson.slug, lesson.title] as const))
+  );
+  const continueSlug = kpis.continue_lesson ?? next_lesson?.slug ?? null;
+  const continueTitle = continueSlug ? titles.get(continueSlug) : null;
+  const daily = kpis.study.daily.map((day) => ({
+    day: formatDate(day.day, lang),
+    minutes: Math.round(day.minutes),
+  }));
+  const weekDelta = kpis.study.week_minutes - kpis.study.prev_week_minutes;
+  const scores = kpis.score_trend.map((item, index) => ({
+    attempt: `#${index + 1}`,
+    percent: item.percent,
+  }));
+  const canCreate = user.permissions?.author;
 
   return (
-    <>
-      <div className="dashboard-head">
-        <div>
-          <span className="eyebrow-dark">
-            {t(lang, "{n} capítulos", { n: course.chapter_count })} ·{" "}
-            {course.title}
-          </span>
-          <h2>
-            {t(lang, "Hola")}, {firstName}.
+    <div className="grid gap-6">
+      {/* Saludo y siguiente paso */}
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-gradient-to-br from-primary-soft to-card p-5 sm:p-6">
+        <div className="min-w-0">
+          <p className="m-0 text-xs font-medium tracking-wide text-primary uppercase">{course.title}</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+            {pick(lang, "Hola", "Hi")}, {firstName}.
           </h2>
-          <p>
-            {stats.pct === 100
-              ? t(
-                  lang,
-                  "Has terminado el capítulo. Puedes repasar o repetir el quiz."
-                )
-              : t(
-                  lang,
-                  "Tu siguiente paso está a un clic. Sin prisa, pero sin pausa."
-                )}
+          <p className="m-0 mt-1 text-sm text-muted-foreground">
+            {kpis.completion.pct === 100
+              ? pick(lang, "Has completado el curso. Repasa lo que falle o empieza otro.", "You finished the course. Review weak spots or start another.")
+              : kpis.completion.eta
+                ? pick(lang, "A tu ritmo actual terminarás el {d}.", "At your current pace you will finish on {d}.").replace("{d}", formatDate(kpis.completion.eta, lang))
+                : pick(lang, "Tu siguiente paso está a un clic.", "Your next step is one click away.")}
           </p>
         </div>
-        <div className="row">
-          <Link className="btn btn-ghost" href="/cursos">
-            <Icon name="grid" /> {t(lang, "Explorar cursos")}
-          </Link>
-          <Link className="btn btn-secondary" href={`/cursos/${course.slug}`}>
-            <Icon name="list" /> {t(lang, "Ver el programa")}
-          </Link>
-        </div>
-      </div>
-
-      <section className="card card-pad">
-        <div className="card-head">
-          <h3 className="card-title">
-            <Icon name="grid" /> {t(lang, "Tus cursos")}
-          </h3>
-          <Link className="small" href="/cursos">
-            {t(lang, "Ver catálogo →")}
-          </Link>
-        </div>
-        <div className="course-strip">
-          {courses.map((item) => (
-            <Link
-              className={`course-strip-item ${
-                item.slug === course.slug ? "is-active" : ""
-              }`}
-              href={`/cursos/${item.slug}`}
-              key={item.slug}
-            >
-              <span className="course-strip-icon">
-                <Icon name="book" />
-              </span>
-              <span className="course-strip-body">
-                <strong>{item.title}</strong>
-                <small>
-                  {t(lang, "{completed} de {total} lecciones", {
-                    completed: item.stats.completed,
-                    total: item.stats.total,
-                  })}
-                </small>
-              </span>
-              <span className="course-strip-pct">{item.stats.pct} %</span>
-            </Link>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {continueSlug ? (
+            <Button asChild size="lg">
+              <Link href={`/leccion/${continueSlug}`} prefetch={false}>
+                {pick(lang, "Continuar", "Continue")}: <span className="max-w-56 truncate">{continueTitle}</span>
+                <ArrowRight />
+              </Link>
+            </Button>
+          ) : null}
+          {canCreate ? (
+            <Button asChild variant="outline" size="lg">
+              <Link href="/estudio">
+                <Sparkles /> {pick(lang, "Crear desde un documento", "Create from a document")}
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </section>
 
-      <div className="dash-grid">
-        <div className="dash-main">
-          <section className="continue-card">
-            <span className="eyebrow">
-              {next_lesson
-                ? t(lang, "Siguiente paso")
-                : t(lang, "Curso completado")}
-            </span>
-            {next_lesson ? (
-              <>
-                <h3>{next_lesson.title}</h3>
-                <p>{next_lesson.summary}</p>
-                {next_lesson.chapter_title ? (
-                  <p className="small muted">
-                    {t(lang, "Capítulo {n}", {
-                      n: next_lesson.chapter_number ?? "",
-                    })}{" "}
-                    · {next_lesson.chapter_title}
-                  </p>
-                ) : null}
-                <Link
-                  className="btn btn-primary"
-                  href={`/leccion/${next_lesson.slug}`}
-                  prefetch={false}
-                >
-                  <Icon name="play" /> {t(lang, "Continuar lección")}
-                </Link>
-                <div className="continue-meta">
-                  <span>
-                    <Icon name="clock" /> {next_lesson.minutes} min
-                  </span>
-                  <span>
-                    <Icon name="target" />{" "}
-                    {t(lang, "{n} objetivos", {
-                      n: next_lesson.objectives.length,
-                    })}
-                  </span>
-                  {next_lesson.labs.length ? (
-                    <span>
-                      <Icon name="sparkles" />{" "}
-                      {next_lesson.labs.length === 1
-                        ? t(lang, "{n} laboratorio", {
-                            n: next_lesson.labs.length,
-                          })
-                        : t(lang, "{n} laboratorios", {
-                            n: next_lesson.labs.length,
-                          })}
-                    </span>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>{t(lang, "Has llegado al final del curso.")}</h3>
-                <p>
-                  {t(
-                    lang,
-                    "Repasa las ideas clave o vuelve a intentar los quizzes para consolidar."
-                  )}
-                </p>
-                <Link
-                  className="btn btn-primary"
-                  href={`/cursos/${course.slug}`}
-                >
-                  <Icon name="book" /> {t(lang, "Ver el programa")}
-                </Link>
-              </>
-            )}
-          </section>
+      {/* KPIs */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label={pick(lang, "Indicadores", "Indicators")}>
+        <KpiCard
+          label={pick(lang, "Estudio esta semana", "Study this week")}
+          value={formatMinutes(kpis.study.week_minutes)}
+          icon={Clock3}
+          delta={weekDelta}
+          deltaLabel="min"
+          hint={pick(lang, "objetivo {g}", "goal {g}").replace("{g}", formatMinutes(kpis.study.goal_minutes))}
+          spark={kpis.study.daily.slice(-14).map((day) => day.minutes)}
+        />
+        <KpiCard
+          label={pick(lang, "Progreso del curso", "Course progress")}
+          value={`${kpis.completion.pct}%`}
+          icon={BookOpenCheck}
+          tone="success"
+          hint={pick(lang, "{d} de {t} lecciones", "{d} of {t} lessons")
+            .replace("{d}", String(kpis.completion.done))
+            .replace("{t}", String(kpis.completion.total))}
+        />
+        <KpiCard
+          label={pick(lang, "Nota media", "Average score")}
+          value={kpis.avg_score === null ? "—" : `${kpis.avg_score}%`}
+          icon={GraduationCap}
+          tone="violet"
+          hint={pick(lang, "{n} intentos", "{n} attempts").replace("{n}", String(kpis.score_trend.length))}
+          spark={kpis.score_trend.map((item) => item.percent)}
+          sparkColor="var(--chart-4)"
+        />
+        <KpiCard
+          label={pick(lang, "Racha de estudio", "Study streak")}
+          value={`${kpis.streak} ${kpis.streak === 1 ? pick(lang, "día", "day") : pick(lang, "días", "days")}`}
+          icon={Flame}
+          tone="warning"
+          hint={pick(lang, "solo cuenta aprender", "only learning counts")}
+        />
+      </section>
 
-          <div className="stat-grid">
-            <Stat
-              label={t(lang, "Lecciones completadas")}
-              value={`${stats.completed} / ${stats.total}`}
-              hint={t(lang, "de este curso")}
-              icon="check-circle"
-              tone="green"
-            />
-            <Stat
-              label={t(lang, "Racha actual")}
-              value={
-                streak === 1
-                  ? t(lang, "{n} día", { n: streak })
-                  : t(lang, "{n} días", { n: streak })
-              }
-              hint={t(lang, "actividad consecutiva")}
-              icon="flame"
-              tone="amber"
-            />
-            <Stat
-              label={t(lang, "Nota media")}
-              value={avg_score !== null ? `${avg_score} %` : "—"}
-              hint={t(lang, "en los intentos de quiz")}
-              icon="trophy"
-              tone="violet"
-            />
-            <Stat
-              label={t(lang, "Laboratorios")}
-              value={String(course.lab_count)}
-              hint={t(lang, "interactivos en el curso")}
-              icon="sparkles"
-              tone="blue"
-            />
-          </div>
-
-          <section className="card activity-card">
-            <div className="card-head">
-              <h3 className="card-title">
-                <Icon name="chart" /> {t(lang, "Tu actividad reciente")}
-              </h3>
-              <span className="small muted">
-                {t(lang, "Últimos 14 días")}
-              </span>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <div>
+              <CardTitle>{pick(lang, "Tiempo de estudio", "Study time")}</CardTitle>
+              <CardDescription>{pick(lang, "Minutos por día, últimos 28 días", "Minutes per day, last 28 days")}</CardDescription>
             </div>
-            <div
-              className="activity-bars"
-              aria-label={t(lang, "Actividad de los últimos 14 días")}
-            >
-              {activity.map((day, index) => (
-                <div
-                  className="activity-day"
-                  key={day.day}
-                  title={`${day.label}: ${t(lang, "{n} acciones", {
-                    n: day.count,
-                  })}`}
-                >
-                  <div
-                    className={`activity-bar ${
-                      day.count ? "has-activity" : ""
-                    } ${day.is_today ? "is-today" : ""}`}
-                    style={{
-                      height: `${8 + (day.count / maxActivity) * 52}px`,
-                    }}
+            <div className="w-40 text-right">
+              <div className="mb-1 text-xs text-muted-foreground">
+                {pick(lang, "Objetivo semanal", "Weekly goal")} · {kpis.study.goal_pct}%
+              </div>
+              <Progress value={kpis.study.goal_pct} tone={kpis.study.goal_pct >= 100 ? "success" : "primary"} label={pick(lang, "Objetivo semanal", "Weekly goal")} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <AreaTrend data={daily} x="day" y="minutes" unit="min" label={pick(lang, "Minutos de estudio por día", "Study minutes per day")} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>{pick(lang, "Para repasar", "To review")}</CardTitle>
+              <CardDescription>
+                {pick(lang, "Preguntas que fallaste en tu último intento", "Questions you missed on your last attempt")}
+              </CardDescription>
+            </div>
+            {kpis.review_count ? <Pill variant="warning">{kpis.review_count}</Pill> : null}
+          </CardHeader>
+          <CardContent>
+            {kpis.review.length ? (
+              <ul className="m-0 grid list-none gap-2 p-0">
+                {kpis.review.slice(0, 4).map((item) => (
+                  <li key={`${item.quiz_id}-${item.question_id}`} className="rounded-lg border border-border p-3">
+                    <details>
+                      <summary className="cursor-pointer text-sm font-medium">{item.prompt}</summary>
+                      <p className="m-0 mt-2 text-sm text-success">✓ {item.answer}</p>
+                      <p className="m-0 mt-1 text-xs text-muted-foreground">{item.explanation}</p>
+                    </details>
+                  </li>
+                ))}
+                {kpis.review[0] ? (
+                  <li>
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link href={`/quiz/${kpis.review[0].quiz_id}`}>
+                        <RotateCcw /> {pick(lang, "Repetir el cuestionario", "Retake the quiz")}
+                      </Link>
+                    </Button>
+                  </li>
+                ) : null}
+              </ul>
+            ) : (
+              <EmptyState
+                icon={ListChecks}
+                title={pick(lang, "Nada pendiente", "Nothing pending")}
+                description={pick(lang, "Cuando falles una pregunta aparecerá aquí para repasarla.", "Questions you miss will show up here for review.")}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>{pick(lang, "Dominio por capítulo", "Mastery by chapter")}</CardTitle>
+              <CardDescription>
+                {pick(lang, "40 % lecciones completadas + 60 % mejor nota del quiz", "40% lessons completed + 60% best quiz score")}
+              </CardDescription>
+            </div>
+            <Target className="size-4 text-muted-foreground" aria-hidden="true" />
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {kpis.chapters.map((chapter) => (
+              <Link
+                key={chapter.number}
+                href={`/cursos/${course.slug}#capitulo-${chapter.number}`}
+                className="grid grid-cols-[1.75rem_1fr_3rem] items-center gap-3 rounded-md text-foreground no-underline hover:no-underline"
+              >
+                <span className="grid size-7 place-items-center rounded-md bg-muted text-xs font-semibold">{chapter.number}</span>
+                <span className="min-w-0">
+                  <span className="mb-1 block truncate text-sm">{chapter.title}</span>
+                  <Progress
+                    value={chapter.mastery}
+                    tone={chapter.mastery >= 80 ? "success" : chapter.mastery >= 40 ? "primary" : "warning"}
+                    label={`${chapter.title}: ${chapter.mastery}%`}
                   />
-                  <span className="activity-label">
-                    {index % 2 === 0 ? day.label : ""}
-                  </span>
+                </span>
+                <span className="tabular text-right text-sm font-medium">{chapter.mastery}%</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>{pick(lang, "Evolución de notas", "Score trend")}</CardTitle>
+              <CardDescription>{pick(lang, "Cada intento de cuestionario; aprobado a partir del 80 %", "Each quiz attempt; pass mark 80%")}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {scores.length ? (
+              <ScoreLine data={scores} x="attempt" y="percent" label={pick(lang, "Nota por intento", "Score per attempt")} />
+            ) : (
+              <EmptyState
+                icon={GraduationCap}
+                title={pick(lang, "Aún no hay intentos", "No attempts yet")}
+                description={pick(lang, "Haz el cuestionario de un capítulo para ver tu evolución.", "Take a chapter quiz to see your progress.")}
+              />
+            )}
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
+              {[
+                { icon: Code2, value: kpis.practice.code_runs, label: pick(lang, "ejecuciones", "code runs") },
+                { icon: FlaskConical, value: kpis.practice.lab_interactions, label: pick(lang, "labs", "labs") },
+                { icon: ListChecks, value: kpis.practice.checks, label: pick(lang, "comprobaciones", "checks") },
+              ].map((item) => (
+                <div key={item.label}>
+                  <item.icon className="mx-auto mb-1 size-4 text-muted-foreground" aria-hidden="true" />
+                  <div className="tabular text-lg font-semibold">{item.value}</div>
+                  <div className="text-xs text-muted-foreground">{item.label}</div>
                 </div>
               ))}
             </div>
-          </section>
-
-          <section className="card card-pad">
-            <div className="card-head">
-              <h3 className="card-title">
-                <Icon name="route" /> {t(lang, "La ruta del curso")}
-              </h3>
-              <Link className="small" href={`/cursos/${course.slug}`}>
-                {t(lang, "Ver detalle")}
-              </Link>
-            </div>
-            <div className="next-list">
-              {course.chapters.map((chapter) => {
-                const done = chapter.lessons.filter(
-                  (lesson) => progress[lesson.slug]?.completed
-                ).length;
-                const isActive = chapter.lessons.some(
-                  (lesson) => next_lesson?.slug === lesson.slug
-                );
-                return (
-                  <Link
-                    className={`next-item ${
-                      done === chapter.lesson_count ? "is-done" : ""
-                    } ${isActive ? "is-active" : ""}`}
-                    href={`/cursos/${course.slug}#capitulo-${chapter.number}`}
-                    prefetch={false}
-                    key={chapter.slug}
-                  >
-                    <span className="num">
-                      {done === chapter.lesson_count ? (
-                        <Icon name="check" />
-                      ) : (
-                        chapter.number
-                      )}
-                    </span>
-                    <span>{chapter.title}</span>
-                    <span className="spacer" />
-                    <span className="small muted">
-                      {done}/{chapter.lesson_count} · {chapter.total_minutes} min
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-
-        <aside className="dash-side">
-          <section className="card card-pad center">
-            <span className="eyebrow-dark">
-              {t(lang, "Progreso del curso")}
-            </span>
-            <div className="mt-3">
-              <Ring
-                value={stats.pct}
-                size={118}
-                label={t(lang, "completado")}
-              />
-            </div>
-            <p className="small muted mt-3 mb-0">
-              {t(
-                lang,
-                "{completed} de {total} lecciones completadas",
-                {
-                  completed: stats.completed,
-                  total: stats.total,
-                }
-              )}
-            </p>
-            <Link
-              className="btn btn-secondary btn-block mt-3"
-              href="/progreso"
-            >
-              <Icon name="chart" /> {t(lang, "Ver mi progreso")}
-            </Link>
-          </section>
-
-          <section className="card card-pad">
-            <div className="card-head">
-              <h3 className="card-title">
-                <Icon name="trophy" /> {t(lang, "Últimos intentos")}
-              </h3>
-            </div>
-            {attempts.length ? (
-              <div className="attempt-list">
-                {attempts.map((attempt) => (
-                  <Link
-                    className="attempt-row"
-                    href={`/quiz/intento/${attempt.id}`}
-                    key={attempt.id}
-                  >
-                    <span
-                      className={`attempt-score ${
-                        attempt.passed ? "is-pass" : "is-fail"
-                      }`}
-                    >
-                      {attempt.percent}%
-                    </span>
-                    <span>
-                      <strong>
-                        {attempt.score}/{attempt.total}
-                      </strong>
-                      <span className="attempt-meta">
-                        {formatDate(attempt.created_at, lang)}
-                      </span>
-                    </span>
-                    <Icon name="chevron-down" />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="small muted mb-0">
-                {t(
-                  lang,
-                  "Todavía no has hecho el quiz. Cuando lo hagas, tus resultados aparecerán aquí."
-                )}
-              </p>
-            )}
-          </section>
-
-          <section className="card card-pad">
-            <h3 className="card-title">
-              <Icon name="bookmark" /> {t(lang, "Accesos rápidos")}
-            </h3>
-            <div className="stack mt-2">
-              <Link className="next-item" href="/cursos">
-                <Icon name="grid" /> {t(lang, "Catálogo de cursos")}
-              </Link>
-              <Link className="next-item" href="/glosario">
-                <Icon name="glossary" /> {t(lang, "Glosario del curso")}
-              </Link>
-              <Link className="next-item" href="/recursos">
-                <Icon name="folder" /> {t(lang, "Recursos y descargas")}
-              </Link>
-              <Link className="next-item" href={`/cursos/${course.slug}`}>
-                <Icon name="target" /> {t(lang, "Repaso y quizzes")}
-              </Link>
-            </div>
-          </section>
-        </aside>
+          </CardContent>
+        </Card>
       </div>
-    </>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>{pick(lang, "Tus cursos", "Your courses")}</CardTitle>
+            <CardDescription>{pick(lang, "Cursos disponibles en este espacio", "Courses available in this workspace")}</CardDescription>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/cursos">
+              <LayoutGrid /> {pick(lang, "Biblioteca", "Library")}
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {courses.map((item) => (
+            <Link
+              key={item.slug}
+              href={`/cursos/${item.slug}`}
+              className="group rounded-lg border border-border p-4 text-foreground no-underline transition hover:border-primary/50 hover:no-underline hover:shadow-card"
+            >
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <span className="line-clamp-2 text-sm font-medium group-hover:text-primary">{item.title}</span>
+                {item.slug === course.slug ? <Pill>{pick(lang, "Actual", "Current")}</Pill> : null}
+              </div>
+              <Progress value={item.stats?.pct ?? 0} label={item.title} />
+              <div className="mt-2 text-xs text-muted-foreground">
+                {item.stats?.pct ?? 0}% · {item.lesson_count} {pick(lang, "lecciones", "lessons")}
+              </div>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

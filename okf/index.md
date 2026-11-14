@@ -44,6 +44,8 @@ la documentación fuente mandan si hay contradicciones.
 * [Seguridad](/architecture/security.md) - scrypt, sesiones, CSRF, rate limit y cabeceras.
 * [Modelo de contenido](/architecture/content-model.md) - Cómo se escribe y valida una lección.
 * [Estudio de autoría](/architecture/authoring.md) - Documentos, OpenCode, contrato JSON y catálogo dinámico.
+* [Generación por etapas](/architecture/generation.md) - Ingesta, temario, lecciones, verificación, cola y SSE.
+* [Espacios, usuarios y analítica](/architecture/tenancy-analytics.md) - Roles, grupos, invitaciones, auditoría y KPIs.
 
 ## Operaciones
 
@@ -68,6 +70,13 @@ la documentación fuente mandan si hay contradicciones.
 * [ADR-010 · Programa multi-capítulo](/decisions/adr-010-multi-chapter.md)
 * [ADR-011 · Catálogo multi-curso](/decisions/adr-011-multi-course.md)
 * [ADR-012 · Estudio de autoría con OpenCode](/decisions/adr-012-authoring-opencode.md)
+* [ADR-013 · Retirar la interfaz Jinja](/decisions/adr-013-retire-jinja.md)
+* [ADR-014 · Sistema de diseño Tailwind + componentes estilo shadcn](/decisions/adr-014-design-system.md)
+* [ADR-015 · Migraciones versionadas (PostgreSQL pendiente)](/decisions/adr-015-versioned-migrations.md)
+* [ADR-016 · Espacios de trabajo (tenancy)](/decisions/adr-016-workspaces.md)
+* [ADR-017 · Generación por etapas con salida JSON](/decisions/adr-017-staged-generation.md)
+* [ADR-018 · Eventos de aprendizaje como fuente de los KPIs](/decisions/adr-018-learning-events.md)
+* [ADR-019 · Cola de generación persistente y reanudable](/decisions/adr-019-generation-queue.md)
 
 ## Referencias e historial
 

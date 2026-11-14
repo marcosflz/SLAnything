@@ -4,7 +4,7 @@ title: Pruebas de SLAnything
 description: Suite pytest de 111 tests, cobertura por área y comprobaciones manuales.
 tags: [testing, pytest, qa, cobertura]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: qa
     resource: ../../docs/QA.md
@@ -112,3 +112,12 @@ completa.
 - Para CSRF, extrae el token del HTML con el helper `csrf_from`.
 - Si añades una ruta o contenido, amplía la suite y actualiza
   [testing](/operations/testing.md) y [status](/project/status.md).
+
+# Actualización 2026-11-13
+
+La suite tiene **140 tests** y ya no usa HTML: los helpers de `conftest.py`
+(`login`, `register`, `csrf`, `login_and_csrf`, `teacher_login`) van contra la
+API JSON. Nuevos ficheros: `test_workspaces.py` (migraciones y aislamiento),
+`test_analytics.py`, `test_generation.py` (pipeline completo con `FakeLLM`,
+sin red) y `test_admin.py`. Ejecuta `uv run python -m pytest -q` (en Windows
+`uv run pytest` puede fallar con «Failed to canonicalize script path»).

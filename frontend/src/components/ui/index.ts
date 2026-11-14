@@ -1,0 +1,3 @@
+// Primitivas heredadas (sprite de iconos, anillo, barras). Los componentes
+// nuevos del sistema de diseño viven en archivos hermanos: button, card…
+export * from "./legacy";

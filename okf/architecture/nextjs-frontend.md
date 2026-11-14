@@ -4,7 +4,7 @@ title: Frontend Next.js
 description: Interfaz principal en Next.js 16 y React 19, su relación con FastAPI y la sincronización con Jinja.
 tags: [nextjs, react, typescript, frontend, api]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T13:30:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: package
     resource: ../../frontend/package.json
@@ -112,10 +112,24 @@ npx playwright install chromium
 npm run e2e
 ```
 
-# Relación con Jinja
+# Relación con Jinja (retirada)
 
 - Next es la interfaz principal.
 - Jinja sigue en `:8000` como fallback y referencia visual.
 - Un cambio de diseño debe reflejarse en ambos CSS; `sync:assets` copia el CSS.
 - Un cambio de contenido se sirve automáticamente a ambas interfaces.
 - Un cambio de API debe actualizar `src/lib/types.ts` y `api.ts`.
+
+# Actualización 2026-11-13
+
+Jinja se retiró ([ADR-013](/decisions/adr-013-retire-jinja.md)); Next.js es la
+única interfaz. Rutas nuevas: `/analitica`, `/estudio/trabajos/[id]`,
+`/estudio/cursos/[slug]`, `/admin`, `/admin/usuarios`, `/admin/grupos`,
+`/admin/invitaciones`, `/admin/auditoria`, `/cuenta`, `/invitacion/[token]`.
+Componentes: `components/ui/*` (primitivas), `components/charts/*`,
+`components/shell/*` (AppShell, ShellPage, WorkspaceSwitcher,
+CommandPalette, UserMenu), `components/studio/*`, `components/admin/*`,
+`lesson/LearningTracker` y `lesson/SourceNote`. Dependencias nuevas:
+tailwindcss 4, radix-ui, recharts, lucide-react, cmdk, sonner,
+class-variance-authority, clsx, tailwind-merge. `npm run sync:assets` ya no
+existe. Next 16 genera `frontend/AGENTS.md` en `next dev`.

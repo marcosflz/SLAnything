@@ -164,7 +164,7 @@ def sample_package(slug: str = "redes-neuronales") -> dict:
 
 def _teacher(client):
     response = login(client, email=config.TEACHER_EMAIL, password=config.TEACHER_PASSWORD)
-    assert response.status_code == 303
+    assert response.status_code == 200
     session = client.get("/api/v1/session")
     assert session.status_code == 200
     return session.json()["csrf_token"]
@@ -172,7 +172,7 @@ def _teacher(client):
 
 def _student(client):
     response = login(client)
-    assert response.status_code == 303
+    assert response.status_code == 200
     return client.get("/api/v1/session").json()["csrf_token"]
 
 
@@ -315,10 +315,9 @@ def test_provider_config_uses_env_and_denies_shell(authoring_dir):
 def test_api_authoring_is_teacher_only(client, authoring_dir):
     _student(client)
     assert client.get("/api/v1/authoring").status_code == 403
-    assert client.get("/estudio").status_code == 403
 
 
-def test_studio_page_renders_for_teacher(client, authoring_dir, monkeypatch):
+def test_studio_payload_for_teacher(client, authoring_dir, monkeypatch):
     monkeypatch.setattr(
         settings,
         "engine_status",
@@ -331,11 +330,11 @@ def test_studio_page_renders_for_teacher(client, authoring_dir, monkeypatch):
         },
     )
     _teacher(client)
-    response = client.get("/estudio")
+    response = client.get("/api/v1/authoring")
     assert response.status_code == 200
-    assert "Nueva unidad a partir de documentos" in response.text
-    assert 'action="/estudio/jobs"' in response.text
-    assert "Guardar configuración" in response.text
+    body = response.json()
+    assert body["settings"]["engine"]["available"] is True
+    assert "limits" in body
 
 
 def test_api_settings_save_and_preserve_key(client, authoring_dir):
@@ -456,10 +455,6 @@ def test_published_generated_course_enters_catalog_and_quiz(client, authoring_di
     quiz = client.get("/api/v1/quiz/gen-redes-neuronales-intro-quiz?lang=es")
     assert quiz.status_code == 200
     assert quiz.json()["quiz"]["total"] == 4
-
-    # La misma unidad se navega por el fallback Jinja sin cambios de plantilla.
-    assert client.get(f"/cursos/{parsed.slug}").status_code == 200
-    assert client.get("/leccion/gen-redes-neuronales-que-es").status_code == 200
 
     unpublish = client.post(
         f"/api/v1/authoring/courses/{parsed.slug}/unpublish",

@@ -1,2 +1,107 @@
-@import "./app.css";
-@import "./next.css";
+/* ==========================================================================
+   SLAnything · sistema de diseño
+   - Tailwind v4 + componentes propios al estilo shadcn/ui (src/components/ui).
+   - Los tokens viven en app.css (:root y [data-theme="dark"]) y se exponen a
+     Tailwind con @theme inline: un solo origen de color para lo nuevo y lo
+     heredado.
+   - app.css se carga en la capa «legacy»: gana a la base de Tailwind, pero las
+     utilidades siempre ganan a lo heredado.
+   ========================================================================== */
+
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./app.css" layer(legacy);
+@import "./next.css" layer(legacy);
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--on-brand);
+  --color-primary-soft: var(--brand-soft);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--muted);
+  --color-subtle: var(--surface-3);
+  --color-soft-foreground: var(--text-soft);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-destructive: var(--danger);
+  --color-destructive-soft: var(--danger-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--border);
+  --color-ring: var(--brand);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  --shadow-card: var(--shadow-sm);
+  --shadow-pop: var(--shadow);
+}
+
+:root {
+  --on-brand: #ffffff;
+  --chart-1: #2563eb;
+  --chart-2: #0d9488;
+  --chart-3: #d97706;
+  --chart-4: #7c3aed;
+  --chart-5: #db2777;
+}
+
+[data-theme="dark"] {
+  --on-brand: #06101f;
+  --chart-1: #60a5fa;
+  --chart-2: #2dd4bf;
+  --chart-3: #fbbf24;
+  --chart-4: #a78bfa;
+  --chart-5: #f472b6;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+/* Utilidades pequeñas que se repiten en el shell nuevo. */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

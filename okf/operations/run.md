@@ -4,7 +4,7 @@ title: Arranque local de SLAnything
 description: Comandos para instalar, arrancar, comprobar y reiniciar la plataforma en local.
 tags: [runbook, arranque, uv, fastapi, local]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: readme
     resource: ../../README.md
@@ -152,3 +152,19 @@ progreso es importante.
 - **`AULA_SECURE_COOKIES=1` en HTTP:** el login no funciona; actívalo solo con TLS.
 - **Imágenes rotas:** `validate_content()` falla al arrancar; revisa
   `webapp/static/img/ch01/`.
+
+# Variables nuevas (2026-11-13)
+
+| Variable | Defecto | Uso |
+|---|---|---|
+| `AULA_SEED_DEMO` | `1` | Crea cuentas y academia demo; pon `0` en producción |
+| `AULA_PLATFORM_ADMINS` | — | Correos con superadministración (coma) |
+| `AULA_GEN_ENGINE` | `direct` | Motor por defecto del Estudio |
+| `AULA_GEN_WORKERS` | `2` | Hilos del pool de generación |
+| `AULA_GEN_CONCURRENCY` | `3` | Lecciones en paralelo por trabajo |
+| `AULA_GEN_INPROCESS` | `1` | `0` = usar `uv run python -m webapp.generation.worker` |
+| `AULA_GEN_MAX_CHARS` | `3000000` | Texto máximo procesado por trabajo |
+| `AULA_GEN_MONTHLY_PERSONAL` / `_ORG` | `10` / `100` | Cuotas mensuales por espacio |
+| `AULA_LLM_FAKE` | `0` | Modelo falso determinista (demos sin red) |
+
+La interfaz Jinja ya no existe: `:8000` solo sirve la API.
