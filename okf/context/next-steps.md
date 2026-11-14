@@ -5,7 +5,7 @@ description: Backlog priorizado de SLAnything tras abrir el catálogo multi-curs
 tags: [backlog, roadmap, calidad, accesibilidad, producto]
 status: stable
 stale_after: 2026-12-31T00:00:00Z
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T20:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: roadmap
     resource: /project/roadmap.md
@@ -15,7 +15,22 @@ sources:
     title: Estado actual
 ---
 
-# Prioridad 0 · Cerrar la entrega
+# Prioridad 0 · Consolidar SLAnything 2.0 (2026-11-13)
+
+- Probar en navegador el Estudio por etapas, la analítica y la administración
+  (360/768/1440 px, claro/oscuro) y actualizar los E2E de Playwright.
+- Generar una unidad real con un proveedor (PDF de ~40 páginas) midiendo
+  tiempo, coste y % de bloques con cita.
+- Recuperación de contraseña y verificación de correo (servicio SMTP/Resend),
+  invitaciones por correo y OAuth Google/Microsoft.
+- Aplicar las matrículas: «Mis cursos» con fechas límite y catálogo por grupo.
+- Migrar lección, quiz, progreso, glosario y catálogo a los componentes nuevos;
+  reproductor a tres columnas con panel de fuentes y tutor.
+- Repaso espaciado y flashcards; preguntas de respuesta corta corregidas por IA.
+- SQLAlchemy/Alembic y PostgreSQL; claves de proveedor por espacio cifradas.
+- Superadministración de plataforma (`/plataforma`), planes y medidores de uso.
+
+# Prioridad 0 (anterior) · Cerrar la entrega
 
 - Probar el Estudio con el proveedor real del centro y una unidad completa
   (PDF de un capítulo, ES/EN) midiendo tiempo, coste y calidad.

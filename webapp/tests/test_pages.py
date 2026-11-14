@@ -8,47 +8,39 @@ from conftest import login
 
 
 def test_search_finds_attention_lesson(client):
-    assert login(client).status_code == 303
+    assert login(client).status_code == 200
 
-    response = client.get("/buscar", params={"q": "atención"})
+    body = client.get("/api/v1/search", params={"q": "atención"}).json()
 
-    assert response.status_code == 200
-    assert "Resultados para" in response.text
-    assert 'href="/leccion/transformer-y-atencion"' in response.text
-    assert "Transformer y atención" in response.text
+    slugs = [item["lesson"]["slug"] for item in body["results"]]
+    assert "transformer-y-atencion" in slugs
 
 
-def test_search_without_results_shows_empty_state(client):
-    assert login(client).status_code == 303
-
-    response = client.get("/buscar", params={"q": "zzzz-no-existe"})
-
-    assert response.status_code == 200
-    assert "Sin resultados" in response.text
+def test_search_without_results_is_empty(client):
+    assert login(client).status_code == 200
+    body = client.get("/api/v1/search", params={"q": "zzzz-no-existe"}).json()
+    assert body["results"] == []
 
 
 def test_glossary_lists_terms_and_lesson_links(client):
-    assert login(client).status_code == 303
-
-    response = client.get("/glosario")
-
+    assert login(client).status_code == 200
+    response = client.get("/api/v1/glossary")
     assert response.status_code == 200
     assert "self-attention" in response.text
-    assert 'data-glossary-grid' in response.text
-    assert "Ver en la lección" in response.text
+    assert any(
+        term.get("lesson")
+        for group in response.json()["groups"]
+        for term in group["terms"]
+    )
 
 
-def test_resources_page_and_notebook_download(client):
-    assert login(client).status_code == 303
+def test_resources_and_notebook_download(client):
+    assert login(client).status_code == 200
+    resources = client.get("/api/v1/resources").json()["resources"]
+    assert any(item["href"] == "/api/v1/downloads/notebook" for item in resources)
 
-    page = client.get("/recursos")
-    assert page.status_code == 200
-    assert "Cuaderno interactivo" in page.text
-    assert 'href="/recursos/cuaderno"' in page.text
-
-    notebook = client.get("/recursos/cuaderno")
+    notebook = client.get("/api/v1/downloads/notebook")
     assert notebook.status_code == 200
     assert notebook.headers["content-type"].startswith("application/x-ipynb+json")
     payload = json.loads(notebook.content)
-    assert "cells" in payload
     assert payload["cells"]

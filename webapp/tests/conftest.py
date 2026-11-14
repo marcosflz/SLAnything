@@ -8,7 +8,6 @@ No se usa red ni ningún servicio externo.
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -24,9 +23,6 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from webapp import config, execution  # noqa: E402
 from webapp.security import login_limiter  # noqa: E402
-
-CSRF_RE = re.compile(r'name="csrf_token" value="([^"]+)"')
-
 
 def _clear_login_limiter() -> None:
     """Vacía el estado global del limitador para no contaminar otros tests."""
@@ -65,12 +61,11 @@ def client(db_path):
         execution.reset_rate_limits()
 
 
-def csrf_from(html: str) -> str:
-    """Extrae el token CSRF del primer formulario autenticado del HTML."""
-    match = CSRF_RE.search(html)
-    if match is None:
-        raise AssertionError("No se encontró ningún campo csrf_token en el HTML")
-    return match.group(1)
+def csrf(client: TestClient) -> str:
+    """Devuelve el token CSRF de la sesión actual (vacío si no hay sesión)."""
+    response = client.get("/api/v1/session")
+    assert response.status_code == 200, response.text
+    return response.json()["csrf_token"]
 
 
 def login(
@@ -78,13 +73,11 @@ def login(
     email: str = config.DEMO_EMAIL,
     password: str = config.DEMO_PASSWORD,
     next: str = "/",
-    follow_redirects: bool = False,
 ):
-    """Envía el formulario de acceso y devuelve la respuesta sin seguir saltos."""
+    """Inicia sesión por la API JSON y devuelve la respuesta."""
     return client.post(
-        "/entrar",
-        data={"email": email, "password": password, "next": next},
-        follow_redirects=follow_redirects,
+        "/api/v1/auth/login",
+        json={"email": email, "password": password, "next": next},
     )
 
 
@@ -95,40 +88,32 @@ def register(
     name: str = "Alumno de Prueba",
     password2: str | None = None,
     next: str = "/",
-    follow_redirects: bool = False,
 ):
-    """Envía el formulario de registro con valores válidos por defecto."""
+    """Crea una cuenta por la API JSON con valores válidos por defecto."""
     return client.post(
-        "/registro",
-        data={
+        "/api/v1/auth/register",
+        json={
             "name": name,
             "email": email,
             "password": password,
             "password2": password if password2 is None else password2,
             "next": next,
         },
-        follow_redirects=follow_redirects,
     )
 
 
 def login_and_csrf(
     client: TestClient,
-    lesson: str = "que-es-un-llm",
     email: str = config.DEMO_EMAIL,
     password: str = config.DEMO_PASSWORD,
 ) -> str:
-    """Inicia sesión, abre una lección y devuelve su token CSRF."""
+    """Inicia sesión y devuelve el token CSRF de la nueva sesión."""
     response = login(client, email=email, password=password)
-    assert response.status_code == 303, response.text
-    page = client.get(f"/leccion/{lesson}")
-    assert page.status_code == 200, page.text
-    return csrf_from(page.text)
+    assert response.status_code == 200, response.text
+    return csrf(client)
 
 
-def login_and_open_quiz(client: TestClient, quiz_id: str = "quiz-capitulo-1"):
-    """Inicia sesión y devuelve la página GET del quiz indicado."""
-    response = login(client)
-    assert response.status_code == 303, response.text
-    page = client.get(f"/quiz/{quiz_id}")
-    assert page.status_code == 200, page.text
-    return page
+def teacher_login(client: TestClient) -> str:
+    return login_and_csrf(
+        client, email=config.TEACHER_EMAIL, password=config.TEACHER_PASSWORD
+    )

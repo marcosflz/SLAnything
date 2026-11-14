@@ -4,7 +4,7 @@ title: Modelo de datos SQLite
 description: Tablas, columnas y relaciones que sostienen usuarios, progreso y evaluación.
 tags: [datos, sqlite, esquema, progreso, quiz]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T12:00:00Z }
 sources:
   - id: db
     resource: ../../webapp/db.py
@@ -26,7 +26,14 @@ sources:
 | `bookmarks` | `(user_id, course_slug, lesson_slug)` | Marcadores |
 | `activity` | `(user_id, day, kind)` | Racha y actividad diaria |
 | `authoring_jobs` | `id` | Trabajos del Estudio: estado, proveedor, modelo, idiomas, error y fechas |
-| `generated_courses` | `slug` | Paquete JSON generado, estado `draft`/`published`, autor y job |
+| `generated_courses` | `slug` | Paquete JSON generado, estado `draft`/`published`, autor, job, `workspace_id`, `visibility` (`workspace`/`public`) y `report_json` |
+| `workspaces` | `id` | Espacio `personal` u `organization`; plan, plazas, código de clase |
+| `memberships` | `(workspace_id, user_id)` | Rol `owner`/`admin`/`teacher`/`student` |
+| `groups`, `group_members` | `id`, `(group_id, user_id)` | Clases o cohortes del espacio |
+| `enrollments` | `id` | Curso asignado a un grupo o usuario, con `due_at` |
+| `invitations` | `id` | Invitación de un solo uso (hash del token, rol, grupo, caducidad) |
+| `audit_log` | `id` | Acciones sensibles por espacio |
+| `learning_events` | `id` | Eventos de aprendizaje (ADR-018) |
 
 # Relaciones
 
@@ -71,3 +78,14 @@ una base v2 se actualiza sin tocar sus datos. La operación es idempotente.
 - No hay migraciones versionadas todavía. Para un cambio de columna, añade una
   migración idempotente en `init_db()` o un script en `tools/`.
 - Copia de seguridad: parar el servidor y copiar `aula.db` (o usar `sqlite3 .backup`).
+
+# Migraciones versionadas (v4, v5)
+
+Desde 2026-11-13 el esquema evoluciona con `webapp/migrations.py`
+([ADR-015](/decisions/adr-015-versioned-migrations.md)). v4 añade espacios,
+membresías, grupos, matrículas, invitaciones, auditoría, `learning_events` y
+columnas nuevas en `users`, `authoring_jobs` y `generated_courses`; además crea
+un espacio personal por usuario. v5 reconstruye `authoring_jobs` sin el CHECK de
+estados y añade `engine`, `stage`, `progress_json`, `config_json`, tokens y
+`generated_courses.report_json`. `activity.day` pasa a UTC. Detalle de uso en
+[tenancy-analytics](/architecture/tenancy-analytics.md).

@@ -1,5 +1,16 @@
 # Historial de cambios del OKF
 
+## 2026-11-13
+
+* **Update**: Se retira la interfaz Jinja (plantillas, rutas HTML, `templating.py`, `webapp/static/css/app.css`, `tools/sync_frontend_assets.py`). FastAPI solo sirve `/api/v1`, `/api/ejecutar` y `/static`; los tests se reescribieron contra la API.
+* **Update**: Migraciones versionadas en `webapp/migrations.py` (v4: espacios de trabajo, membresías, grupos, matrículas, invitaciones, auditoría y `learning_events`; v5: estados del motor por etapas). Cada usuario tiene un espacio personal; academia demo con la profesora como owner. Roles owner/admin/teacher/student por espacio (`webapp/workspaces.py`, `deps.require_role`). Cursos generados, trabajos y panel del profesor aislados por espacio. SQLAlchemy/PostgreSQL queda pendiente.
+* **Update**: KPIs: captura de eventos (`webapp/analytics.py`, `POST /api/v1/events`, `LearningTracker`), `/api/v1/analytics/me`, `/api/v1/analytics/course` (+CSV, análisis de ítems, embudo, riesgo) y `/api/v1/admin/metrics`. La racha ya no cuenta los inicios de sesión.
+* **Update**: Generación v2 (`webapp/generation/`): ingesta estructurada con secciones y fragmentos citables, temario editable, lecciones en paralelo con citas, banco de preguntas (única, múltiple, V/F), verificación de respaldo, reanudación tras reinicio, SSE, edición y regeneración de lecciones, cuotas mensuales. Ajustes del proveedor solo para admins de plataforma.
+* **Update**: Frontend: Tailwind v4 + componentes propios estilo shadcn (Radix, Recharts, cmdk, lucide); `app.css` pasa a la capa `legacy`. Shell nuevo con selector de espacio, navegación por rol y ⌘K; dashboard con KPIs; `/analitica`; Estudio con asistente (`/estudio/trabajos/[id]`) y revisión (`/estudio/cursos/[slug]`); skeletons de carga; quiz multirrespuesta; citas «Fuente: p. N».
+* **Update**: Administración de academias y cuenta: API `webapp/routers/admin.py` (miembros y roles, código de clase, grupos con asignación de cursos, invitaciones de un solo uso, auditoría, perfil, contraseña y sesiones) y páginas `/admin`, `/admin/usuarios`, `/admin/grupos`, `/admin/invitaciones`, `/admin/auditoria`, `/cuenta` e `/invitacion/[token]`. Suite: 140 tests; `npm run build` en verde.
+* **Update**: OKF: ADR-013 a ADR-019, conceptos nuevos `architecture/generation.md` y `architecture/tenancy-analytics.md`; actualizados data-model, security, ux, nextjs-frontend, status, known-issues, next-steps, vision, testing y run.
+* **Update**: Pendiente: verificación en navegador y E2E del shell nuevo, prueba con proveedor real, recuperación de contraseña/correo/OAuth, PostgreSQL y migrar las páginas heredadas (ver [next-steps](/context/next-steps.md)).
+
 ## 2026-10-27
 
 * **Update**: Primera publicación del repositorio en `origin`: 494 archivos versionados en un commit inicial sobre `main`, que queda configurada como rama de seguimiento. Antes de publicar se auditó el árbol en busca de credenciales y de artefactos locales (claves `sk-*`, tokens de GitHub/AWS/Google, bloques de clave privada, `.env`, `aula.db`, `.venv/`, `frontend/node_modules/` y `frontend/.next/`): sin hallazgos, solo placeholders en `.env.example` y en el secreto de desarrollo de `compose.yaml`.

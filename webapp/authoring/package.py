@@ -20,11 +20,14 @@ from webapp.content.schema import (
     Chapter,
     GlossaryTerm,
     Lesson,
+    QUESTION_KINDS,
     Question,
     Quiz,
 )
 
 LANGS = ("es", "en")
+MAX_CHAPTERS = 40
+MAX_LESSONS = 300
 ALLOWED_ACCENTS = {"blue", "violet", "green", "amber"}
 ALLOWED_TONES = {"info", "tip", "warning", "danger", "success", "note"}
 TONE_ALIASES = {
@@ -263,6 +266,21 @@ def _block(raw: Any, lang: str, where: str) -> dict[str, Any]:
     }
 
 
+_SOURCE_RE = re.compile(r"^[A-Za-z0-9:_.\-]{1,40}$")
+
+
+def _with_sources(block: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+    """Conserva las citas a fragmentos del documento (``sources``) si son válidas."""
+    sources = raw.get("sources")
+    if isinstance(sources, list):
+        clean = [str(item) for item in sources if isinstance(item, str) and _SOURCE_RE.match(item)]
+        if clean:
+            block["sources"] = clean[:6]
+    if raw.get("unsupported") is True:
+        block["unsupported"] = True
+    return block
+
+
 def _blocks(value: Any, lang: str, where: str) -> tuple[dict[str, Any], ...]:
     if isinstance(value, dict):
         data = value.get(lang)
@@ -273,7 +291,7 @@ def _blocks(value: Any, lang: str, where: str) -> tuple[dict[str, Any], ...]:
     if not 5 <= len(data) <= 40:
         raise ValueError(f"{where}.{lang}: se esperaban entre 5 y 40 bloques.")
     blocks = tuple(
-        _block(block, lang, f"{where}.{lang}[{index}]")
+        _with_sources(_block(block, lang, f"{where}.{lang}[{index}]"), block)
         for index, block in enumerate(data)
     )
     kinds = [block["type"] for block in blocks]
@@ -292,8 +310,8 @@ def _quiz(raw: Any, lang: str, where: str) -> Quiz:
     if not isinstance(raw, dict):
         raise ValueError(f"{where}.{lang}: falta el quiz del capítulo.")
     questions_raw = raw.get("questions")
-    if not isinstance(questions_raw, list) or not 4 <= len(questions_raw) <= 10:
-        raise ValueError(f"{where}.questions: se esperaban entre 4 y 10 preguntas.")
+    if not isinstance(questions_raw, list) or not 4 <= len(questions_raw) <= 20:
+        raise ValueError(f"{where}.questions: se esperaban entre 4 y 20 preguntas.")
     questions: list[Question] = []
     seen: set[str] = set()
     for index, item in enumerate(questions_raw):
@@ -303,14 +321,37 @@ def _quiz(raw: Any, lang: str, where: str) -> Quiz:
         if question_id in seen:
             raise ValueError(f"{where}.questions: id duplicado {question_id!r}.")
         seen.add(question_id)
+        kind = str(item.get("kind") or item.get("type") or "single").lower()
+        if kind not in QUESTION_KINDS:
+            raise ValueError(f"{where}.questions[{index}].kind: tipo desconocido {kind!r}.")
         options = _localized_list(
-            item.get("options"), lang, f"{where}.questions[{index}].options", 2, 5, 400
+            item.get("options"), lang, f"{where}.questions[{index}].options", 2, 6, 400
         )
+        if kind == "true_false" and len(options) != 2:
+            raise ValueError(f"{where}.questions[{index}]: verdadero/falso lleva 2 opciones.")
         correct = item.get("correct")
-        if not isinstance(correct, int) or not 0 <= correct < len(options):
+        answers: tuple[int, ...] = ()
+        if kind == "multiple":
+            values = correct if isinstance(correct, list) else [correct]
+            if not values or not all(
+                isinstance(v, int) and not isinstance(v, bool) and 0 <= v < len(options)
+                for v in values
+            ):
+                raise ValueError(f"{where}.questions[{index}].correct: índices fuera de rango.")
+            answers = tuple(sorted(set(values)))
+            if len(answers) >= len(options):
+                raise ValueError(f"{where}.questions[{index}]: no todas las opciones pueden ser correctas.")
+            correct = answers[0]
+        elif not isinstance(correct, int) or isinstance(correct, bool) or not 0 <= correct < len(options):
             raise ValueError(f"{where}.questions[{index}].correct: índice fuera de rango.")
+        difficulty = item.get("difficulty")
+        source_ref = item.get("source")
         questions.append(
             Question(
+                kind=kind,
+                answers=answers,
+                difficulty=difficulty if difficulty in {"easy", "medium", "hard"} else None,
+                source=source_ref if isinstance(source_ref, str) and _SOURCE_RE.match(source_ref) else None,
                 id=question_id,
                 prompt=_localized_text(
                     item.get("prompt"), lang, f"{where}.questions[{index}].prompt", 8, 500
@@ -359,8 +400,8 @@ def parse_package(
     """Valida y convierte un paquete JSON en cursos, quizzes y glosario."""
     if not isinstance(package, dict):
         raise ValueError("El paquete debe ser un objeto JSON.")
-    if int(package.get("schema_version", 0)) != 1:
-        raise ValueError("schema_version: se esperaba 1.")
+    if int(package.get("schema_version", 0)) not in (1, 2):
+        raise ValueError("schema_version: se esperaba 1 o 2.")
 
     languages = _languages(package)
     raw_course = package.get("course")
@@ -371,8 +412,8 @@ def parse_package(
     course_slug = base_slug if base_slug.startswith("gen-") else f"gen-{base_slug}"
 
     raw_chapters = package.get("chapters")
-    if not isinstance(raw_chapters, list) or not 1 <= len(raw_chapters) <= 4:
-        raise ValueError("chapters: se esperaban entre 1 y 4 capítulos.")
+    if not isinstance(raw_chapters, list) or not 1 <= len(raw_chapters) <= MAX_CHAPTERS:
+        raise ValueError(f"chapters: se esperaban entre 1 y {MAX_CHAPTERS} capítulos.")
 
     source = raw_course.get("source") if isinstance(raw_course.get("source"), dict) else {}
     book = None
@@ -462,9 +503,9 @@ def parse_package(
             )
 
             lessons_raw = raw_chapter.get("lessons")
-            if not isinstance(lessons_raw, list) or not 3 <= len(lessons_raw) <= 8:
+            if not isinstance(lessons_raw, list) or not 2 <= len(lessons_raw) <= 12:
                 raise ValueError(
-                    f"chapter[{chapter_index}].lessons: se esperaban entre 3 y 8 lecciones."
+                    f"chapter[{chapter_index}].lessons: se esperaban entre 2 y 12 lecciones."
                 )
             quiz = _quiz(raw_chapter.get("quiz"), lang, f"chapter[{chapter_index}].quiz")
             final_quiz_id = slugify(f"{course_slug}-{quiz.id}", quiz.id, 110)
@@ -503,8 +544,8 @@ def parse_package(
                     raise ValueError(f"Lección duplicada: {lesson_slug}.")
                 lesson_slugs_seen.add(lesson_slug)
                 total_lessons += 1
-                if total_lessons > 30:
-                    raise ValueError("El paquete no puede superar 30 lecciones.")
+                if total_lessons > MAX_LESSONS:
+                    raise ValueError(f"El paquete no puede superar {MAX_LESSONS} lecciones.")
                 lesson_slugs[lesson_base] = lesson_slug
                 blocks = _blocks(
                     raw_lesson.get("blocks"),
@@ -651,8 +692,8 @@ def parse_package(
             for quiz_id, quiz in all_quizzes[lang].items():
                 if quiz_id not in ref_quizzes:
                     raise ValueError(f"Quiz {quiz_id}: falta en el otro idioma.")
-                if [q.correct for q in quiz.questions] != [
-                    q.correct for q in ref_quizzes[quiz_id].questions
+                if [(q.kind, q.correct_set) for q in quiz.questions] != [
+                    (q.kind, q.correct_set) for q in ref_quizzes[quiz_id].questions
                 ]:
                     raise ValueError(
                         f"Quiz {quiz_id}: las respuestas correctas deben coincidir "

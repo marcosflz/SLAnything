@@ -18,13 +18,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
-from webapp import config, repositories
+from webapp import analytics, config, repositories
 from webapp.content import ContentBundle, Course, content_for
 from webapp.db import get_db
 from webapp.deps import ensure_csrf, get_current_user, require_teacher, require_user
 from webapp.i18n import request_lang, translate
 from webapp.labs import lab_meta_for
-from webapp.routers.course import _example_position, _python_code
+from webapp.downloads import example_position as _example_position
+from webapp.downloads import python_code as _python_code
 from webapp.security import (
     hash_password,
     login_limiter,
@@ -66,7 +67,7 @@ class NoteBody(BaseModel):
 
 
 class QuizBody(BaseModel):
-    answers: dict[str, int | None] = Field(default_factory=dict)
+    answers: dict[str, int | list[int] | None] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -81,8 +82,17 @@ def _requested_course(request: Request) -> str | None:
     return request.query_params.get("course") or request.query_params.get("curso")
 
 
+def _visible_workspaces(request: Request) -> frozenset[int]:
+    user = getattr(request.state, "user", None)
+    return user.get("workspace_ids", frozenset()) if user else frozenset()
+
+
 def _bundle(request: Request, course_slug: str | None = None) -> ContentBundle:
-    return content_for(_lang(request), course_slug or _requested_course(request))
+    return content_for(
+        _lang(request),
+        course_slug or _requested_course(request),
+        workspace_ids=_visible_workspaces(request),
+    )
 
 
 def _safe_next(value: str | None, fallback: str = "/") -> str:
@@ -101,6 +111,11 @@ def _user_payload(user: dict | None) -> dict | None:
         "role": user["role"],
         "initials": _initials(user["name"]),
         "csrf_token": user.get("csrf_token", ""),
+        "workspace": user.get("workspace"),
+        "workspaces": user.get("memberships", []),
+        "ws_role": user.get("ws_role"),
+        "permissions": user.get("permissions")
+        or {"author": False, "teach": False, "admin": False, "owner": False, "platform": False},
     }
 
 
@@ -295,7 +310,12 @@ def _quiz_meta(quiz) -> dict:
 def _quiz_payload(quiz) -> dict:
     payload = _quiz_meta(quiz)
     payload["questions"] = [
-        {"id": question.id, "prompt": question.prompt, "options": list(question.options)}
+        {
+            "id": question.id,
+            "prompt": question.prompt,
+            "options": list(question.options),
+            "kind": question.kind,
+        }
         for question in quiz.questions
     ]
     return payload
@@ -527,7 +547,7 @@ def _login_response(
         new_csrf_token(),
         config.SESSION_DAYS,
     )
-    repositories.record_activity(conn, user_id, "login")
+    repositories.touch_login(conn, user_id)
     conn.commit()
     row = repositories.get_user(conn, user_id)
     response = JSONResponse(
@@ -590,6 +610,11 @@ def api_login(
         )
 
     login_limiter.reset(limiter_key)
+    if row["disabled_at"]:
+        return JSONResponse(
+            {"detail": translate("Esta cuenta está desactivada.", lang)},
+            status_code=403,
+        )
     return _login_response(request, conn, row["id"], body.next)
 
 
@@ -727,6 +752,9 @@ def lesson_detail(
 
     repositories.touch_lesson(conn, user["id"], course.slug, slug)
     repositories.record_activity(conn, user["id"], "lesson")
+    analytics.record_event(
+        conn, user["id"], "lesson.viewed", course_slug=course.slug, lesson_slug=slug
+    )
     conn.commit()
 
     progress_row = repositories.get_lesson_progress(
@@ -782,6 +810,10 @@ def complete_lesson(
         conn, user["id"], course.slug, slug, body.completed
     )
     repositories.record_activity(conn, user["id"], "lesson")
+    if body.completed:
+        analytics.record_event(
+            conn, user["id"], "lesson.completed", course_slug=course.slug, lesson_slug=slug
+        )
     conn.commit()
     progress = repositories.progress_for_user(conn, user["id"], course.slug)
     return {
@@ -818,6 +850,9 @@ def save_note(
         conn, user["id"], bundle.course.slug, slug, body.body[:20000]
     )
     repositories.record_activity(conn, user["id"], "lesson")
+    analytics.record_event(
+        conn, user["id"], "note.saved", course_slug=bundle.course.slug, lesson_slug=slug
+    )
     conn.commit()
     return {"ok": True, "message": translate("Apuntes guardados.", _lang(request))}
 
@@ -895,24 +930,21 @@ def submit_quiz(
         )
     ensure_csrf(request, user)
 
-    answers: dict[str, int | None] = {}
+    answers: dict[str, int | list[int] | None] = {}
     score = 0
     for question in quiz.questions:
-        raw = body.answers.get(question.id)
-        selected: int | None = None
-        if isinstance(raw, int) and not isinstance(raw, bool):
-            if 0 <= raw < len(question.options):
-                selected = raw
+        selected = question.normalize(body.answers.get(question.id))
         answers[question.id] = selected
-        if selected == question.correct:
+        if question.is_correct(selected):
             score += 1
 
     attempt_id = repositories.create_attempt(
         conn, user["id"], course.slug, quiz.id, score, quiz.total, answers
     )
     repositories.record_activity(conn, user["id"], "quiz")
-    conn.commit()
     percent = round(score * 100 / quiz.total) if quiz.total else 0
+    analytics.record_quiz_answers(conn, user["id"], course.slug, quiz, answers, percent)
+    conn.commit()
     return {
         "ok": True,
         "attempt_id": attempt_id,
@@ -956,23 +988,22 @@ def attempt_review(
 
     review = []
     for number, question in enumerate(quiz.questions, start=1):
-        raw = answers.get(question.id)
-        selected: int | None = None
-        if isinstance(raw, int) and not isinstance(raw, bool):
-            if 0 <= raw < len(question.options):
-                selected = raw
+        selected = question.normalize(answers.get(question.id))
+        if selected is None:
+            selected_text = translate("Sin respuesta", _lang(request))
+        elif isinstance(selected, list):
+            selected_text = " · ".join(question.options[index] for index in selected)
+        else:
+            selected_text = question.options[selected]
         review.append(
             {
                 "number": number,
+                "kind": question.kind,
                 "question": question.prompt,
                 "selected": selected,
-                "selected_text": (
-                    question.options[selected]
-                    if selected is not None
-                    else translate("Sin respuesta", _lang(request))
-                ),
+                "selected_text": selected_text,
                 "correct_text": question.correct_option,
-                "is_correct": selected == question.correct,
+                "is_correct": question.is_correct(selected),
                 "explanation": question.explanation,
             }
         )
@@ -1203,12 +1234,16 @@ def teacher_page(
     conn: sqlite3.Connection = Depends(get_db),
 ):
     bundle = _bundle(request)
+    workspace_id = user["workspace"]["id"] if user.get("workspace") else None
     total_lessons = sum(
         course.lesson_count for course in bundle.published_catalog
     )
+    slugs = tuple(course.slug for course in bundle.published_catalog)
     return {
-        "students": repositories.teacher_overview(conn),
-        "stats": repositories.teacher_stats(conn, total_lessons),
+        "students": repositories.teacher_overview(conn, workspace_id, slugs),
+        "stats": repositories.teacher_stats(
+            conn, total_lessons, workspace_id=workspace_id
+        ),
         "course": _course_payload(bundle.course),
         "courses": _catalog_payload(bundle, conn, user),
         "progress": _progress_payload(

@@ -13,3 +13,5 @@ Cómo está construida SLAnything y dónde tocar cada cosa.
 * [Seguridad](/architecture/security.md) - Autenticación, sesiones y protecciones.
 * [Modelo de contenido](/architecture/content-model.md) - Lecciones, quiz y validación.
 * [Estudio de autoría](/architecture/authoring.md) - Documentos → unidades con OpenCode y catálogo dinámico.
+* [Generación por etapas](/architecture/generation.md) - Ingesta, temario, lecciones con citas, verificación, cola y SSE.
+* [Espacios, usuarios y analítica](/architecture/tenancy-analytics.md) - Roles, grupos, invitaciones, auditoría, cuenta y KPIs.

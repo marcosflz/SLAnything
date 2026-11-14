@@ -1,5 +1,5 @@
-/* Copia generada por tools/sync_frontend_assets.py desde
-   webapp/static/css/app.css. No editar a mano durante la migración. */
+/* Sistema visual heredado (antes copiado de webapp/static/css/app.css).
+   Se carga en la capa CSS «legacy»: las utilidades de Tailwind tienen prioridad. */
 
 /* ==========================================================================
    Aula LLM · sistema de diseño

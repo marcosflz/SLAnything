@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from webapp import execution
+from webapp import analytics, execution
+from webapp.db import session_scope
 from webapp.deps import ensure_csrf, require_user
 from webapp.i18n import request_lang, t
 
@@ -57,4 +58,16 @@ def run_python(
             },
             status_code=500,
         )
+    try:
+        with session_scope() as conn:
+            analytics.record_event(
+                conn,
+                user["id"],
+                "code.run",
+                lesson_slug=payload.lesson or "",
+                success=bool(result.get("ok")),
+                duration_ms=int(result.get("duration_ms") or 0),
+            )
+    except Exception:  # noqa: BLE001 - la analítica nunca rompe la ejecución
+        logger.exception("No se pudo registrar la ejecución")
     return JSONResponse(result)

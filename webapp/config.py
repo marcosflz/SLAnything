@@ -12,7 +12,6 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 WEBAPP_DIR = BASE_DIR / "webapp"
 STATIC_DIR = WEBAPP_DIR / "static"
-TEMPLATES_DIR = WEBAPP_DIR / "templates"
 
 NOTEBOOKS_DIR = BASE_DIR / "notebooks"
 ASSETS_DIR = NOTEBOOKS_DIR / "assets"
@@ -79,3 +78,35 @@ DEMO_EMAIL = "demo@aulallm.local"
 DEMO_PASSWORD = "demo1234"
 TEACHER_EMAIL = "profe@aulallm.local"
 TEACHER_PASSWORD = "profe1234"
+
+# Siembra de cuentas y academia de demostración. Desactívala en producción.
+SEED_DEMO = os.environ.get("AULA_SEED_DEMO", "1") == "1"
+
+# Correos con rol de superadministración de la plataforma (separados por comas).
+PLATFORM_ADMINS = tuple(
+    email.strip().lower()
+    for email in os.environ.get("AULA_PLATFORM_ADMINS", "").split(",")
+    if email.strip()
+)
+
+# Cookie con el espacio de trabajo activo.
+WORKSPACE_COOKIE = "aula_ws"
+
+# ---------------------------------------------------------------------------
+# Generación por etapas (webapp/generation, ADR-017/019)
+# ---------------------------------------------------------------------------
+# Motor por defecto del Estudio: "direct" (etapas JSON) u "opencode" (agente).
+GEN_DEFAULT_ENGINE = os.environ.get("AULA_GEN_ENGINE", "direct")
+# Hilos del pool de generación dentro del proceso web.
+GEN_WORKERS = int(os.environ.get("AULA_GEN_WORKERS", "2"))
+# Lecciones en paralelo por trabajo (limita la concurrencia contra el proveedor).
+GEN_CONCURRENCY = int(os.environ.get("AULA_GEN_CONCURRENCY", "3"))
+# 0 = la web solo encola; un proceso `python -m webapp.generation.worker` ejecuta.
+GEN_INPROCESS = os.environ.get("AULA_GEN_INPROCESS", "1") == "1"
+# Tope de texto procesado por trabajo (un libro completo cabe de sobra).
+GEN_MAX_CHARS = int(os.environ.get("AULA_GEN_MAX_CHARS", "3000000"))
+# Cuotas mensuales de generación por espacio de trabajo.
+GEN_MONTHLY_PERSONAL = int(os.environ.get("AULA_GEN_MONTHLY_PERSONAL", "10"))
+GEN_MONTHLY_ORGANIZATION = int(os.environ.get("AULA_GEN_MONTHLY_ORG", "100"))
+# Modelo falso determinista (tests y demos sin red).
+LLM_FAKE = os.environ.get("AULA_LLM_FAKE", "0") == "1"

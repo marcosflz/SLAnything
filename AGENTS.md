@@ -43,6 +43,8 @@ Actualiza el OKF en la misma sesión en la que ocurra el cambio. Como mínimo:
 | Autenticación, sesiones o CSRF | `okf/architecture/security.md` |
 | Diseño, plantillas o responsive | `okf/product/ux.md`, `okf/architecture/frontend.md` |
 | Frontend Next.js o API JSON | `okf/architecture/nextjs-frontend.md`, `okf/architecture/api.md` |
+| Espacios, roles, administración o KPIs | `okf/architecture/tenancy-analytics.md` |
+| Generación por etapas | `okf/architecture/generation.md` |
 | Estudio de autoría, OpenCode o generación desde documentos | `okf/architecture/authoring.md`, `okf/decisions/adr-012-authoring-opencode.md` |
 | Traducciones ES/EN o contenido inglés | `okf/architecture/i18n.md`, `okf/product/lessons.md` |
 | Ejecución de Python o sandbox | `okf/architecture/execution.md`, `okf/architecture/security.md` |
@@ -91,7 +93,7 @@ Además, **siempre**:
 ```powershell
 uv sync
 uv run python aula.py                 # backend FastAPI · http://127.0.0.1:8000
-uv run pytest -q                     # suite del proyecto (111 tests)
+uv run python -m pytest -q           # suite del proyecto (140 tests)
 uv run python tools/check_chapter.py ch02   # valida un paquete de capítulo
 uv run python tools/validate_all_chapters.py
 uv run python tools/check_okf.py     # conformidad y enlaces del OKF
@@ -109,9 +111,8 @@ Con ambos servidores arrancados:
 uv run python tools/smoke_next.py
 ```
 
-`aula.py` no recarga automáticamente. Si cambias Python, routers o plantillas,
-reinicia el backend antes de probar; un proceso viejo puede dar 500 por nombres
-que ya existen en el código nuevo (por ejemplo `t` en las plantillas i18n).
+`aula.py` no recarga automáticamente. Si cambias Python o routers, reinicia el
+backend antes de probar. Para probar el Estudio sin red usa `AULA_LLM_FAKE=1`.
 
 Cuentas de demostración: `demo@aulallm.local / demo1234` y
 `profe@aulallm.local / profe1234`.
@@ -136,21 +137,26 @@ catálogo de cursos y un **Estudio de autoría** que convierte documentos en
 unidades didácticas con OpenCode. El curso publicado convierte los 7 capítulos de
 *Build a Large Language Model (From Scratch)* en 56 lecciones, 15 laboratorios
 interactivos, 26 ejemplos de Python ejecutables, 7 quizzes de 10 preguntas y un
-panel de progreso. La interfaz principal es **Next.js 16 + React 19**; el backend
-es **FastAPI + SQLite**; la interfaz Jinja de `:8000` sigue disponible como
-fallback. Los identificadores internos `aula_*` se mantienen por compatibilidad.
+panel de progreso. Es SaaS multi-organización (espacios personales y academias
+con roles, grupos e invitaciones) con paneles de KPIs. La única interfaz es
+**Next.js 16 + React 19** (Tailwind v4); el backend es **FastAPI + SQLite** y
+solo expone API. Los identificadores internos `aula_*` se mantienen por
+compatibilidad.
 
-## Dos interfaces, una fuente de verdad
+## Arquitectura en una mirada
 
-- **Next.js (`frontend/`, puerto 3000)** es la interfaz principal.
-- **Jinja (`webapp/templates/`, puerto 8000)** es el fallback y la referencia de
-  diseño; no debe divergir sin motivo.
-- **API JSON (`/api/v1`)** es la frontera que consume Next.js.
+- **Next.js (`frontend/`, puerto 3000)** es la única interfaz. Primitivas en
+  `src/components/ui/`, gráficos en `src/components/charts/`, shell en
+  `src/components/shell/`. `app.css` es estilo heredado en la capa `legacy`.
+- **API JSON (`/api/v1`)** es la frontera; FastAPI no sirve HTML.
 - **Contenido** vive en `webapp/content/`, en módulos ES y EN.
+- **Espacios, roles y administración**: `webapp/workspaces.py`,
+  `webapp/deps.py` (`require_role`), `webapp/routers/admin.py`.
+- **Analítica**: `webapp/analytics.py` y `webapp/routers/analytics.py`.
+- **Generación por etapas**: `webapp/generation/` (motor `direct`); el motor
+  OpenCode sigue en `webapp/authoring/` y su agente en
+  `webapp/authoring/agent/AGENTS.md`.
+- **Esquema**: cambios nuevos solo como migración en `webapp/migrations.py`.
 - **Ejecución Python** vive en `webapp/execution.py` + `sandbox_runner.py`.
-- **Autoría** vive en `webapp/authoring/` y `webapp/routers/authoring.py`; el
-  agente de OpenCode está en `webapp/authoring/agent/AGENTS.md`.
 
-Si cambias una lección o un lab, revisa ambas interfaces y el contenido en los dos
-idiomas. Si cambias el diseño, sincroniza `frontend/src/app/app.css` con
-`webapp/static/css/app.css` (hay un script `npm run sync:assets`).
+Si cambias una lección o un lab, revisa el contenido en los dos idiomas.

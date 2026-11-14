@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from urllib.parse import quote
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from webapp import config
 from webapp.authoring import runner as authoring_runner
 from webapp.authoring import store as authoring_store
+from webapp.generation import worker as generation_worker
 from webapp.content import (
     CATALOGS,
     GLOSSARIES,
@@ -30,7 +30,6 @@ from webapp.content import (
 )
 from webapp.db import init_db
 from webapp.i18n import LANG_COOKIE, normalize_lang, request_lang, translate
-from webapp.templating import render
 
 logger = logging.getLogger("aula")
 
@@ -46,6 +45,9 @@ async def lifespan(app: FastAPI):
                 "%s trabajos del Estudio quedaron interrumpidos por un reinicio.",
                 interrupted,
             )
+        resumed = generation_worker.resume_pending()
+        if resumed:
+            logger.info("%s generaciones reanudadas tras el reinicio.", resumed)
     except OSError:
         logger.exception("No se pudo preparar el directorio del Estudio")
     try:
@@ -70,6 +72,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         authoring_runner.shutdown()
+        generation_worker.shutdown()
 
 
 app = FastAPI(
@@ -83,34 +86,14 @@ app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static
 
 
 # Routers (se importan después de crear la app para evitar ciclos).
-from webapp.routers import (  # noqa: E402
-    api,
-    authoring,
-    auth,
-    course,
-    execution,
-    glossary,
-    language,
-    progress,
-    quiz,
-    resources,
-    search,
-    teacher,
-)
+from webapp.routers import admin, analytics, api, authoring, execution, workspaces  # noqa: E402
 
 app.include_router(api.router)
 app.include_router(authoring.router)
-app.include_router(language.router)
-app.include_router(auth.router)
-app.include_router(course.router)
-app.include_router(authoring.pages)
 app.include_router(execution.router)
-app.include_router(quiz.router)
-app.include_router(progress.router)
-app.include_router(glossary.router)
-app.include_router(resources.router)
-app.include_router(search.router)
-app.include_router(teacher.router)
+app.include_router(workspaces.router)
+app.include_router(analytics.router)
+app.include_router(admin.router)
 
 
 @app.middleware("http")
@@ -159,76 +142,38 @@ async def health_alias():
     return await health()
 
 
+def _json_error(request: Request, detail: str, status_code: int) -> JSONResponse:
+    return JSONResponse(
+        {"detail": translate(detail, request_lang(request))}, status_code=status_code
+    )
+
+
 @app.exception_handler(401)
 async def auth_required(request: Request, exc):
-    if request.url.path.startswith("/api"):
-        return JSONResponse(
-            {"detail": translate("No autenticado", request_lang(request))},
-            status_code=401,
-        )
-    target = request.url.path
-    if request.url.query:
-        target += "?" + request.url.query
-    return RedirectResponse(f"/entrar?next={quote(target)}", status_code=303)
+    return _json_error(request, "No autenticado", 401)
 
 
 @app.exception_handler(403)
 async def forbidden(request: Request, exc):
     detail = getattr(exc, "detail", None) or "No tienes permiso para ver esta página."
-    if request.url.path.startswith("/api"):
-        return JSONResponse(
-            {"detail": translate(detail, request_lang(request))}, status_code=403
-        )
-    return render(
-        request,
-        "pages/error.html",
-        code=403,
-        title=translate("Acceso restringido", request_lang(request)),
-        message=translate(detail, request_lang(request)),
-        status_code=403,
-    )
+    return _json_error(request, detail, 403)
 
 
 @app.exception_handler(404)
 async def not_found(request: Request, exc):
-    if request.url.path.startswith("/api"):
-        return JSONResponse({"detail": "Not found"}, status_code=404)
-    return render(
-        request,
-        "pages/error.html",
-        code=404,
-        title=translate("Página no encontrada", request_lang(request)),
-        message=translate(
-            "La dirección no existe o el contenido se ha movido.",
-            request_lang(request),
-        ),
-        status_code=404,
-    )
+    detail = getattr(exc, "detail", None)
+    if not isinstance(detail, str) or detail == "Not Found":
+        detail = "Not found"
+    return JSONResponse({"detail": detail}, status_code=404)
 
 
 @app.exception_handler(Exception)
 async def server_error(request: Request, exc):
     logger.exception("Error interno en %s", request.url.path)
-    if request.url.path.startswith("/api"):
-        return JSONResponse(
-            {
-                "detail": translate(
-                    "Ha ocurrido un error interno. Vuelve a intentarlo en unos segundos.",
-                    request_lang(request),
-                )
-            },
-            status_code=500,
-        )
-    return render(
+    return _json_error(
         request,
-        "pages/error.html",
-        code=500,
-        title=translate("Algo se ha roto", request_lang(request)),
-        message=translate(
-            "Ha ocurrido un error interno. Vuelve a intentarlo en unos segundos.",
-            request_lang(request),
-        ),
-        status_code=500,
+        "Ha ocurrido un error interno. Vuelve a intentarlo en unos segundos.",
+        500,
     )
 
 

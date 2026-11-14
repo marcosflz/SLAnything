@@ -15,6 +15,11 @@ from datetime import date, datetime, timedelta, timezone
 from webapp.db import utcnow
 
 
+def _today() -> date:
+    """Día actual en UTC, igual que el resto de marcas de tiempo."""
+    return datetime.now(timezone.utc).date()
+
+
 # ---------------------------------------------------------------------------
 # Usuarios y sesiones
 # ---------------------------------------------------------------------------
@@ -41,8 +46,16 @@ def create_user(
            VALUES (?, ?, ?, ?, ?)""",
         (email.strip().lower(), name.strip(), password_hash, role, utcnow()),
     )
+    user = get_user_by_email(conn, email)
+    from webapp import workspaces
+
+    workspaces.ensure_personal_workspace(conn, int(user["id"]), name)
     conn.commit()
     return get_user_by_email(conn, email)  # type: ignore[return-value]
+
+
+def touch_login(conn: sqlite3.Connection, user_id: int) -> None:
+    conn.execute("UPDATE users SET last_login_at = ? WHERE id = ?", (utcnow(), user_id))
 
 
 def create_session(
@@ -234,7 +247,7 @@ def bookmarked_lessons(
 # ---------------------------------------------------------------------------
 
 def record_activity(conn: sqlite3.Connection, user_id: int, kind: str) -> None:
-    today = date.today().isoformat()
+    today = _today().isoformat()
     conn.execute(
         """INSERT INTO activity (user_id, day, kind, count)
            VALUES (?, ?, ?, 1)
@@ -256,11 +269,11 @@ def activity_days(conn: sqlite3.Connection, user_id: int, limit: int = 30) -> li
 
 
 def activity_last_days(conn: sqlite3.Connection, user_id: int, days: int = 14) -> list[dict]:
-    today = date.today()
+    today = _today()
     start = today - timedelta(days=days - 1)
     rows = conn.execute(
         """SELECT day, SUM(count) AS total FROM activity
-           WHERE user_id = ? AND day >= ?
+           WHERE user_id = ? AND day >= ? AND kind != 'login'
            GROUP BY day""",
         (user_id, start.isoformat()),
     ).fetchall()
@@ -282,13 +295,14 @@ def activity_last_days(conn: sqlite3.Connection, user_id: int, days: int = 14) -
 
 def current_streak(conn: sqlite3.Connection, user_id: int) -> int:
     rows = conn.execute(
-        "SELECT DISTINCT day FROM activity WHERE user_id = ? ORDER BY day DESC",
+        """SELECT DISTINCT day FROM activity
+           WHERE user_id = ? AND kind != 'login' ORDER BY day DESC""",
         (user_id,),
     ).fetchall()
     if not rows:
         return 0
     days = {row["day"] for row in rows}
-    cursor = date.today()
+    cursor = _today()
     if cursor.isoformat() not in days:
         cursor -= timedelta(days=1)
         if cursor.isoformat() not in days:
@@ -417,20 +431,43 @@ def attempts_passed(conn: sqlite3.Connection, user_id: int, quiz_id: str) -> boo
 # Panel del profesor
 # ---------------------------------------------------------------------------
 
-def teacher_overview(conn: sqlite3.Connection) -> list[dict]:
+def _student_filter(workspace_id: int | None) -> tuple[str, tuple]:
+    if workspace_id is None:
+        return "u.role = 'student'", ()
+    return (
+        """u.id IN (SELECT user_id FROM memberships
+                    WHERE workspace_id = ? AND role = 'student')""",
+        (workspace_id,),
+    )
+
+
+def teacher_overview(
+    conn: sqlite3.Connection,
+    workspace_id: int | None = None,
+    course_slugs: tuple[str, ...] | None = None,
+) -> list[dict]:
+    """Una fila por estudiante del espacio, limitada a los cursos indicados."""
+    where, params = _student_filter(workspace_id)
+    course_clause = ""
+    course_params: tuple = ()
+    if course_slugs:
+        marks = ",".join("?" for _ in course_slugs)
+        course_clause = f" AND course_slug IN ({marks})"
+        course_params = tuple(course_slugs)
     rows = conn.execute(
-        """SELECT u.id, u.name, u.email, u.created_at,
+        f"""SELECT u.id, u.name, u.email, u.created_at,
                   (SELECT COUNT(*) FROM lesson_progress p
-                    WHERE p.user_id = u.id AND p.completed = 1) AS completed,
+                    WHERE p.user_id = u.id AND p.completed = 1{course_clause}) AS completed,
                   (SELECT MAX(p.last_seen_at) FROM lesson_progress p
-                    WHERE p.user_id = u.id) AS last_seen,
+                    WHERE p.user_id = u.id{course_clause}) AS last_seen,
                   (SELECT MAX(a.score * 100.0 / a.total) FROM quiz_attempts a
-                    WHERE a.user_id = u.id) AS best_score,
+                    WHERE a.user_id = u.id{course_clause}) AS best_score,
                   (SELECT COUNT(*) FROM quiz_attempts a
-                    WHERE a.user_id = u.id) AS attempts
+                    WHERE a.user_id = u.id{course_clause}) AS attempts
            FROM users u
-           WHERE u.role = 'student'
-           ORDER BY completed DESC, u.name ASC"""
+           WHERE {where}
+           ORDER BY completed DESC, u.name ASC""",
+        course_params * 4 + params,
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -439,35 +476,31 @@ def teacher_stats(
     conn: sqlite3.Connection,
     total_lessons: int,
     course_slug: str | None = None,
+    workspace_id: int | None = None,
 ) -> dict:
+    where, params = _student_filter(workspace_id)
     students = conn.execute(
-        "SELECT COUNT(*) AS n FROM users WHERE role = 'student'"
+        f"SELECT COUNT(*) AS n FROM users u WHERE {where}", params
     ).fetchone()["n"]
-    if course_slug is None:
-        attempts = conn.execute("SELECT COUNT(*) AS n FROM quiz_attempts").fetchone()["n"]
-        avg = conn.execute(
-            "SELECT AVG(score * 100.0 / total) AS avg FROM quiz_attempts"
-        ).fetchone()["avg"]
-    else:
-        attempts = conn.execute(
-            "SELECT COUNT(*) AS n FROM quiz_attempts WHERE course_slug = ?",
-            (course_slug,),
-        ).fetchone()["n"]
-        avg = conn.execute(
-            """SELECT AVG(score * 100.0 / total) AS avg
-               FROM quiz_attempts WHERE course_slug = ?""",
-            (course_slug,),
-        ).fetchone()["avg"]
+    course_clause = " AND a.course_slug = ?" if course_slug else ""
+    course_params = (course_slug,) if course_slug else ()
+    row = conn.execute(
+        f"""SELECT COUNT(*) AS n, AVG(a.score * 100.0 / a.total) AS avg
+            FROM quiz_attempts a JOIN users u ON u.id = a.user_id
+            WHERE {where}{course_clause}""",
+        params + course_params,
+    ).fetchone()
+    cutoff = (_today() - timedelta(days=7)).isoformat()
     active = conn.execute(
-        """SELECT COUNT(DISTINCT a.user_id) AS n
-           FROM activity a
-           JOIN users u ON u.id = a.user_id
-           WHERE u.role = 'student' AND a.day >= date('now', '-7 day')"""
+        f"""SELECT COUNT(DISTINCT a.user_id) AS n
+            FROM activity a JOIN users u ON u.id = a.user_id
+            WHERE {where} AND a.kind != 'login' AND a.day >= ?""",
+        params + (cutoff,),
     ).fetchone()["n"]
     return {
         "students": int(students),
-        "attempts": int(attempts),
-        "avg_score": round(avg) if avg is not None else None,
+        "attempts": int(row["n"]),
+        "avg_score": round(row["avg"]) if row["avg"] is not None else None,
         "active_week": int(active),
         "total_lessons": total_lessons,
     }

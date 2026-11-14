@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/ui";
 import { ApiClientError, apiPost } from "@/lib/client";
-import { t } from "@/lib/messages";
+import { pick, t } from "@/lib/messages";
 import type { Lang, QuizFull, QuizSubmitResult } from "@/lib/types";
 
 export function QuizForm({
@@ -18,19 +18,33 @@ export function QuizForm({
   lang: Lang;
 }) {
   const router = useRouter();
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  // Opción única → índice; respuesta múltiple → lista de índices.
+  const [answers, setAnswers] = useState<Record<string, number | number[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const total = quiz.total;
   const answered = quiz.questions.reduce(
-    (count, question) => count + (answers[question.id] === undefined ? 0 : 1),
+    (count, question) => {
+      const value = answers[question.id];
+      return count + (value === undefined || (Array.isArray(value) && !value.length) ? 0 : 1);
+    },
     0
   );
   const progress = total > 0 ? Math.round((answered / total) * 100) : 0;
 
   function selectAnswer(questionId: string, optionIndex: number) {
     setAnswers((current) => ({ ...current, [questionId]: optionIndex }));
+  }
+
+  function toggleAnswer(questionId: string, optionIndex: number, checked: boolean) {
+    setAnswers((current) => {
+      const previous = current[questionId];
+      const set = new Set(Array.isArray(previous) ? previous : []);
+      if (checked) set.add(optionIndex);
+      else set.delete(optionIndex);
+      return { ...current, [questionId]: [...set].sort((a, b) => a - b) };
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -46,7 +60,7 @@ export function QuizForm({
       if (!window.confirm(message)) return;
     }
 
-    const payload: Record<string, number | null> = {};
+    const payload: Record<string, number | number[] | null> = {};
     for (const question of quiz.questions) {
       payload[question.id] = answers[question.id] ?? null;
     }
@@ -115,7 +129,9 @@ export function QuizForm({
         ) : null}
 
         {quiz.questions.map((question, questionIndex) => {
-          const isAnswered = answers[question.id] !== undefined;
+          const value = answers[question.id];
+          const isAnswered = value !== undefined && !(Array.isArray(value) && !value.length);
+          const multiple = question.kind === "multiple";
           return (
             <section
               className={`quiz-card${isAnswered ? " is-answered" : ""}`}
@@ -126,19 +142,34 @@ export function QuizForm({
                 <span className="quiz-qnum">{questionIndex + 1}</span>
                 <h3>{question.prompt}</h3>
               </div>
+              {multiple ? (
+                <p className="quiz-hint" style={{ margin: "0 0 10px", fontSize: 13, color: "var(--muted)" }}>
+                  {pick(lang, "Marca todas las respuestas correctas.", "Select all correct answers.")}
+                </p>
+              ) : null}
               <div className="quiz-options">
                 {question.options.map((option, optionIndex) => (
                   <label
                     className="quiz-option"
                     key={`${question.id}-${optionIndex}`}
                   >
-                    <input
-                      type="radio"
-                      name={question.id}
-                      value={optionIndex}
-                      checked={answers[question.id] === optionIndex}
-                      onChange={() => selectAnswer(question.id, optionIndex)}
-                    />
+                    {multiple ? (
+                      <input
+                        type="checkbox"
+                        name={question.id}
+                        value={optionIndex}
+                        checked={Array.isArray(value) && value.includes(optionIndex)}
+                        onChange={(event) => toggleAnswer(question.id, optionIndex, event.target.checked)}
+                      />
+                    ) : (
+                      <input
+                        type="radio"
+                        name={question.id}
+                        value={optionIndex}
+                        checked={value === optionIndex}
+                        onChange={() => selectAnswer(question.id, optionIndex)}
+                      />
+                    )}
                     <span>{option}</span>
                   </label>
                 ))}
