@@ -196,12 +196,12 @@ export function JobWizard({ initial, csrf, lang }: { initial: AuthoringJob; csrf
                     <span
                       className={cn(
                         "mt-1 size-1.5 shrink-0 rounded-full",
-                        event.type === "error" ? "bg-destructive" : event.type === "warning" ? "bg-warning" : event.type === "ready" || event.type === "done" ? "bg-success" : "bg-primary"
+                        event.type === "error" ? "bg-destructive" : event.type === "warning" ? "bg-warning" : event.type === "ready" || event.type === "done" ? "bg-success" : event.type === "tool" ? "bg-border-strong" : "bg-primary"
                       )}
                       aria-hidden="true"
                     />
                     <span className="min-w-0">
-                      <span className="block text-foreground">{event.message}</span>
+                      <span className={cn("block", event.type === "tool" ? "text-muted-foreground" : "text-foreground")}>{event.message}</span>
                       <span className="text-muted-foreground">{new Date(event.ts).toLocaleTimeString(lang === "en" ? "en-GB" : "es-ES")}</span>
                     </span>
                   </li>

@@ -80,7 +80,7 @@ una base v2 se actualiza sin tocar sus datos. La operación es idempotente.
   `webapp/migrations.py`.
 - Copia de seguridad: parar el servidor y copiar `aula.db` (o usar `sqlite3 .backup`).
 
-# Migraciones versionadas (v4, v5, v6, v7)
+# Migraciones versionadas (v4 a v8)
 
 Desde 2026-11-13 el esquema evoluciona con `webapp/migrations.py`
 ([ADR-015](/decisions/adr-015-versioned-migrations.md)). v4 añade espacios,
@@ -97,5 +97,10 @@ guarda `gen_monthly` (cuota fijada por la superadministración). v7
 ([ADR-022](/decisions/adr-022-invite-only-signup.md)) añade
 `platform_invitations` (`kind` individual|teacher, `email`, `workspace_id`,
 `academy_name`, `token_hash`, fechas de creación, caducidad, aceptación y
-revocación). Detalle de uso
+revocación). v8 ([ADR-023](/decisions/adr-023-nas-adk-agents.md),
+[ADR-024](/decisions/adr-024-user-ai-credentials.md)) añade `user_ai_settings`
+(`user_id` PK, `provider`, `model`, `secret_enc` cifrado, `secret_hint`,
+`accepted_personal_at`, `updated_at`) y `authoring_jobs.actor_id` (quién lanzó la
+última etapa; se rellena con `owner_id`), pasa `engine='direct'` a `adk` y cierra
+como fallidos los trabajos OpenCode a medias. Detalle de uso
 en [tenancy-analytics](/architecture/tenancy-analytics.md).

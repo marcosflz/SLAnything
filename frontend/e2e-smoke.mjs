@@ -102,6 +102,13 @@ let links = await navLinks(page);
 check("cuenta individual ve el Estudio", links.includes("/estudio"));
 check("cuenta individual sin invitar alumnos", !links.includes("/admin/invitaciones"));
 check("cuenta individual sin gestión de aula", !links.includes("/admin") && !links.includes("/analitica"));
+await page.goto(`${base}/estudio`, { waitUntil: "networkidle" });
+check("Estudio sin selector de motor", (await page.locator("#engine").count()) === 0);
+check("Estudio indica el proveedor", (await page.locator("main").innerText()).includes("Generarás con"));
+await page.goto(`${base}/cuenta`, { waitUntil: "networkidle" });
+check("cuenta individual: panel de proveedor de IA", await page.locator("#proveedor-ia").isVisible());
+await page.selectOption("#user-ai-provider", "claude-code");
+check("suscripción exige consentimiento", await page.locator('#proveedor-ia button[type="submit"]').isDisabled());
 
 // Tema claro por defecto y alternancia.
 const beforeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
@@ -117,6 +124,8 @@ links = await navLinks(page);
 check("alumno sin Estudio en el menú", !links.includes("/estudio"));
 await page.goto(`${base}/estudio`, { waitUntil: "networkidle" });
 check("alumno: Estudio restringido", (await page.locator("main").innerText()).includes("Acceso restringido"));
+await page.goto(`${base}/cuenta`, { waitUntil: "networkidle" });
+check("alumno sin proveedor de IA", (await page.locator("#proveedor-ia").count()) === 0);
 
 if (samples) {
   await page.goto(`${base}/cursos/llm-desde-cero`, { waitUntil: "networkidle" });

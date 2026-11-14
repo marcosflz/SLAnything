@@ -37,7 +37,6 @@ MARKDOWN = "\n\n".join(
 def gen_env(tmp_path, monkeypatch):
     path = tmp_path / "authoring"
     monkeypatch.setattr(config, "AUTHORING_DIR", path)
-    monkeypatch.setattr(config, "AUTHORING_HOME", path / "home")
     monkeypatch.setattr(config, "AUTHORING_ENABLED", True)
     monkeypatch.setattr(config, "LLM_FAKE", True)
     monkeypatch.setattr(config, "GEN_INPROCESS", True)
@@ -62,7 +61,7 @@ def _wait(client, job_id: str, statuses: set[str], timeout: float = 30) -> dict:
 def _upload(client, token: str) -> str:
     response = client.post(
         "/api/v1/authoring/jobs",
-        data={"title": "Biología vegetal", "languages": ["es", "en"], "engine": "direct"},
+        data={"title": "Biología vegetal", "languages": ["es", "en"]},
         files={"files": ("biologia.md", MARKDOWN.encode("utf-8"), "text/markdown")},
         headers={"X-CSRF-Token": token},
     )
@@ -131,7 +130,7 @@ def test_staged_generation_end_to_end(client, gen_env):
     token = teacher_login(client)
     job_id = _upload(client, token)
     job = _wait(client, job_id, {"awaiting_scope"})
-    assert job["engine"] == "direct"
+    assert job["engine"] == "adk"
     assert job["progress"]["sections"] == 3
 
     outline_doc = client.get(f"/api/v1/authoring/jobs/{job_id}/document").json()
@@ -253,7 +252,7 @@ def test_personal_workspace_can_generate_and_quota_applies(client, gen_env, monk
     _upload(client, token)
     second = client.post(
         "/api/v1/authoring/jobs",
-        data={"title": "Otra", "engine": "direct"},
+        data={"title": "Otra"},
         files={"files": ("otra.md", MARKDOWN.encode("utf-8"), "text/markdown")},
         headers={"X-CSRF-Token": token},
     )

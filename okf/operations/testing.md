@@ -37,10 +37,12 @@ uv run python tools/validate_all_chapters.py
 - `login_limiter` y el rate limit de ejecución se limpian antes/después de cada test.
 - Sin red ni servicios externos. Los tests de ejecución usan el runner real, pero
   sin llamadas de red; el de timeout reduce `execution.settings` a 1 s.
-- Los tests del Estudio usan una SQLite y un `AUTHORING_DIR` temporales. El
-  runner real se prueba con `_run_opencode` simulado; además se hizo una prueba
-  manual en Docker con el modelo gratuito de OpenCode que generó, validó y
-  publicó una unidad de 4 lecciones.
+- Los tests del Estudio usan una SQLite y un `AUTHORING_DIR` temporales. La
+  generación pasa por el `Runner` real de nas-adk con `FakeAgentLlm`
+  (`AULA_LLM_FAKE`), que entrega con las herramientas `submit_*`;
+  `test_adk_agents.py` usa además un modelo guionizado para probar correcciones,
+  reintentos, errores del proveedor y cancelación, y un transporte falso para la
+  suscripción. `test_ai_credentials.py` cubre las credenciales por usuario.
 
 # Cobertura
 

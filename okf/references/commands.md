@@ -63,17 +63,18 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3000/api/v1/public
 # Estudio de autoría
 
 ```powershell
-# OpenCode en local (Docker ya lo incluye)
-npm install -g @opencode/cli
-opencode --version
+# Agentes nas-adk (vienen con uv sync); comprobar la versión
+uv run python -c "import nas.adk; print(nas.adk.__version__)"
+# Suscripción de Claude: el CLI debe existir en el servidor (Docker ya lo incluye)
+claude --version
 
 # Abrir el Estudio con una cuenta individual o con la profesora
 # http://127.0.0.1:3000/estudio
 # autodidacta@slanything.local / auto1234 · profe@slanything.local / profe1234
 # Sin red ni proveedor: arranca el backend con AULA_LLM_FAKE=1
 
-# Ver el estado del motor desde la API (con sesión docente)
-opencode models
+# Proveedor propio (con sesión de autoría): GET/PUT/DELETE /api/v1/account/ai
+# Cada usuario obtiene el token de su suscripción en su equipo con: claude setup-token
 
 # Limpiar documentos, logs y API key locales del Estudio
 Remove-Item -Recurse -Force authoring-data

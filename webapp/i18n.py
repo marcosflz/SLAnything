@@ -635,8 +635,8 @@ EN: dict[str, str] = {
     "Estudio": "Studio",
     "Estudio de autoría": "Authoring studio",
     "Convierte documentos en unidades": "Turn documents into units",
-    "Sube un PDF, DOCX, EPUB, Markdown o TXT y OpenCode lo convierte en una unidad didáctica revisable antes de publicarla.": (
-        "Upload a PDF, DOCX, EPUB, Markdown, or TXT file and OpenCode turns it into a "
+    "Sube un PDF, DOCX, EPUB, Markdown o TXT y los agentes del Estudio lo convierten en una unidad didáctica revisable antes de publicarla.": (
+        "Upload a PDF, DOCX, EPUB, Markdown, or TXT file and the Studio agents turn it into a "
         "teaching unit you can review before publishing."
     ),
     "Proveedor y modelo": "Provider and model",
@@ -651,7 +651,8 @@ EN: dict[str, str] = {
     ),
     "Proveedor configurado": "Provider configured",
     "Falta la API key": "API key missing",
-    "OpenCode": "OpenCode",
+    "Proveedor de IA": "AI provider",
+    "Mi suscripción de Claude": "My Claude subscription",
     "Motor de generación": "Generation engine",
     "Nueva unidad a partir de documentos": "New unit from documents",
     "Título de trabajo": "Working title",
@@ -701,7 +702,7 @@ EN: dict[str, str] = {
         "The result is validated and sanitized before entering the catalog. Nothing "
         "from the document is executed."
     ),
-    "OpenCode · autoría asistida": "OpenCode · assisted authoring",
+    "Agentes nas-adk · autoría asistida": "nas-adk agents · assisted authoring",
     "Del documento a una unidad publicable": "From document to a publishable unit",
     "Qué ocurre al generar": "What happens when you generate",
     "El resultado se valida y se sanea antes de entrar en el catálogo. Nada del documento se ejecuta. La unidad queda en borrador hasta que la publiques.": (

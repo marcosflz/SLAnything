@@ -1,15 +1,16 @@
 # syntax=docker/dockerfile:1
-# SLAnything · backend FastAPI + OpenCode
+# SLAnything · backend FastAPI + agentes nas-adk (+ CLI de Claude Code opcional)
 #
 # Imagen de runtime con el contenido del curso, Jinja de fallback, API JSON,
 # estáticos y el runner de Python. SQLite vive en el volumen /data.
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
 
-# OpenCode se instala como binario portable dentro de la imagen. El Estudio lo
-# ejecuta con permisos restringidos (sin shell ni red desde el agente).
-ARG OPENCODE_VERSION=2.1.4
-ARG TARGETARCH=amd64
+# Los agentes del Estudio son Python (nas-adk, en uv.lock). El CLI de Claude Code
+# solo hace falta para que cada usuario use su suscripción personal (ADR-024);
+# INSTALL_CLAUDE_CODE=0 lo omite. Se instala con versión fija y sin autoactualizar.
+ARG INSTALL_CLAUDE_CODE=1
+ARG CLAUDE_CODE_VERSION=2.1.319
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,25 +20,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     AULA_ENV=production \
     AULA_DB=/data/aula.db \
     AULA_AUTHORING_DIR=/data/authoring \
-    AULA_AUTHORING_ENABLED=1
+    AULA_AUTHORING_ENABLED=1 \
+    DISABLE_AUTOUPDATER=1 \
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        git \
         libgomp1 \
-        ripgrep \
-        tar \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system aula \
-    && useradd --system --gid aula --create-home --home-dir /home/aula aula \
-    && arch=$([ "$TARGETARCH" = "arm64" ] && echo arm64 || echo x64) \
-    && curl -fsSL "https://registry.npmjs.org/@opencode/cli-linux-${arch}/-/cli-linux-${arch}-${OPENCODE_VERSION}.tgz" -o /tmp/opencode.tgz \
-    && tar -xzf /tmp/opencode.tgz -C /tmp \
-    && install -m 0755 /tmp/package/bin/opencode /usr/local/bin/opencode \
-    && rm -rf /tmp/package /tmp/opencode.tgz \
-    && opencode --version
+    && useradd --system --gid aula --create-home --home-dir /home/aula aula
 
 WORKDIR /app
 
@@ -55,6 +49,13 @@ RUN mkdir -p /data \
     && chown aula:aula /data
 
 USER aula
+
+# CLI de Claude Code para la suscripción personal de cada usuario. Cada ejecución
+# recibe el token de su titular y un CLAUDE_CONFIG_DIR propio (ADR-024).
+RUN if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then \
+        curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_CODE_VERSION" \
+        && /home/aula/.local/bin/claude --version; \
+    fi
 
 EXPOSE 8000
 

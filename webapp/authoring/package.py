@@ -1,7 +1,8 @@
 """Contrato JSON de una unidad didáctica generada.
 
-El agente de OpenCode nunca escribe módulos Python. Produce un único
-``course.json`` con datos bilingües; este módulo lo valida, sanea el HTML y lo
+Los agentes del Estudio (nas-adk, ADR-023) nunca escriben módulos Python.
+Entregan datos JSON bilingües (lecciones, evaluaciones y ficha) que forman un
+``course.json``; este módulo lo valida, sanea el HTML y lo
 convierte en los objetos inmutables que ya consume el catálogo. Así el contenido
 generado no se ejecuta y un paquete roto se rechaza antes de publicarse.
 """
@@ -377,6 +378,69 @@ def _quiz(raw: Any, lang: str, where: str) -> Quiz:
         pass_score=int(raw.get("pass_score", 80)),
         questions=tuple(questions),
     )
+
+
+def validate_lesson(raw: Any, languages: list[str] | tuple[str, ...], where: str = "lesson") -> int:
+    """Valida una lección suelta con las mismas reglas que ``parse_package``.
+
+    Lo usan las herramientas del agente para rechazar una entrega antes de
+    guardarla. Devuelve el número de palabras del primer idioma.
+    """
+    if not isinstance(raw, dict):
+        raise ValueError(f"{where}: se esperaba un objeto.")
+    words = 0
+    for lang in languages:
+        lesson = Lesson(
+            number=1,
+            slug="leccion",
+            title=_localized_text(raw.get("title"), lang, f"{where}.title", 3, 200),
+            summary=_localized_text(raw.get("summary"), lang, f"{where}.summary", 20, 800),
+            minutes=int(raw.get("minutes", 10) or 10),
+            objectives=_localized_list(raw.get("objectives"), lang, f"{where}.objectives", 2, 6, 300),
+            blocks=_blocks(raw.get("blocks"), lang, where),
+            key_points=_localized_list(raw.get("key_points"), lang, f"{where}.key_points", 2, 8, 300),
+            quiz_id=None,
+        )
+        if not 3 <= lesson.minutes <= 60:
+            raise ValueError(f"{where}: minutes debe estar entre 3 y 60.")
+        if lesson.word_count < 220:
+            raise ValueError(f"{where}.{lang}: la lección es demasiado corta ({lesson.word_count} palabras; mínimo 220).")
+        if not words:
+            words = lesson.word_count
+    return words
+
+
+def validate_assessment(
+    raw: Any,
+    languages: list[str] | tuple[str, ...],
+    lesson_slugs: list[str] | tuple[str, ...],
+    where: str = "assessment",
+) -> None:
+    """Valida quiz + glosario de un capítulo (mismas reglas que el paquete)."""
+    if not isinstance(raw, dict):
+        raise ValueError(f"{where}: se esperaba un objeto.")
+    glossary = raw.get("glossary")
+    if not isinstance(glossary, list) or not 6 <= len(glossary) <= 24:
+        raise ValueError(f"{where}.glossary: se esperaban entre 6 y 24 términos.")
+    valid = {slugify(slug) for slug in lesson_slugs}
+    reference: list[tuple[str, tuple[int, ...]]] | None = None
+    for lang in languages:
+        quiz = _quiz(raw.get("quiz"), lang, f"{where}.quiz")
+        answers = [(q.kind, q.correct_set) for q in quiz.questions]
+        if reference is None:
+            reference = answers
+        elif answers != reference:
+            raise ValueError(f"{where}.quiz: las respuestas correctas deben coincidir en todos los idiomas.")
+        for index, item in enumerate(glossary):
+            if not isinstance(item, dict):
+                raise ValueError(f"{where}.glossary[{index}]: objeto esperado.")
+            _localized_text(item.get("term"), lang, f"{where}.glossary[{index}].term", 2, 120)
+            _localized_text(item.get("definition"), lang, f"{where}.glossary[{index}].definition", 10, 600)
+            target = item.get("lesson")
+            if isinstance(target, str) and target and slugify(target) not in valid:
+                raise ValueError(
+                    f"{where}.glossary[{index}].lesson: la lección {target!r} no existe; usa uno de {sorted(valid)} o null."
+                )
 
 
 @dataclass(frozen=True)

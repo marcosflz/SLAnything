@@ -1,9 +1,9 @@
-"""Ajustes del Estudio: proveedor, modelo y API key.
+"""Proveedor de IA de la plataforma: proveedor, modelo, base URL y API key.
 
 La credencial se guarda en ``AUTHORING_DIR/settings.json`` con permisos 0600, no
 en SQLite ni en el repositorio. La API pública solo devuelve si hay clave y sus
-cuatro últimos caracteres; la clave completa se inyecta al subproceso de
-OpenCode como variable de entorno.
+cuatro últimos caracteres. Es el proveedor por defecto de quien no configura el
+suyo (ADR-024); nunca puede ser una suscripción personal.
 """
 
 from __future__ import annotations
@@ -58,7 +58,9 @@ def _read() -> dict[str, Any]:
         for key in ("provider", "model", "base_url", "api_key", "updated_at"):
             if key in stored:
                 data[key] = stored[key]
-    if data["provider"] not in providers.PROVIDER_MAP:
+    if data["provider"] not in providers.PROVIDER_MAP or not providers.PROVIDER_MAP[
+        data["provider"]
+    ].allowed_for("platform"):
         data["provider"] = DEFAULT_PROVIDER
     if not isinstance(data["api_key"], str):
         data["api_key"] = ""
@@ -113,7 +115,7 @@ def public_settings() -> dict[str, Any]:
         "key_hint": f"••••{key[-4:]}" if len(key) >= 4 else "",
         "requires_key": info.requires_key,
         "updated_at": data.get("updated_at"),
-        "providers": providers.providers_payload(),
+        "providers": providers.providers_payload("platform"),
         "engine": engine_status(),
     }
 
@@ -128,16 +130,21 @@ def save_settings(
 ) -> dict[str, Any]:
     provider = (provider or DEFAULT_PROVIDER).strip()
     info = providers.provider(provider)
+    if not info.allowed_for("platform"):
+        raise ValueError(
+            "Una suscripción personal no puede ser el proveedor de toda la plataforma; "
+            "cada persona la configura en «Mi cuenta»."
+        )
     model = (model or "").strip()
     if not model:
-        raise ValueError("Indica el modelo que usará OpenCode.")
+        raise ValueError("Indica el modelo que usarán los agentes.")
     if len(model) > 160 or any(char.isspace() for char in model):
         raise ValueError("El identificador del modelo no es válido.")
     if info.custom and not base_url.strip():
         raise ValueError("Este proveedor necesita una base URL.")
-    if provider in {"ollama", "lmstudio"} and not base_url.strip():
+    if info.base_url_editable and not base_url.strip():
         base_url = info.default_base_url or ""
-    cleaned_base = _validate_base_url(base_url or "")
+    cleaned_base = _validate_base_url(base_url or "") if info.base_url_editable else ""
 
     current = _read()
     key = "" if clear_key else (current.get("api_key") or "")
@@ -157,6 +164,35 @@ def save_settings(
     return public_settings()
 
 
+def _which(binary: str) -> str | None:
+    resolved = shutil.which(binary)
+    if not resolved and Path(binary).is_file():
+        resolved = str(Path(binary))
+    return resolved
+
+
+def claude_cli_status() -> dict[str, Any]:
+    """¿Está el CLI de Claude Code en el servidor? (para la suscripción personal)."""
+    binary = config.CLAUDE_CODE_BIN
+    resolved = _which(binary)
+    if not resolved:
+        return {
+            "available": False,
+            "version": None,
+            "message": "El servidor no tiene instalado Claude Code; la suscripción no está disponible.",
+        }
+    try:
+        completed = subprocess.run(
+            [resolved, "--version"], capture_output=True, text=True, timeout=10, check=False,
+            env={"PATH": os.environ.get("PATH", ""), "HOME": str(config.AUTHORING_DIR), "NO_COLOR": "1"},
+        )
+        lines = (completed.stdout or completed.stderr or "").strip().splitlines()
+        version = lines[0] if lines else "desconocida"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"available": False, "version": None, "message": f"Claude Code no respondió: {exc}"}
+    return {"available": True, "version": version, "message": "Claude Code disponible."}
+
+
 def engine_status() -> dict[str, Any]:
     global _engine_cached
     now = time.monotonic()
@@ -170,60 +206,24 @@ def engine_status() -> dict[str, Any]:
 
 
 def _engine_status_uncached() -> dict[str, Any]:
+    try:
+        from nas.adk import __version__ as adk_version
+    except Exception:  # noqa: BLE001
+        adk_version = None
     if not config.AUTHORING_ENABLED:
         return {
             "enabled": False,
             "available": False,
-            "version": None,
-            "binary": config.AUTHORING_OPENCODE_BIN,
+            "version": adk_version,
             "message": "El Estudio está desactivado (AULA_AUTHORING_ENABLED=0).",
-        }
-    binary = config.AUTHORING_OPENCODE_BIN
-    resolved = shutil.which(binary)
-    if not resolved and Path(binary).is_file():
-        resolved = str(Path(binary))
-    if not resolved:
-        return {
-            "enabled": True,
-            "available": False,
-            "version": None,
-            "binary": binary,
-            "message": (
-                "No se encontró OpenCode. En Docker viene incluido; en local "
-                "instálalo con `npm install -g @opencode/cli`."
-            ),
-        }
-    version_env = dict(os.environ)
-    version_env.update(
-        {
-            "HOME": str(config.AUTHORING_HOME),
-            "OPENCODE_DISABLE_AUTOUPDATE": "1",
-            "NO_COLOR": "1",
-        }
-    )
-    try:
-        completed = subprocess.run(
-            [resolved, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=8,
-            check=False,
-            env=version_env,
-        )
-        version = (completed.stdout or completed.stderr or "").strip().splitlines()
-        version_text = version[0] if version else "desconocida"
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return {
-            "enabled": True,
-            "available": False,
-            "version": None,
-            "binary": resolved,
-            "message": f"OpenCode no respondió: {exc}",
         }
     return {
         "enabled": True,
-        "available": True,
-        "version": version_text,
-        "binary": resolved,
-        "message": "OpenCode listo para generar unidades.",
+        "available": adk_version is not None,
+        "version": adk_version,
+        "message": (
+            f"Agentes nas-adk {adk_version} listos para generar unidades."
+            if adk_version
+            else "No se pudo cargar nas-adk."
+        ),
     }

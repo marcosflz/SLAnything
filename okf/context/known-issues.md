@@ -83,9 +83,10 @@ superadmin), y los 15 labs del ejemplo montan sin errores.
   revisión previo está en [next-steps](/context/next-steps.md).
 - **La API key vive en el volumen.** `settings.json` tiene permisos 0600, pero
   los backups del volumen incluyen la clave. Rótala si compartes el backup.
-- **El Estudio no es un sandbox de nivel producción.** OpenCode corre sin shell,
-  web ni directorios externos, pero es un proceso con escritura en su trabajo.
-  Para Internet, añade cuotas, TLS y aislamiento adicional.
+- **El Estudio no es un sandbox de nivel producción.** Los agentes solo tienen
+  herramientas Python sobre los fragmentos del trabajo (sin shell ni red), pero el
+  CLI de Claude Code de la suscripción es un proceso externo. Para Internet, añade
+  cuotas, TLS y aislamiento adicional.
 - **La PWA no es offline completa.** Solo cachea estáticos; las páginas y la API
   requieren red. Una app Tauri offline queda como siguiente paso.
 - **Los cursos generados se guardan como JSON.** No se convierten en módulos
@@ -103,9 +104,10 @@ superadmin), y los 15 labs del ejemplo montan sin errores.
 - La imagen del backend instala el grupo principal completo, incluidas las
   dependencias de cuaderno (`jupyterlab`, `ipykernel`…). Es funcional pero pesada;
   separar un grupo `notebooks` es una optimización pendiente.
-- La imagen incluye OpenCode v2.1.4 (`/usr/local/bin/opencode`). El Estudio
-  necesita salida a Internet hacia el proveedor; si el contenedor no tiene red,
-  la generación falla aunque el resto de la app funcione.
+- La imagen incluye el CLI de Claude Code (`CLAUDE_CODE_VERSION`, sin
+  autoactualizar) para la suscripción personal; se instala desde claude.ai al
+  construir (`INSTALL_CLAUDE_CODE=0` lo omite). nas-adk se descarga del *release*
+  de GitHub. El Estudio necesita salida a Internet hacia el proveedor.
 - `/data/authoring` comparte el volumen `aula-llm-data` con SQLite. Un
   `docker compose down -v` borra base de datos, documentos, logs y la API key.
 - Compose no incluye TLS. En producción, proxy inverso delante de `:3000`,
@@ -154,9 +156,15 @@ superadmin), y los 15 labs del ejemplo montan sin errores.
 - **Estudio en navegador sin E2E.** El flujo completo se probó por API contra
   los servidores reales (LLM falso): generar, publicar, asignar a un grupo y
   verlo como alumno. Falta automatizar el asistente en Playwright.
-- **Motor direct sin probar con un proveedor real.** Los tests usan
-  `FakeLLM`. Las URLs base de OpenCode Zen/Go en `generation/llm.py` son una
-  suposición; se pueden fijar con `base_url`.
+- **Agentes nas-adk sin probar con un proveedor real.** Los tests y la
+  verificación usan `FakeAgentLlm`; falta una generación real (API key de
+  plataforma y suscripción de Claude). La URL de OpenCode Zen gratuito
+  (`https://opencode.ai/zen/v1`) es una suposición.
+- **Modelos sin *tool calling* fiable** (algunos locales vía Ollama/LM Studio)
+  pueden no llegar a llamar a `submit_*`: hay un reintento y luego un error legible.
+- **Suscripción de Claude**: sin streaming y con una lección cada vez; rotar
+  `AULA_SECRET` invalida las credenciales guardadas de los usuarios (deben volver a
+  pegarlas). Cumplir las condiciones de Anthropic es responsabilidad de cada titular.
 - **Respaldo de citas léxico**: solo compara vocabulario en el idioma principal.
 - **Sin correo**: las invitaciones son enlaces que la administración copia.
 - **Sin recuperación de contraseña, verificación de correo, OAuth ni 2FA.**

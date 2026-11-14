@@ -1,4 +1,4 @@
-"""Generación por etapas (ADR-017).
+"""Generación por etapas con agentes nas-adk (ADR-017, ADR-023).
 
     queued → extracting → awaiting_scope → outlining → awaiting_outline
            → generating → validating → ready | failed | cancelled
@@ -14,6 +14,10 @@ llamadas ya hechas:
     course.json          paquete final validado
     report.json          verificación de citas y avisos
     events.jsonl         progreso para la UI (SSE)
+
+Cada llamada al modelo es un agente nas-adk (``runtime.run_agent``) con
+herramientas propias (``tools.JobToolbox``) que entrega con ``submit_*``. Las
+credenciales son siempre las de quien lanzó la acción (``credentials.resolve``).
 """
 
 from __future__ import annotations
@@ -26,12 +30,12 @@ from pathlib import Path
 from typing import Any
 
 from webapp import config
-from webapp.authoring import settings as authoring_settings
-from webapp.authoring import store
+from webapp.authoring import credentials, store
 from webapp.authoring.package import parse_package, slugify
 from webapp.db import utcnow
 from webapp.generation import document as doc
-from webapp.generation import llm, prompts, verify
+from webapp.generation import models, prompts, runtime, verify
+from webapp.generation.tools import JobToolbox
 
 logger = logging.getLogger("aula.generation")
 
@@ -39,8 +43,7 @@ FRAGMENT_BUDGET = 14_000  # caracteres de documento por lección
 OUTLINE_EXCERPT = 240
 
 
-class Cancelled(RuntimeError):
-    pass
+Cancelled = runtime.Cancelled
 
 
 # ---------------------------------------------------------------------------
@@ -109,18 +112,42 @@ def _options(job_id: str) -> dict:
     return options
 
 
-def _model(job_id: str) -> llm.JSONModel:
-    return llm.make_model(authoring_settings.load_settings())
-
-
-def _record_usage(job_id: str, model: llm.JSONModel) -> None:
+def _settings(job_id: str, actor_id: int | None = None) -> dict:
+    """Proveedor con el que trabaja este paso: el de quien lanzó la acción."""
     job = store.get_job(job_id, with_log=False) or {}
-    store.update_job(
-        job_id,
-        tokens_in=int(job.get("tokens_in") or 0) + model.usage.input_tokens,
-        tokens_out=int(job.get("tokens_out") or 0) + model.usage.output_tokens,
+    user_id = actor_id or job.get("actor_id") or job.get("owner_id")
+    return credentials.resolve(int(user_id) if user_id else None)
+
+
+_usage_lock = __import__("threading").Lock()
+
+
+def _record_usage(job_id: str, tokens_in: int, tokens_out: int) -> None:
+    with _usage_lock:
+        job = store.get_job(job_id, with_log=False) or {}
+        store.update_job(
+            job_id,
+            tokens_in=int(job.get("tokens_in") or 0) + int(tokens_in or 0),
+            tokens_out=int(job.get("tokens_out") or 0) + int(tokens_out or 0),
+        )
+
+
+def _cancelled(job_id: str) -> bool:
+    job = store.get_job(job_id, with_log=False)
+    return job is None or job["status"] == "cancelled"
+
+
+def _agent(job_id: str, toolbox: JobToolbox, message: str, settings: dict, stage: str) -> dict:
+    """Ejecuta un agente de la tarea y devuelve lo que entregó."""
+    result = runtime.run_agent(
+        toolbox,
+        settings,
+        message,
+        is_cancelled=lambda: _cancelled(job_id),
+        on_tool=lambda text: emit(job_id, "tool", text, stage=stage),
     )
-    model.usage.input_tokens = model.usage.output_tokens = 0
+    _record_usage(job_id, result.input_tokens, result.output_tokens)
+    return result.data
 
 
 def _fail(job_id: str, exc: Exception) -> None:
@@ -193,15 +220,17 @@ def plan(job_id: str) -> None:
         scope = [sid for sid in options.get("scope", []) if sid in sections]
         if not scope:
             raise ValueError("Elige al menos una sección del documento.")
-        model = _model(job_id)
+        settings = _settings(job_id)
+        languages = options["languages"]
         chapters: list[dict] = []
         emit(job_id, "stage", f"Diseñando el temario de {len(scope)} capítulo(s)…", stage="outline", total=len(scope))
         for number, sid in enumerate(scope, start=1):
             _check(job_id)
             section = sections[sid]
             subsections = [s["title"] for s in document["sections"] if s.get("parent") == sid]
-            result = model.complete_json(
-                prompts.SYSTEM,
+            result = _agent(
+                job_id,
+                JobToolbox(task="outline", document=document, languages=languages, scope_chunk_ids=section["chunk_ids"]),
                 prompts.outline(
                     section=section,
                     excerpts=_excerpts(document, section["chunk_ids"]),
@@ -209,24 +238,23 @@ def plan(job_id: str) -> None:
                     options=options,
                     chapter_number=number,
                 ),
-                max_tokens=6000,
-                task="outline",
+                settings,
+                "outline",
             )
             chapters.append(_normalize_outline(result, section, number))
             emit(job_id, "progress", f"Temario del capítulo {number}: {section['title']}", stage="outline", done=number, total=len(scope))
-            _record_usage(job_id, model)
 
-        course = model.complete_json(
-            prompts.SYSTEM,
+        course = _agent(
+            job_id,
+            JobToolbox(task="course", document=document, languages=languages),
             prompts.course(
                 chapters=[{"title": c["title"], "description": c["description"]} for c in chapters],
                 options=options,
                 source_names=[s["name"] for s in document["sources"]],
             ),
-            max_tokens=2000,
-            task="course",
+            settings,
+            "outline",
         )
-        _record_usage(job_id, model)
         _write(job_id, "outline.json", {"course": course, "chapters": _unique_slugs(chapters)})
         lessons = sum(len(c["lessons"]) for c in chapters)
         _progress(job_id, chapters=len(chapters), lessons_total=lessons, lessons_done=0)
@@ -349,7 +377,7 @@ def _objective_texts(chapter: dict, ids: list[str], lang: str) -> list[str]:
 
 def generate_lesson(
     job_id: str,
-    model: llm.JSONModel,
+    settings: dict,
     document: dict,
     chapter: dict,
     index: int,
@@ -362,20 +390,29 @@ def generate_lesson(
     lesson_plan["objective_texts"] = _objective_texts(
         chapter, lesson_plan.get("objectives", []), options["languages"][0]
     )
-    result = model.complete_json(
-        prompts.SYSTEM,
+    fragments = _fragments(document, lesson_plan.get("chunk_ids", []))
+    toolbox = JobToolbox(
+        task="lesson",
+        document=document,
+        languages=options["languages"],
+        scope_chunk_ids=[cid for lesson in chapter["lessons"] for cid in lesson.get("chunk_ids", [])],
+        lesson_slug=lesson_plan["slug"],
+    )
+    result = _agent(
+        job_id,
+        toolbox,
         prompts.lesson(
             chapter=chapter,
             lesson_plan=lesson_plan,
             lesson_number=index,
             lesson_count=len(chapter["lessons"]),
-            fragments=_fragments(document, lesson_plan.get("chunk_ids", [])),
+            fragments=fragments,
             options=options,
             instructions=instructions,
             previous_error=previous_error,
         ),
-        max_tokens=12_000,
-        task="lesson",
+        settings,
+        "generate",
     )
     result["slug"] = lesson_plan["slug"]
     result["number"] = index
@@ -389,7 +426,9 @@ def generate(job_id: str) -> None:
         options = _options(job_id)
         outline = load_outline(job_id)
         document = doc.load(job_path(job_id, "document.json"))
-        model = _model(job_id)
+        settings = _settings(job_id)
+        # Una suscripción personal va por el CLI local: una lección cada vez.
+        workers = 1 if models.is_subscription(settings) else max(1, config.GEN_CONCURRENCY)
         pending = [
             (chapter, index)
             for chapter in outline["chapters"]
@@ -399,9 +438,9 @@ def generate(job_id: str) -> None:
         total = sum(len(c["lessons"]) for c in outline["chapters"])
         done = total - len(pending)
         emit(job_id, "stage", f"Escribiendo {len(pending)} lecciones…", stage="generate", done=done, total=total)
-        with ThreadPoolExecutor(max_workers=max(1, config.GEN_CONCURRENCY)) as pool:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(generate_lesson, job_id, model, document, chapter, index, options): (chapter, index)
+                pool.submit(generate_lesson, job_id, settings, document, chapter, index, options): (chapter, index)
                 for chapter, index in pending
             }
             for future in as_completed(futures):
@@ -413,7 +452,6 @@ def generate(job_id: str) -> None:
                 emit(job_id, "progress", f"Lección lista: {label}", stage="generate", done=done, total=total)
                 _progress(job_id, lessons_done=done)
                 _check(job_id)
-        _record_usage(job_id, model)
 
         emit(job_id, "stage", "Creando autoevaluaciones y glosario…", stage="assess")
         for chapter in outline["chapters"]:
@@ -426,20 +464,26 @@ def generate(job_id: str) -> None:
                 for lesson in chapter["lessons"]
             ]
             chunk_ids = [cid for lesson in chapter["lessons"] for cid in lesson.get("chunk_ids", [])]
-            result = model.complete_json(
-                prompts.SYSTEM,
+            result = _agent(
+                job_id,
+                JobToolbox(
+                    task="assessment",
+                    document=document,
+                    languages=options["languages"],
+                    scope_chunk_ids=chunk_ids,
+                    lesson_slugs=[lesson["slug"] for lesson in lessons],
+                ),
                 prompts.assessment(
                     chapter=chapter,
                     lessons=lessons,
                     fragments=_fragments(document, chunk_ids[:: max(1, len(chunk_ids) // 12)], 9000),
                     options=options,
                 ),
-                max_tokens=10_000,
-                task="assessment",
+                settings,
+                "assess",
             )
             _write(job_id, name, result)
             emit(job_id, "progress", f"Autoevaluación del capítulo {chapter['number']} lista", stage="assess")
-        _record_usage(job_id, model)
         assemble(job_id)
     except Cancelled:
         emit(job_id, "cancelled", "Generación cancelada.")
@@ -510,7 +554,7 @@ def assemble(job_id: str) -> None:
     options = _options(job_id)
     document = doc.load(job_path(job_id, "document.json"))
     chunks = doc.chunk_map(document)
-    model = None
+    settings = None
     repaired: list[str] = []
     for attempt in range(3):
         package = build_package(job_id)
@@ -527,12 +571,10 @@ def assemble(job_id: str) -> None:
             chapter_number, index = target
             outline = load_outline(job_id)
             chapter = next(c for c in outline["chapters"] if c["number"] == chapter_number)
-            model = model or _model(job_id)
+            settings = settings or _settings(job_id)
             emit(job_id, "warning", f"Reparando la lección {chapter_number}.{index}: {error[:160]}")
-            generate_lesson(job_id, model, document, chapter, index, options, previous_error=error)
+            generate_lesson(job_id, settings, document, chapter, index, options, previous_error=error)
             repaired.append(f"{chapter_number}.{index}")
-    if model is not None:
-        _record_usage(job_id, model)
     job = store.get_job(job_id, with_log=False) or {}
     existing = job.get("course_slug")
     slug = existing or store.unique_course_slug(parsed.slug)
@@ -581,7 +623,13 @@ def _failing_lesson(package: dict, error: str) -> tuple[int, int] | None:
     return None
 
 
-def regenerate_lesson(job_id: str, chapter_number: int, lesson_number: int, instructions: str) -> None:
+def regenerate_lesson(
+    job_id: str,
+    chapter_number: int,
+    lesson_number: int,
+    instructions: str,
+    actor_id: int | None = None,
+) -> None:
     """Regenera una lección y la sustituye en el borrador actual.
 
     Se parte del paquete guardado (con las ediciones manuales del revisor), no
@@ -598,10 +646,10 @@ def regenerate_lesson(job_id: str, chapter_number: int, lesson_number: int, inst
         outline = load_outline(job_id)
         document = doc.load(job_path(job_id, "document.json"))
         chapter = next(c for c in outline["chapters"] if c["number"] == chapter_number)
-        model = _model(job_id)
+        # La persona que pide la regeneración paga con su credencial (o la de la plataforma).
+        settings = _settings(job_id, actor_id)
         emit(job_id, "stage", f"Regenerando la lección {chapter_number}.{lesson_number}…", stage="regenerate")
-        lesson = generate_lesson(job_id, model, document, chapter, lesson_number, options, instructions=instructions)
-        _record_usage(job_id, model)
+        lesson = generate_lesson(job_id, settings, document, chapter, lesson_number, options, instructions=instructions)
         target = package["chapters"][chapter_number - 1]["lessons"]
         lesson["number"] = lesson_number
         lesson["slug"] = target[lesson_number - 1]["slug"]

@@ -52,8 +52,8 @@ sources:
 - [uv](https://docs.astral.sh/uv/)
 - [Node.js](https://nodejs.org/docs/latest-v24.x/api/)
 - [MDN Web Docs](https://developer.mozilla.org/)
-- [OpenCode V2 · docs](https://opencode.ai/v2/docs/)
-- [OpenCode V2 · proveedores](https://opencode.ai/v2/docs/providers)
+- [nas-adk](https://github.com/marcosflz/nas-adk) - Kit de agentes y proveedores del Estudio (ADR-023)
+- [OpenCode V2 · proveedores](https://opencode.ai/v2/docs/providers) - OpenCode Go/Zen como proveedores de modelos
 - [OpenCode Go](https://opencode.ai/v2/docs/console/go)
 
 # Corpus

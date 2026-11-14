@@ -25,7 +25,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from webapp import audit, config, workspaces
-from webapp.authoring import extract, providers, runner, settings, store
+from webapp.authoring import credentials, extract, providers, settings, store
 from webapp.authoring.package import parse_package, slugify
 from webapp.db import session_scope
 from webapp.deps import ensure_csrf, require_author, require_platform_admin
@@ -114,7 +114,7 @@ def _payload(user: dict) -> dict[str, Any]:
         "jobs": _visible_jobs(user),
         "courses": _visible_courses(user),
         "can_configure": bool(user.get("is_platform_admin")),
-        "default_engine": config.GEN_DEFAULT_ENGINE,
+        "ai": credentials.describe(credentials.resolve(user["id"])),
         "quota": _quota(user),
         "limits": {
             "max_upload_mb": config.AUTHORING_MAX_UPLOAD_MB,
@@ -144,7 +144,30 @@ def _quota(user: dict) -> dict[str, Any]:
     return {"limit": limit, "used": used, "remaining": max(0, limit - used)}
 
 
-def _assert_ready_direct(user: dict) -> None:
+ADK_ENGINES = {"adk", "direct"}
+
+
+def _assert_ai_ready(user: dict) -> None:
+    """¿Puede ``user`` lanzar ahora una llamada a la IA? (credencial propia o de plataforma)."""
+    if config.LLM_FAKE:
+        return
+    resolved = credentials.resolve(user["id"])
+    try:
+        providers.router_kwargs(resolved)
+    except ValueError as exc:
+        if resolved.get("source") == "user":
+            raise _error(f"Tu proveedor de IA no está completo: {exc}", 400) from exc
+        raise _error(
+            "La plataforma todavía no tiene configurado un proveedor de IA. Configura el tuyo en "
+            "«Mi cuenta» o pide a la administración que lo configure.",
+            400,
+        ) from exc
+
+
+def _assert_ready(user: dict) -> None:
+    info = settings.engine_status()
+    if not info.get("enabled"):
+        raise _error(info.get("message") or "El Estudio está desactivado.", 503)
     quota = _quota(user)
     if quota["remaining"] <= 0:
         raise _error(
@@ -156,34 +179,7 @@ def _assert_ready_direct(user: dict) -> None:
             "Ya hay varios trabajos en marcha. Espera a que terminen antes de subir otro documento.",
             429,
         )
-    if config.LLM_FAKE:
-        return
-    current = settings.load_settings()
-    provider = providers.provider(current["provider"])
-    if provider.requires_key and not str(current.get("api_key") or "").strip():
-        raise _error(
-            "La plataforma todavía no tiene configurado un proveedor de IA. Pide a la administración que lo configure.",
-            400,
-        )
-
-
-def _assert_ready(user: dict) -> None:
-    info = settings.engine_status()
-    if not info.get("enabled"):
-        raise _error(info.get("message") or "El Estudio está desactivado.", 503)
-    if not info.get("available"):
-        raise _error(info.get("message") or "OpenCode no está disponible.", 503)
-    current = settings.load_settings()
-    provider = providers.provider(current["provider"])
-    if provider.requires_key and not str(current.get("api_key") or "").strip():
-        raise _error(
-            "Configura la API key del proveedor antes de generar una unidad.", 400
-        )
-    if store.count_active_jobs(user["id"]) >= config.AUTHORING_MAX_JOBS:
-        raise _error(
-            "Ya hay varios trabajos en marcha. Espera a que terminen antes de subir otro documento.",
-            429,
-        )
+    _assert_ai_ready(user)
 
 
 async def _save_uploads(job_id: str, files: list[UploadFile]) -> list[str]:
@@ -193,7 +189,7 @@ async def _save_uploads(job_id: str, files: list[UploadFile]) -> list[str]:
         raise ValueError(
             f"Puedes subir como máximo {config.AUTHORING_MAX_FILES} documentos por unidad."
         )
-    destination = runner.uploads_dir(job_id)
+    destination = store.uploads_dir(job_id)
     max_bytes = config.AUTHORING_MAX_UPLOAD_MB * 1024 * 1024
     total_max = max_bytes * config.AUTHORING_MAX_FILES
     total = 0
@@ -242,13 +238,9 @@ async def _create_job(
     desired_slug: str,
     languages: str | list[str],
     notes: str,
-    engine: str = "opencode",
 ) -> dict[str, Any]:
-    if engine == "direct":
-        _assert_ready_direct(user)
-    else:
-        _assert_ready(user)
-    current = settings.load_settings()
+    _assert_ready(user)
+    current = credentials.resolve(user["id"])
     lang_list = _languages(languages)
     clean_title = (title or "").strip()[:200]
     if not clean_title and files:
@@ -273,14 +265,11 @@ async def _create_job(
         provider=current["provider"],
         model=current["model"],
         languages=lang_list,
-        engine=engine,
+        engine="adk",
         job_config={k: meta[k] for k in ("title", "slug", "languages", "notes")},
     )
-    runner.write_meta(job_id, meta)
-    if engine == "direct":
-        worker.submit(job_id, "analyze")
-    else:
-        runner.submit_job(job_id)
+    store.write_meta(job_id, meta)
+    worker.submit(job_id, "analyze")
     job = store.get_job(job_id)
     return job or {"id": job_id}
 
@@ -336,12 +325,10 @@ async def create_job(
     slug: str = Form(""),
     languages: list[str] = Form(["es", "en"]),
     notes: str = Form(""),
-    engine: str = Form(""),
     files: list[UploadFile] = File(...),
     user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
-    chosen = engine if engine in {"direct", "opencode"} else config.GEN_DEFAULT_ENGINE
     try:
         return await _create_job(
             user=user,
@@ -350,7 +337,6 @@ async def create_job(
             desired_slug=slug,
             languages=languages,
             notes=notes,
-            engine=chosen,
         )
     except ValueError as exc:
         raise _error(str(exc)) from exc
@@ -364,14 +350,11 @@ def cancel_job(
 ):
     ensure_csrf(request, user)
     job = _job_for(job_id, user)
-    if job.get("engine") == "direct":
-        if job["status"] in {"ready", "failed", "cancelled"}:
-            raise _error("El trabajo ya ha terminado.", 409)
-        store.update_job(job_id, status="cancelled", finished_at=pipeline.utcnow())
-        pipeline.emit(job_id, "cancelled", "Generación cancelada.")
-        return {"ok": True}
-    if not runner.cancel_job(job_id):
+    if job["status"] in {"ready", "failed", "cancelled"}:
         raise _error("El trabajo ya ha terminado.", 409)
+    store.update_job(job_id, status="cancelled", finished_at=pipeline.utcnow())
+    if job.get("engine") in ADK_ENGINES:
+        pipeline.emit(job_id, "cancelled", "Generación cancelada.")
     return {"ok": True}
 
 
@@ -482,9 +465,15 @@ class RegenerateBody(BaseModel):
 
 def _direct_job(job_id: str, user: dict) -> dict[str, Any]:
     job = _job_for(job_id, user)
-    if job.get("engine") != "direct":
-        raise _error("Este trabajo usa el motor OpenCode y no tiene etapas.", 409)
+    if job.get("engine") not in ADK_ENGINES:
+        raise _error("Este trabajo usa el motor OpenCode, ya retirado, y no tiene etapas.", 409)
     return job
+
+
+def _take_over(job_id: str, user: dict) -> None:
+    """Quien lanza una etapa pasa a ser el actor: se usan sus credenciales (ADR-024)."""
+    _assert_ai_ready(user)
+    store.update_job(job_id, actor_id=user["id"])
 
 
 @router.get("/jobs/{job_id}/document")
@@ -504,6 +493,7 @@ def plan_job(job_id: str, body: PlanBody, request: Request, user: dict = Depends
         raise _error("El trabajo no está esperando la selección de contenido.", 409)
     if not pipeline.job_path(job_id, "document.json").is_file():
         raise _error("El documento todavía no se ha analizado.", 409)
+    _take_over(job_id, user)
     options = {**(job.get("config") or {}), **body.model_dump()}
     if body.notes:
         options["notes"] = body.notes
@@ -543,6 +533,7 @@ def generate_job(job_id: str, request: Request, user: dict = Depends(require_aut
         raise _error("El temario no está listo para generar.", 409)
     if not pipeline.job_path(job_id, "outline.json").is_file():
         raise _error("Falta el temario.", 409)
+    _take_over(job_id, user)
     store.update_job(job_id, status="generating", error=None, finished_at=None)
     worker.submit(job_id, "generate")
     return store.get_job(job_id, with_log=False)
@@ -555,6 +546,7 @@ def retry_job(job_id: str, request: Request, user: dict = Depends(require_author
     job = _direct_job(job_id, user)
     if job["status"] not in {"failed", "cancelled"}:
         raise _error("Solo se reintentan trabajos fallidos o cancelados.", 409)
+    _take_over(job_id, user)
     if pipeline.job_path(job_id, "outline.json").is_file():
         store.update_job(job_id, status="generating", error=None, finished_at=None)
         worker.submit(job_id, "generate")
@@ -640,8 +632,10 @@ def regenerate(slug: str, body: RegenerateBody, request: Request, user: dict = D
     course = _course_for(slug, user)
     job_id = course.get("job_id")
     job = store.get_job(job_id, with_log=False) if job_id else None
-    if job is None or job.get("engine") != "direct":
-        raise _error("Solo se pueden regenerar lecciones de unidades del motor por etapas.", 409)
-    if not worker.submit(job_id, "regenerate", body.chapter, body.lesson, body.instructions):
+    if job is None or job.get("engine") not in ADK_ENGINES:
+        raise _error("Solo se pueden regenerar lecciones de unidades del Estudio actual.", 409)
+    _assert_ai_ready(user)
+    # Se pasa quién lo pide: nunca se usa la credencial del autor original.
+    if not worker.submit(job_id, "regenerate", body.chapter, body.lesson, body.instructions, user["id"]):
         raise _error("Ya hay una tarea en marcha para esta unidad.", 409)
     return {"ok": True, "job_id": job_id}

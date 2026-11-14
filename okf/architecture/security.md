@@ -78,16 +78,20 @@ sources:
 - **No es un sandbox de nivel producción.** Para exponerlo a Internet, ejecuta el
   runner en un contenedor sin red y sin privilegios, o desactívalo.
 
-# Generación con OpenCode
+# Generación con agentes nas-adk (ADR-023, ADR-024)
 
-- OpenCode corre como subproceso del backend, nunca dentro del proceso FastAPI.
-- `cwd` es el directorio del trabajo; `HOME`, `XDG_CONFIG_HOME`,
-  `XDG_DATA_HOME` y `TMPDIR` apuntan a `authoring/opencode-home` o al propio
-  trabajo. Se eliminan `OPENCODE_DB`, `OPENCODE_CONFIG` y credenciales del host.
-- El agente solo puede `read`, `edit`, `glob`, `grep` y `list`. Se deniegan
-  `shell`, `webfetch`, `websearch`, `task`, `external_directory` y `question`.
-- La API key se inyecta como variable de entorno; nunca se escribe en
-  `opencode.json` y los logs se redactan.
+- Los agentes corren dentro del backend con herramientas Python que solo leen los
+  fragmentos del trabajo y entregan resultados validados; sin shell, red ni rutas.
+- Credenciales: la de la plataforma en `settings.json` (0600); las de cada usuario
+  cifradas con Fernet (clave derivada de `AULA_SECRET`) en `user_ai_settings`.
+  Ninguna se devuelve a la API (solo los 4 últimos caracteres).
+- Se genera siempre con las credenciales de quien lanza la acción
+  (`authoring_jobs.actor_id`); una suscripción nunca se usa para otra persona ni es
+  el proveedor de la plataforma. El alumnado no tiene acceso (403).
+- La suscripción de Claude se pasa solo al proceso hijo del CLI
+  (`CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CONFIG_DIR` propio 0700), con `ANTHROPIC_*`
+  eliminadas; nas-adk aísla el CLI (sin herramientas, MCP ni sesión persistente).
+- Los usuarios no eligen base URL: los endpoints propios son solo de la plataforma.
 - Los documentos se tratan como datos no confiables: las instrucciones que
   contengan se ignoran. El HTML resultante se sanea y el JSON se valida.
 - Límites: 25 MB por archivo, 5 archivos, 300 000 caracteres, 30 minutos, un

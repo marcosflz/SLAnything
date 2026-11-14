@@ -1,11 +1,13 @@
-"""Estudio de autoría: documentos → unidades didácticas con OpenCode.
+"""Estudio de autoría: documentos → unidades didácticas con agentes nas-adk.
 
-El paquete separa cuatro responsabilidades:
-
-* ``settings``: credenciales y modelo del proveedor LLM.
+* ``settings``: proveedor de IA de la plataforma.
+* ``credentials``: proveedor propio de cada usuario (API key o suscripción).
+* ``providers``: catálogo de proveedores y traducción a nas-adk.
 * ``extract``: texto plano a partir de PDF, DOCX, EPUB, Markdown, HTML o TXT.
 * ``package``: contrato JSON, saneado y construcción de objetos del catálogo.
-* ``runner``: ejecución de OpenCode en un directorio aislado y validación.
+* ``store``: trabajos y cursos generados.
+
+La generación en sí vive en ``webapp/generation`` (ADR-017, ADR-023).
 """
 
 from __future__ import annotations

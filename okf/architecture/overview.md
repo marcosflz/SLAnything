@@ -89,7 +89,7 @@ docs/DESKTOP.md          # web + PWA y ruta a Tauri
 - **Python ejecutable en servidor** con subproceso aislado y descarga local.
 - **Contenido bilingüe** con slugs compartidos: el progreso no se pierde al
   cambiar de idioma.
-- **Estudio de autoría** con OpenCode en Docker y paquetes JSON validados; el
+- **Estudio de autoría** con agentes nas-adk (ADR-023) y paquetes JSON validados; el
   catálogo mezcla cursos estáticos y generados sin rutas paralelas.
 - **Web + PWA** como superficie única; Tauri queda documentado como siguiente
   paso si hace falta offline o integración nativa.

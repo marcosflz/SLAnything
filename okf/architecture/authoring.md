@@ -1,10 +1,10 @@
 ---
 type: Architecture
-title: Estudio de autoría y generación con OpenCode
-description: Cómo se convierten documentos en unidades didácticas validadas y cómo se integran en el catálogo dinámico.
-tags: [autoría, opencode, documentos, generación, catálogo, seguridad]
+title: Estudio de autoría · agentes nas-adk, proveedores y credenciales
+description: Piezas del Estudio que convierten documentos en unidades validadas, cómo se eligen proveedor y credenciales y cómo se integran los cursos generados en el catálogo.
+tags: [autoría, nas-adk, agentes, proveedores, credenciales, documentos, catálogo, seguridad]
 status: stable
-generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T21:40:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T20:00:00Z }
 sources:
   - id: authoring
     resource: ../../docs/AUTHORING.md
@@ -12,93 +12,93 @@ sources:
   - id: package
     resource: ../../webapp/authoring/package.py
     title: Contrato y validación
-  - id: runner
-    resource: ../../webapp/authoring/runner.py
-    title: Runner de OpenCode
+  - id: providers
+    resource: ../../webapp/authoring/providers.py
+    title: Proveedores → nas-adk
+  - id: credentials
+    resource: ../../webapp/authoring/credentials.py
+    title: Credenciales por usuario
   - id: store
     resource: ../../webapp/authoring/store.py
     title: Persistencia y catálogo dinámico
   - id: router
     resource: ../../webapp/routers/authoring.py
-    title: API y rutas Jinja
+    title: API del Estudio
 ---
 
 # Piezas
 
 | Módulo | Responsabilidad |
 |---|---|
-| `webapp/authoring/settings.py` | Proveedor, modelo y API key en `authoring/settings.json` (0600). |
-| `webapp/authoring/providers.py` | Proveedores de OpenCode, `opencode.json` del agente y variables de entorno. |
-| `webapp/authoring/extract.py` | Texto de PDF, DOCX, EPUB, ODT, Markdown, HTML y TXT; troceado. |
-| `webapp/authoring/package.py` | Contrato JSON, saneado HTML y conversión a `Course`/`Program`. |
-| `webapp/authoring/store.py` | `authoring_jobs`, `generated_courses`, caché de publicados y logs. |
-| `webapp/authoring/runner.py` | Subproceso de OpenCode, timeout, cancelación, reparación y validación. |
-| `webapp/authoring/agent/AGENTS.md` | Instrucciones editoriales y esquema que lee el agente. |
-| `webapp/routers/authoring.py` | API `/api/v1/authoring` y fallback Jinja `/estudio`. |
-| `frontend/src/app/estudio/` | Página Next y panel cliente. |
+| `webapp/authoring/settings.py` | Proveedor de la **plataforma** en `authoring/settings.json` (0600); estado del motor (versión de nas-adk) y del CLI `claude`. |
+| `webapp/authoring/credentials.py` | Proveedor **propio** de cada usuario (`user_ai_settings`, secreto cifrado) y `resolve(user_id)`. |
+| `webapp/authoring/providers.py` | Catálogo de proveedores y su traducción a `ModelRouter` de nas-adk (`router_kwargs`). |
+| `webapp/authoring/extract.py` | Texto de PDF, DOCX, EPUB, ODT, Markdown, HTML y TXT. |
+| `webapp/authoring/package.py` | Contrato JSON, saneado HTML, `validate_lesson`/`validate_assessment` y conversión a `Course`/`Program`. |
+| `webapp/authoring/store.py` | `authoring_jobs` (con `actor_id`), `generated_courses`, subidas, `meta.json` y caché de publicados. |
+| `webapp/generation/` | Etapas y agentes nas-adk: ver [generation](/architecture/generation.md). |
+| `webapp/routers/authoring.py` | API `/api/v1/authoring`. |
+| `webapp/routers/account_ai.py` | API `/api/v1/account/ai` (proveedor propio). |
+| `frontend/src/app/estudio/`, `components/studio/`, `components/account/UserAiPanel.tsx` | Estudio, asistente, revisión y panel «Proveedor de IA» de «Mi cuenta». |
 
-# Flujo
+Decisiones: [ADR-023](/decisions/adr-023-nas-adk-agents.md) (agentes nas-adk; sustituye a
+[ADR-012](/decisions/adr-012-authoring-opencode.md)) y
+[ADR-024](/decisions/adr-024-user-ai-credentials.md) (credenciales por usuario).
 
-1. El profesorado guarda proveedor y key en `/estudio`.
-2. Sube hasta 5 documentos. Se guardan en `authoring/jobs/<id>/uploads/`.
-3. El runner extrae texto, lo trocea en `source/source-NN.md` y escribe `meta.json`.
-4. Genera `opencode.json` con el agente `slanything-author` y ejecuta
-   `opencode run --standalone --format json --auto`.
-5. El agente lee `AGENTS.md`, `meta.json` y `source/`; escribe `course.json`.
-6. `parse_package()` valida, sanea y construye cursos. Si falla, hay **una
-   reparación automática** con el error exacto.
-7. El paquete queda en `generated_courses` como `draft`. Publicar lo mete en el
-   catálogo dinámico.
+# Proveedores
+
+| Id | nas-adk | Nivel |
+|---|---|---|
+| `opencode-go` | `opencode` | plataforma y usuario |
+| `opencode` (Zen gratuitos) | `openai-compatible` + `https://opencode.ai/zen/v1` | ambos |
+| `anthropic` | `anthropic` (API de pago) | ambos |
+| `openrouter` | `openrouter` | ambos |
+| `openai`, `google`, `deepseek` | `openai-compatible` con su URL fija | ambos |
+| `custom`, `ollama`, `lmstudio` | `openai-compatible` con base URL editable | solo plataforma |
+| `claude-code` | `ClaudeCodeLlm` (suscripción personal) | solo usuario |
+
+# Con qué se genera
+
+`credentials.resolve(actor)` → proveedor propio del actor si está completo (y, para la
+suscripción, con el consentimiento marcado); si no, el de la plataforma. El **actor** es
+quien lanza la acción: crear el trabajo, planificar, generar, reintentar o regenerar una
+lección (`authoring_jobs.actor_id`; la reanudación tras reinicio usa el último). El
+Estudio muestra «Generarás con…» (`/api/v1/authoring` → `ai`). El alumnado no tiene
+`author`: no configura proveedor ni genera.
 
 # Catálogo dinámico
 
-`content_for(lang, course_slug)` combina `CATALOGS` con los paquetes publicados
-de `generated_courses`. Los slugs generados llevan prefijo `gen-`; las lecciones
-y quizzes también se prefijan para no chocar con el curso estático. La caché de
-`store.dynamic_content()` se invalida al guardar, publicar, despublicar o borrar.
-
-Los cursos generados usan el mismo `Course`, `Program`, `Chapter`, `Lesson` y
-`Quiz` que el curso de referencia, así que catálogo, lección, quiz, progreso,
-glosario, búsqueda y panel del profesor funcionan sin rutas paralelas. El
-progreso se aísla por `course_slug` como cualquier otro curso.
+`content_for(lang, course_slug)` combina los cursos de ejemplo (si están activos) con los
+paquetes publicados de `generated_courses`. Los slugs generados llevan prefijo `gen-`;
+lecciones y quizzes también. La caché de `store.dynamic_content()` se invalida al guardar,
+publicar, despublicar o borrar. Los cursos generados usan los mismos `Course`, `Program`,
+`Chapter`, `Lesson` y `Quiz` que el ejemplo.
 
 # Contrato y calidad
 
-- `schema_version: 1`; 1–4 capítulos; 3–8 lecciones por capítulo; máximo 30.
-- Un quiz por capítulo (4–10 preguntas) y 6–24 términos de glosario.
-- Cada lección empieza por `lead`, termina en `keypoints` y contiene `callout` y
-  `check`; mínimo 220 palabras (el agente apunta a 650–900).
-- Bloques permitidos: `lead`, `p`, `h2`, `h3`, `callout`, `table`, `quote`,
-  `list`, `keypoints`, `check`, `divider`, `code`, `python`. Sin `figure` ni `lab`.
-- El HTML se limpia con lista blanca; se eliminan scripts, estilos, `iframe`,
-  atributos `on*` y enlaces `javascript:`.
-- Los bloques `python` se compilan antes de guardar; luego los ejecuta el sandbox
-  existente, nunca OpenCode.
-- Si el idioma es ES+EN, la estructura de slugs y las respuestas correctas deben
-  coincidir.
+- `schema_version` 1 o 2; hasta 40 capítulos, 2–12 lecciones por capítulo, 300 lecciones.
+- Un quiz por capítulo (4–20 preguntas `single|multiple|true_false`) y 6–24 términos.
+- Cada lección empieza por `lead`, termina en `keypoints` y tiene `callout` y `check`;
+  mínimo 220 palabras.
+- Bloques: `lead`, `p`, `h2`, `h3`, `callout`, `table`, `quote`, `list`, `keypoints`,
+  `check`, `divider`, `code`, `python`. HTML con lista blanca.
+- Los bloques `python` se compilan antes de guardar y solo los ejecuta el sandbox.
+- ES+EN: misma estructura de slugs y mismas respuestas correctas.
 
-# Aislamiento
+# Seguridad
 
-OpenCode corre como subproceso con `cwd` en el directorio del trabajo, `HOME` y
-`XDG_*` bajo `authoring/opencode-home`, variables de proveedor propias y
-`--standalone`. El agente tiene permitido `read`, `edit`, `glob`, `grep` y
-`list`; se deniegan `shell`, `webfetch`, `websearch`, `task`,
-`external_directory` y `question`. La API key no se escribe en `opencode.json`:
-se inyecta como variable de entorno y se redacta del log.
-
-# Operación
-
-- Un trabajo simultáneo (`ThreadPoolExecutor(max_workers=1)`).
-- Timeout de 30 minutos; cancelación termina el proceso.
-- Al arrancar, los trabajos `extracting/generating/validating` se marcan como
-  fallidos para no quedar colgados.
-- Log en `authoring/jobs/<id>/run.log`, recortado a 2 MB y visible en `/estudio`.
-- Si OpenCode cierra con código 1 pero `course.json` existe, se valida igual: el
-  proveedor puede haber tenido un error transitorio y el agente haberlo resuelto.
+- Los agentes solo tienen herramientas Python sobre los fragmentos del trabajo; sin shell,
+  red ni rutas. Los documentos se tratan como datos no confiables.
+- Secretos de plataforma en `settings.json` (0600); los de usuario cifrados con Fernet
+  (clave derivada de `AULA_SECRET`). Ninguno se devuelve a la API.
+- La suscripción solo entra en el entorno del proceso hijo del CLI (`UserEnvTransport`),
+  con `CLAUDE_CONFIG_DIR` propio por usuario y `env_policy="scrub"`.
+- Los usuarios no fijan base URL (sin SSRF); solo la plataforma usa endpoints propios.
 
 # Pruebas
 
-`webapp/tests/test_authoring.py` cubre saneado, contrato, tonos, extracción,
-ajustes, API, permisos, publicación en catálogo, reparación y flujo del runner
-con OpenCode simulado. La prueba manual con el modelo gratuito de OpenCode dentro
-de Docker generó una unidad de 4 lecciones, la publicó y la sirvió en `/cursos`.
+`test_authoring.py` (contrato, saneado, ajustes, mapeo de proveedores, API, publicación),
+`test_generation.py` (flujo completo con `FakeAgentLlm`), `test_adk_agents.py`
+(herramientas, runtime, errores, cancelación, transporte de la suscripción) y
+`test_ai_credentials.py` (cifrado, alumnado 403, consentimiento, aislamiento entre
+usuarios, plataforma sin suscripción, rotación del secreto).

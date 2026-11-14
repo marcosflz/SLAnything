@@ -20,7 +20,6 @@ from conftest import admin_login, login
 def authoring_dir(tmp_path, monkeypatch):
     path = tmp_path / "authoring"
     monkeypatch.setattr(config, "AUTHORING_DIR", path)
-    monkeypatch.setattr(config, "AUTHORING_HOME", path / "home")
     monkeypatch.setattr(config, "AUTHORING_ENABLED", True)
     monkeypatch.setattr(config, "AUTHORING_MAX_UPLOAD_MB", 5)
     monkeypatch.setattr(config, "AUTHORING_MAX_FILES", 3)
@@ -282,35 +281,53 @@ def test_settings_round_trip_does_not_expose_key(authoring_dir):
     assert settings.load_settings()["api_key"] == ""
 
 
-def test_provider_config_uses_env_and_denies_shell(authoring_dir):
-    config_data, env, model_ref = providers.build_config(
-        {
-            "provider": "opencode-go",
-            "model": "deepseek-v4.1-flash",
-            "api_key": "sk-test",
-        }
+def test_provider_maps_to_nas_adk_router(authoring_dir):
+    go = providers.router_kwargs(
+        {"provider": "opencode-go", "model": "deepseek-v4.1-flash", "api_key": "sk-test"}
     )
-    assert model_ref == "opencode-go/deepseek-v4.1-flash"
-    assert env == {"OPENCODE_API_KEY": "sk-test"}
-    assert config_data["model"] == model_ref
-    actions = {
-        (rule["action"], rule["effect"]) for rule in config_data["permissions"]
+    assert go == {"provider": "opencode", "model": "deepseek-v4.1-flash", "api_key": "sk-test"}
+
+    openai = providers.router_kwargs({"provider": "openai", "model": "gpt-6-luna", "api_key": "k"})
+    assert openai["provider"] == "openai-compatible"
+    assert openai["base_url"] == "https://api.openai.com/v1"
+
+    custom = providers.router_kwargs(
+        {"provider": "custom", "model": "qwen3", "base_url": "http://localhost:8000/v1", "api_key": ""}
+    )
+    assert custom == {
+        "provider": "openai-compatible",
+        "model": "qwen3",
+        "api_key": "",
+        "base_url": "http://localhost:8000/v1",
     }
-    assert ("shell", "deny") in actions
-    assert ("external_directory", "deny") in actions
-
-    custom, custom_env, custom_ref = providers.build_config(
-        {
-            "provider": "custom",
-            "model": "qwen3",
-            "base_url": "http://localhost:8000/v1",
-            "api_key": "",
-        }
+    # La base URL solo se respeta en proveedores que la admiten.
+    ignored = providers.router_kwargs(
+        {"provider": "openai", "model": "m", "api_key": "k", "base_url": "http://evil.example"}
     )
-    assert custom_ref == "slanything/qwen3"
-    assert custom_env == {}
-    assert custom["providers"]["slanything"]["settings"]["baseURL"] == "http://localhost:8000/v1"
+    assert ignored["base_url"] == "https://api.openai.com/v1"
 
+    subscription = providers.router_kwargs({"provider": "claude-code", "model": "", "api_key": "tok"})
+    assert subscription == {"provider": "claude-code", "model": ""}
+
+    with pytest.raises(ValueError):
+        providers.router_kwargs({"provider": "anthropic", "model": "claude-sonnet-5-5", "api_key": ""})
+    # Todos los proveedores construyen un ModelRouter válido de nas-adk.
+    from nas.adk.models import ModelRouter
+
+    for item in providers.PROVIDERS:
+        if item.adk_provider == "claude-code":
+            continue
+        kwargs = providers.router_kwargs(
+            {"provider": item.id, "model": item.models[0] if item.models else "m", "api_key": "k"}
+        )
+        assert ModelRouter(**kwargs).provider == item.adk_provider
+
+
+def test_platform_cannot_use_a_personal_subscription(authoring_dir):
+    with pytest.raises(ValueError):
+        settings.save_settings(provider="claude-code", model="sonnet", api_key="tok")
+    ids = {item["id"] for item in settings.public_settings()["providers"]}
+    assert "claude-code" not in ids
 
 def test_api_authoring_is_teacher_only(client, authoring_dir):
     _student(client)
@@ -325,7 +342,6 @@ def test_studio_payload_for_teacher(client, authoring_dir, monkeypatch):
             "enabled": True,
             "available": True,
             "version": "test",
-            "binary": "opencode",
             "message": "ok",
         },
     )
@@ -388,12 +404,11 @@ def test_api_create_job_stores_upload(client, authoring_dir, monkeypatch):
             "enabled": True,
             "available": True,
             "version": "test",
-            "binary": "opencode",
             "message": "ok",
         },
     )
     monkeypatch.setattr(
-        "webapp.routers.authoring.runner.submit_job", lambda job_id: None
+        "webapp.routers.authoring.worker.submit", lambda job_id, stage, *args: True
     )
     response = client.post(
         "/api/v1/authoring/jobs",
@@ -464,122 +479,6 @@ def test_published_generated_course_enters_catalog_and_quiz(client, authoring_di
     assert unpublish.status_code == 200
     catalog = client.get("/api/v1/catalog?lang=es").json()
     assert all(course["slug"] != parsed.slug for course in catalog["courses"])
-
-
-def test_runner_end_to_end_with_stubbed_opencode(client, authoring_dir, monkeypatch):
-    from webapp.authoring import runner
-
-    owner = _teacher_id()
-    settings.save_settings(
-        provider="opencode-go",
-        model="deepseek-v4.1-flash",
-        api_key="sk-test-runner",
-    )
-    job_id = "job-runner-test"
-    store.create_job(
-        job_id=job_id,
-        owner_id=owner,
-        title="Redes neuronales",
-        source_names=["01-documento.md"],
-        provider="opencode-go",
-        model="deepseek-v4.1-flash",
-        languages=["es", "en"],
-    )
-    upload = runner.uploads_dir(job_id) / "01-documento.md"
-    upload.write_text(
-        "# Redes\n\n" + "Una neurona ajusta sus pesos con cada ejemplo. " * 80,
-        encoding="utf-8",
-    )
-    runner.write_meta(
-        job_id,
-        {"title": "Redes neuronales", "slug": "redes-neuronales", "languages": ["es", "en"]},
-    )
-
-    def fake_run(
-        job_id,
-        run_dir,
-        config_data,
-        env_extra,
-        model_ref,
-        meta,
-        key,
-        *,
-        prompt=None,
-        continue_session=False,
-    ):
-        assert (run_dir / "source" / "source-01.md").is_file()
-        assert config_data["model"] == "opencode-go/deepseek-v4.1-flash"
-        assert env_extra["OPENCODE_API_KEY"] == "sk-test-runner"
-        (run_dir / "course.json").write_text(
-            json.dumps(sample_package(), ensure_ascii=False), encoding="utf-8"
-        )
-        return 0
-
-    monkeypatch.setattr(runner, "_run_opencode", fake_run)
-    runner.run_job(job_id)
-
-    job = store.get_job(job_id)
-    assert job is not None
-    assert job["status"] == "ready", job
-    assert job["course_slug"] == "gen-redes-neuronales"
-    course = store.get_course("gen-redes-neuronales", with_package=True)
-    assert course is not None
-    assert course["summary"]["lesson_count"] == 3
-    assert "Lista:" in job["log"]
-
-
-def test_runner_repairs_a_rejected_package_once(client, authoring_dir, monkeypatch):
-    from webapp.authoring import runner
-
-    owner = _teacher_id()
-    settings.save_settings(
-        provider="opencode-go",
-        model="deepseek-v4.1-flash",
-        api_key="sk-test-repair",
-    )
-    job_id = "job-repair-test"
-    store.create_job(
-        job_id=job_id,
-        owner_id=owner,
-        title="Reparación",
-        source_names=["01-documento.md"],
-        provider="opencode-go",
-        model="deepseek-v4.1-flash",
-        languages=["es", "en"],
-    )
-    (runner.uploads_dir(job_id) / "01-documento.md").write_text(
-        "# Reparación\n\n" + "Una unidad necesita estructura. " * 100,
-        encoding="utf-8",
-    )
-    runner.write_meta(
-        job_id,
-        {"title": "Reparación", "slug": "reparacion", "languages": ["es", "en"]},
-    )
-    calls = {"n": 0}
-
-    def fake_run(job_id, run_dir, config_data, env_extra, model_ref, meta, key, *, prompt=None, continue_session=False):
-        calls["n"] += 1
-        if calls["n"] == 1:
-            (run_dir / "course.json").write_text(
-                json.dumps({"schema_version": 1, "languages": ["es"]}),
-                encoding="utf-8",
-            )
-        else:
-            assert continue_session is True
-            assert "Error exacto" in (prompt or "")
-            (run_dir / "course.json").write_text(
-                json.dumps(sample_package("reparacion"), ensure_ascii=False),
-                encoding="utf-8",
-            )
-        return 0
-
-    monkeypatch.setattr(runner, "_run_opencode", fake_run)
-    runner.run_job(job_id)
-    job = store.get_job(job_id)
-    assert job is not None
-    assert job["status"] == "ready", job
-    assert calls["n"] == 2
-    assert "Reparación validada" in job["log"]
 
 
 def test_interrupted_jobs_are_marked_failed(client, authoring_dir):

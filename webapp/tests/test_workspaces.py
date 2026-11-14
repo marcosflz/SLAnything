@@ -23,7 +23,7 @@ def test_migrations_upgrade_a_v3_database(tmp_path):
 
     applied = migrations.migrate(conn)
 
-    assert applied == [4, 5, 6, 7]
+    assert applied == [4, 5, 6, 7, 8]
     assert migrations.current_version(conn) == migrations.LATEST_VERSION
     columns = {row[1] for row in conn.execute("PRAGMA table_info(generated_courses)")}
     assert {"workspace_id", "visibility"} <= columns

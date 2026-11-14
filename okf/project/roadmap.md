@@ -40,8 +40,9 @@ Entregado el 24 de octubre de 2026:
 
 Entregado el 24 de octubre de 2026:
 
-- Estudio `/estudio` con documentos → unidades, OpenCode en Docker, proveedor
-  configurable, borrador/publicación y catálogo dinámico.
+- Estudio `/estudio` con documentos → unidades, OpenCode en Docker (sustituido el
+  2026-11-14 por agentes nas-adk, ADR-023), proveedor configurable,
+  borrador/publicación y catálogo dinámico.
 - PWA instalable y decisión web + PWA documentada.
 
 Pendiente:

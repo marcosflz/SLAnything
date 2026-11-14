@@ -21,8 +21,8 @@ sources:
 
 - [uv](https://docs.astral.sh/uv/) y Python 3.10+ (el entorno actual usa 3.14).
 - Node.js 20+ y npm para el frontend Next.js (el entorno actual usa Node 24).
-- **OpenCode** solo si vas a usar `/estudio` en local: `npm install -g @opencode/cli`.
-  La imagen Docker ya lo incluye y no hace falta instalarlo en el host.
+- Los agentes del Estudio (nas-adk) se instalan con `uv sync`. Para la suscripción
+  de Claude hace falta el CLI `claude` en el servidor (la imagen Docker lo incluye).
 - No hace falta GPU.
 - Un navegador moderno.
 
@@ -54,8 +54,8 @@ npm install
 npm run dev
 ```
 
-Abre `http://127.0.0.1:3000`. Para el Estudio en local, instala también
-`npm install -g @opencode/cli` y configura el proveedor en `/estudio`.
+Abre `http://127.0.0.1:3000`. Para el Estudio, configura el proveedor en
+`/plataforma/ia` (superadmin) o el tuyo en «Mi cuenta»; sin red usa `AULA_LLM_FAKE=1`.
 
 El frontend habla con FastAPI mediante los *rewrites* de
 `frontend/next.config.ts`; no hace falta configurar CORS. La URL interna se
@@ -116,16 +116,18 @@ con las contraseñas nuevas.
 | `AULA_EXEC_CONCURRENT` | Ejecuciones simultáneas | `2` |
 | `AULA_AUTHORING_ENABLED` | Activa el Estudio | `1` |
 | `AULA_AUTHORING_DIR` | Subidas, logs y ajustes | `<repo>/authoring-data` |
-| `AULA_AUTHORING_OPENCODE_BIN` | Binario de OpenCode | `opencode` |
+| `AULA_USER_PROVIDERS` | Proveedor de IA propio por usuario (ADR-024) | `1` |
+| `AULA_SUBSCRIPTION_PROVIDER` | Suscripción personal de Claude | `1` |
+| `AULA_CLAUDE_CODE_BIN` | Binario del CLI de Claude Code | `claude` |
 | `AULA_AUTHORING_TIMEOUT` | Segundos por trabajo | `1800` |
 | `AULA_AUTHORING_MAX_UPLOAD_MB` | MB por archivo | `25` |
 | `AULA_AUTHORING_MAX_FILES` | Archivos por unidad | `5` |
 | `AULA_AUTHORING_MAX_CHARS` | Texto extraído máximo | `300000` |
 | `AULA_AUTHORING_MAX_JOBS` | Trabajos activos por profesor | `3` |
 
-La API key del proveedor **no** es una variable de entorno del proceso: se guarda
-desde `/estudio` en `AULA_AUTHORING_DIR/settings.json` (0600) y se inyecta solo
-al subproceso de OpenCode. Los ejemplos Python necesitan `psutil`, `numpy`, `pandas` y `matplotlib`, que ya
+La API key del proveedor **no** es una variable de entorno del proceso: la de la
+plataforma se guarda desde `/plataforma/ia` en `AULA_AUTHORING_DIR/settings.json`
+(0600) y las de cada usuario, cifradas, en `user_ai_settings`. Los ejemplos Python necesitan `psutil`, `numpy`, `pandas` y `matplotlib`, que ya
 están en `pyproject.toml`. El idioma se guarda en la cookie `aula_lang`; también
 se puede forzar con `?lang=en` o `?lang=es`.
 
@@ -169,7 +171,7 @@ progreso es importante.
 | `AULA_SAMPLE_COURSES` | `0` | Muestra el curso de ejemplo «Construye un LLM desde cero» (ADR-020) |
 | `AULA_OPEN_SIGNUP` | `0` | Registro abierto; con `0` solo se entra por invitación (ADR-022) |
 | `AULA_PLATFORM_ADMINS` | — | Correos con superadministración (coma) |
-| `AULA_GEN_ENGINE` | `direct` | Motor por defecto del Estudio |
+| `AULA_GEN_CONTEXT_TOKENS` | `60000` | Contexto máximo (estimado) de cada agente nas-adk |
 | `AULA_GEN_WORKERS` | `2` | Hilos del pool de generación |
 | `AULA_GEN_CONCURRENCY` | `3` | Lecciones en paralelo por trabajo |
 | `AULA_GEN_INPROCESS` | `1` | `0` = usar `uv run python -m webapp.generation.worker` |

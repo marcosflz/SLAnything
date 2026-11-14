@@ -19,7 +19,6 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from webapp import config
-from webapp.authoring import runner as authoring_runner
 from webapp.authoring import store as authoring_store
 from webapp.generation import worker as generation_worker
 from webapp.content import (
@@ -73,7 +72,6 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        authoring_runner.shutdown()
         generation_worker.shutdown()
 
 
@@ -89,6 +87,7 @@ app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static
 
 # Routers (se importan después de crear la app para evitar ciclos).
 from webapp.routers import (  # noqa: E402
+    account_ai,
     admin,
     analytics,
     api,
@@ -105,6 +104,7 @@ app.include_router(workspaces.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(platform.router)
+app.include_router(account_ai.router)
 
 
 @app.middleware("http")

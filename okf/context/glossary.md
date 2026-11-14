@@ -57,8 +57,12 @@ sources:
   `generated_courses` y se publica como cualquier otro curso.
 - **Paquete (`course.json`)**: JSON bilingüe con curso, capítulos, lecciones,
   quiz y glosario que produce el agente.
-- **Agente de autoría**: `slanything-author`, configuración de OpenCode con
-  permisos restringidos y las instrucciones de `agent/AGENTS.md`.
+- **Agentes de autoría**: los cuatro agentes nas-adk del Estudio (`outline`,
+  `course`, `lesson`, `assessment`) definidos en `generation/agents.py`; entregan
+  con herramientas `submit_*` (ADR-023).
+- **Proveedor propio / actor**: credencial de IA de un usuario (API key o
+  suscripción de Claude) y persona que lanza una etapa; se genera siempre con las
+  credenciales del actor (ADR-024).
 - **Job**: trabajo de generación con estado, proveedor, modelo, documentos y log.
 - **PWA**: web instalable con manifiesto y service worker; no sustituye al
   backend.

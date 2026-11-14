@@ -64,11 +64,13 @@ activo) y `courses` (resumen del catálogo) en las pantallas que lo necesitan.
 
 `webapp/authoring/` implementa el flujo documento → unidad. El router
 `authoring.py` valida permisos y CSRF, guarda las subidas, crea el trabajo y lo
-envía al executor. El runner construye un `opencode.json` por trabajo, ejecuta el
-agente `slanything-author` y valida el `course.json` resultante con
-`package.parse_package()`. La API y `/estudio` comparten los mismos servicios para
-que Next y Jinja no diverjan. Los detalles están en
-[authoring](/architecture/authoring.md).
+envía a la cola de `webapp/generation/worker.py`. Cada etapa ejecuta agentes nas-adk
+(`generation/runtime.py`) con herramientas propias y valida el paquete final con
+`package.parse_package()` ([ADR-023](/decisions/adr-023-nas-adk-agents.md)). El
+proveedor propio de cada usuario vive en `routers/account_ai.py` +
+`authoring/credentials.py` ([ADR-024](/decisions/adr-024-user-ai-credentials.md)).
+Detalles en [authoring](/architecture/authoring.md) y
+[generation](/architecture/generation.md).
 
 # Idioma y contenido
 

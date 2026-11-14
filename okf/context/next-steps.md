@@ -5,7 +5,7 @@ description: Backlog priorizado de SLAnything tras convertirla en plataforma gen
 tags: [backlog, roadmap, calidad, accesibilidad, producto]
 status: stable
 stale_after: 2026-12-31T00:00:00Z
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T18:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-14T20:00:00Z }
 sources:
   - id: roadmap
     resource: /project/roadmap.md
@@ -14,6 +14,16 @@ sources:
     resource: /project/status.md
     title: Estado actual
 ---
+
+# Prioridad 0 · Agentes nas-adk (2026-11-14, ADR-023/024)
+
+- Generar una unidad real con un proveedor de plataforma (API key) y otra con la
+  suscripción de Claude de un usuario; ajustar límites de llamadas por agente y
+  `AULA_GEN_CONTEXT_TOKENS` según el resultado.
+- Confirmar la URL de OpenCode Zen gratuito en nas-adk/`providers.py`.
+- Valorar herramientas extra para los agentes (p. ej. leer una sección entera o el
+  temario del capítulo) y un agente revisor que mejore los bloques `unsupported`.
+- Mostrar en «Mi cuenta» el consumo de tokens propio por mes.
 
 # Prioridad 0 · Tras la plataforma genérica (2026-11-14)
 

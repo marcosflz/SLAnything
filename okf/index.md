@@ -43,7 +43,7 @@ la documentación fuente mandan si hay contradicciones.
 * [Modelo de datos](/architecture/data-model.md) - Tablas SQLite y relaciones.
 * [Seguridad](/architecture/security.md) - scrypt, sesiones, CSRF, rate limit y cabeceras.
 * [Modelo de contenido](/architecture/content-model.md) - Cómo se escribe y valida una lección.
-* [Estudio de autoría](/architecture/authoring.md) - Documentos, OpenCode, contrato JSON y catálogo dinámico.
+* [Estudio de autoría](/architecture/authoring.md) - Documentos, agentes nas-adk, proveedores, credenciales por usuario, contrato JSON y catálogo dinámico.
 * [Generación por etapas](/architecture/generation.md) - Ingesta, temario, lecciones, verificación, cola y SSE.
 * [Espacios, usuarios y analítica](/architecture/tenancy-analytics.md) - Perfiles, permisos, superadmin, grupos, invitaciones, auditoría y KPIs.
 
@@ -80,6 +80,8 @@ la documentación fuente mandan si hay contradicciones.
 * [ADR-020 · Plataforma genérica y curso LLM como ejemplo](/decisions/adr-020-generic-platform.md)
 * [ADR-021 · Perfiles de cuenta](/decisions/adr-021-account-profiles.md)
 * [ADR-022 · Registro solo por invitación](/decisions/adr-022-invite-only-signup.md)
+* [ADR-023 · Agentes propios con nas-adk](/decisions/adr-023-nas-adk-agents.md)
+* [ADR-024 · Credenciales de IA por usuario](/decisions/adr-024-user-ai-credentials.md)
 
 ## Referencias e historial
 

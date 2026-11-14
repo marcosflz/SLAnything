@@ -1,37 +1,43 @@
-"""Proveedores LLM que OpenCode puede usar desde el Estudio.
+"""Proveedores de IA del Estudio y su traducción a ``nas-adk`` (ADR-023).
 
-OpenCode ya conoce los proveedores de models.dev. Para los integrados basta con
-pasar la variable de entorno de la credencial y elegir ``provider/modelo``. Para
-un endpoint propio se declara un proveedor compatible con OpenAI.
+Cada proveedor de SLAnything se ejecuta con un ``ModelRouter`` de nas-adk. Los
+proveedores con ``scope`` ``platform`` solo los configura la superadministración
+(los que aceptan base URL, para no abrir SSRF desde cuentas de usuario); los de
+``user`` solo una persona para sí misma (la suscripción de Claude, ADR-024).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
-AUTHORING_AGENT = "slanything-author"
-CUSTOM_PROVIDER_ID = "slanything"
-CUSTOM_ENV = "SLANYTHING_LLM_KEY"
+Scope = Literal["platform", "user", "both"]
 
 
 @dataclass(frozen=True)
 class Provider:
     id: str
     label: str
-    env: str | None
+    adk_provider: str
     requires_key: bool
     default_base_url: str | None
     models: tuple[str, ...]
     notes: str
+    scope: Scope = "both"
     custom: bool = False
+    personal: bool = False
+    # Si la base URL la elige quien configura (custom/ollama/lmstudio).
+    base_url_editable: bool = False
+
+    def allowed_for(self, level: str) -> bool:
+        return self.scope == "both" or self.scope == level
 
 
 PROVIDERS: tuple[Provider, ...] = (
     Provider(
         id="opencode-go",
         label="OpenCode Go",
-        env="OPENCODE_API_KEY",
+        adk_provider="opencode",
         requires_key=True,
         default_base_url=None,
         models=(
@@ -44,19 +50,15 @@ PROVIDERS: tuple[Provider, ...] = (
             "minimax-m3.1-flash",
             "longcat-2.0",
             "step-5-preview",
-            "beam-free",
         ),
-        notes=(
-            "Suscripción de OpenCode. Pega la API key del Console; se pasa como "
-            "OPENCODE_API_KEY y no se guarda en opencode.json."
-        ),
+        notes="Suscripción de OpenCode Go. Pega la API key del Console de OpenCode.",
     ),
     Provider(
         id="opencode",
-        label="OpenCode · modelos gratuitos",
-        env="OPENCODE_API_KEY",
+        label="OpenCode Zen · modelos gratuitos",
+        adk_provider="openai-compatible",
         requires_key=False,
-        default_base_url=None,
+        default_base_url="https://opencode.ai/zen/v1",
         models=(
             "deepseek-v4.1-flash-free",
             "glm-5.3-flash-free",
@@ -64,32 +66,38 @@ PROVIDERS: tuple[Provider, ...] = (
             "nemotron-3-ultra-free",
         ),
         notes=(
-            "Modelos gratuitos de OpenCode para probar el Estudio sin configurar "
-            "facturación. Tienen límites y pueden cambiar; para uso real, usa Go."
+            "Modelos gratuitos de OpenCode Zen para probar el Estudio. Tienen límites "
+            "y pueden cambiar; para uso real, usa Go u otro proveedor."
         ),
     ),
     Provider(
-        id="openai",
-        label="OpenAI",
-        env="OPENAI_API_KEY",
+        id="anthropic",
+        label="Anthropic (API)",
+        adk_provider="anthropic",
         requires_key=True,
         default_base_url=None,
-        models=("gpt-6.1-sol", "gpt-6-luna", "gpt-5.6-luna"),
-        notes="API key de platform.openai.com. También admite un gateway con base URL.",
+        models=("claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"),
+        notes="API key de console.anthropic.com (facturación por uso).",
     ),
     Provider(
-        id="anthropic",
-        label="Anthropic",
-        env="ANTHROPIC_API_KEY",
+        id="claude-code",
+        label="Claude · mi suscripción personal",
+        adk_provider="claude-code",
         requires_key=True,
         default_base_url=None,
-        models=("claude-sonnet-5-5", "claude-haiku-5-5"),
-        notes="API key de console.anthropic.com.",
+        models=("", "sonnet", "opus", "haiku"),
+        notes=(
+            "Tu suscripción de Claude (Pro/Max) a través del CLI oficial de Claude Code. "
+            "Ejecuta `claude setup-token` en tu equipo y pega aquí el token. Solo se usa "
+            "en las unidades que generas tú; nadie más puede usarla."
+        ),
+        scope="user",
+        personal=True,
     ),
     Provider(
         id="openrouter",
         label="OpenRouter",
-        env="OPENROUTER_API_KEY",
+        adk_provider="openrouter",
         requires_key=True,
         default_base_url=None,
         models=(
@@ -100,27 +108,36 @@ PROVIDERS: tuple[Provider, ...] = (
         notes="Un solo proveedor para cientos de modelos; usa el ID completo del modelo.",
     ),
     Provider(
+        id="openai",
+        label="OpenAI",
+        adk_provider="openai-compatible",
+        requires_key=True,
+        default_base_url="https://api.openai.com/v1",
+        models=("gpt-6.1-sol", "gpt-6-luna", "gpt-5.6-luna"),
+        notes="API key de platform.openai.com.",
+    ),
+    Provider(
         id="google",
         label="Google Gemini",
-        env="GOOGLE_GENERATIVE_AI_API_KEY",
+        adk_provider="openai-compatible",
         requires_key=True,
-        default_base_url=None,
+        default_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         models=("gemini-4-argon", "gemini-3-pro"),
-        notes="API key de Google AI Studio.",
+        notes="API key de Google AI Studio (endpoint compatible con OpenAI).",
     ),
     Provider(
         id="deepseek",
         label="DeepSeek",
-        env="DEEPSEEK_API_KEY",
+        adk_provider="openai-compatible",
         requires_key=True,
-        default_base_url=None,
+        default_base_url="https://api.deepseek.com/v1",
         models=("deepseek-chat", "deepseek-reasoner"),
         notes="API directa de DeepSeek.",
     ),
     Provider(
         id="custom",
         label="OpenAI-compatible (vLLM, LM Studio, gateway)",
-        env=CUSTOM_ENV,
+        adk_provider="openai-compatible",
         requires_key=False,
         default_base_url="http://host.docker.internal:11434/v1",
         models=(),
@@ -128,28 +145,31 @@ PROVIDERS: tuple[Provider, ...] = (
             "Cualquier endpoint /v1 compatible con OpenAI. La API key es opcional. "
             "En Docker, host.docker.internal apunta al equipo anfitrión."
         ),
+        scope="platform",
         custom=True,
+        base_url_editable=True,
     ),
     Provider(
         id="ollama",
         label="Ollama",
-        env=None,
+        adk_provider="openai-compatible",
         requires_key=False,
         default_base_url="http://host.docker.internal:11434/v1",
         models=("qwen3:8b", "llama3.2"),
-        notes=(
-            "Ollama local. Arranca el servidor y descarga el modelo; en Docker, "
-            "host.docker.internal apunta al equipo anfitrión."
-        ),
+        notes="Ollama local; en Docker, host.docker.internal apunta al equipo anfitrión.",
+        scope="platform",
+        base_url_editable=True,
     ),
     Provider(
         id="lmstudio",
         label="LM Studio",
-        env=None,
+        adk_provider="openai-compatible",
         requires_key=False,
         default_base_url="http://host.docker.internal:1234/v1",
         models=("local-model",),
-        notes="LM Studio con el servidor local de OpenAI-compatible activado.",
+        notes="LM Studio con el servidor local compatible con OpenAI activado.",
+        scope="platform",
+        base_url_editable=True,
     ),
 )
 
@@ -163,113 +183,42 @@ def provider(provider_id: str) -> Provider:
         raise ValueError(f"Proveedor desconocido: {provider_id!r}.") from exc
 
 
-def providers_payload() -> list[dict[str, Any]]:
+def providers_payload(level: str = "platform") -> list[dict[str, Any]]:
+    """Catálogo para la UI. ``level`` es ``platform`` o ``user``."""
     return [
         {
             "id": item.id,
             "label": item.label,
             "requires_key": item.requires_key,
-            "default_base_url": item.default_base_url,
-            "models": list(item.models),
+            "default_base_url": item.default_base_url if item.base_url_editable else None,
+            "base_url_editable": item.base_url_editable,
+            "models": [model for model in item.models if model],
+            "model_optional": item.adk_provider == "claude-code",
             "notes": item.notes,
+            "personal": item.personal,
         }
         for item in PROVIDERS
+        if item.allowed_for(level)
     ]
 
 
-def _agent_config(model_ref: str, provider_id: str) -> dict[str, Any]:
-    return {
-        "$schema": "https://opencode.ai/config.json",
-        "model": model_ref,
-        "default_agent": AUTHORING_AGENT,
-        "update": "disable",
-        "share": "disabled",
-        "snapshot": False,
-        "formatter": False,
-        "lsp": False,
-        "permissions": [
-            {"action": "shell", "resource": "*", "effect": "deny"},
-            {"action": "webfetch", "resource": "*", "effect": "deny"},
-            {"action": "websearch", "resource": "*", "effect": "deny"},
-            {"action": "task", "resource": "*", "effect": "deny"},
-            {"action": "external_directory", "resource": "*", "effect": "deny"},
-            {"action": "question", "resource": "*", "effect": "deny"},
-        ],
-        "agents": {
-            AUTHORING_AGENT: {
-                "description": (
-                    "Convierte documentos en unidades didácticas validadas para "
-                    "SLAnything. No ejecuta comandos ni navega."
-                ),
-                "mode": "primary",
-                "steps": 90,
-                "system": (
-                    "Eres el autor didáctico de SLAnything. Sigues AGENTS.md y "
-                    "produces un único course.json válido. No pides confirmación, "
-                    "no ejecutas comandos y no usas la web."
-                ),
-                "permissions": [
-                    {"action": "read", "resource": "*", "effect": "allow"},
-                    {"action": "edit", "resource": "*", "effect": "allow"},
-                    {"action": "glob", "resource": "*", "effect": "allow"},
-                    {"action": "grep", "resource": "*", "effect": "allow"},
-                    {"action": "list", "resource": "*", "effect": "allow"},
-                    {"action": "shell", "resource": "*", "effect": "deny"},
-                    {"action": "webfetch", "resource": "*", "effect": "deny"},
-                    {"action": "websearch", "resource": "*", "effect": "deny"},
-                    {"action": "task", "resource": "*", "effect": "deny"},
-                    {"action": "external_directory", "resource": "*", "effect": "deny"},
-                    {"action": "question", "resource": "*", "effect": "deny"},
-                ],
-            }
-        },
-    }
-
-
-def build_config(settings: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str], str]:
-    """Devuelve ``(opencode.json, env, model_ref)`` sin escribir la key en disco."""
-    provider_id = str(settings.get("provider") or "opencode-go")
-    info = provider(provider_id)
+def router_kwargs(settings: dict[str, Any]) -> dict[str, Any]:
+    """Argumentos de ``ModelRouter`` para unos ajustes (sin la suscripción)."""
+    info = provider(str(settings.get("provider") or ""))
     model = str(settings.get("model") or "").strip()
-    if not model:
-        raise ValueError("Falta el modelo del proveedor.")
     key = str(settings.get("api_key") or "").strip()
-    base_url = str(settings.get("base_url") or "").strip() or info.default_base_url
-    env: dict[str, str] = {}
-    config = _agent_config("", provider_id)
-
-    if info.custom:
-        if not base_url:
-            raise ValueError("El proveedor compatible necesita una base URL.")
-        custom: dict[str, Any] = {
-            "name": "SLAnything · endpoint compatible",
-            "package": "@opencode/ai/providers/openai-compatible",
-            "settings": {"baseURL": base_url},
-            "models": {model: {"name": model}},
-        }
-        if key:
-            custom["env"] = [CUSTOM_ENV]
-            env[CUSTOM_ENV] = key
-        config["providers"] = {CUSTOM_PROVIDER_ID: custom}
-        model_ref = f"{CUSTOM_PROVIDER_ID}/{model}"
-    elif provider_id in {"ollama", "lmstudio"}:
-        providers = config.setdefault("providers", {})
-        providers[provider_id] = {
-            "settings": {"baseURL": base_url},
-            "models": {model: {"name": model}},
-        }
-        model_ref = f"{provider_id}/{model}"
-    else:
-        if info.requires_key and not key:
-            raise ValueError(f"Falta la API key de {info.label}.")
-        if info.env and key:
-            env[info.env] = key
-        if base_url:
-            providers = config.setdefault("providers", {})
-            providers[provider_id] = {
-                "settings": {"baseURL": base_url},
-            }
-        model_ref = f"{provider_id}/{model}"
-
-    config["model"] = model_ref
-    return config, env, model_ref
+    if info.adk_provider != "claude-code" and not model:
+        raise ValueError("Falta el modelo del proveedor.")
+    if info.requires_key and not key:
+        raise ValueError(f"Falta la credencial de {info.label}.")
+    kwargs: dict[str, Any] = {"provider": info.adk_provider, "model": model}
+    if info.adk_provider == "claude-code":
+        return kwargs
+    kwargs["api_key"] = key
+    base_url = str(settings.get("base_url") or "").strip() if info.base_url_editable else ""
+    base_url = base_url or info.default_base_url or ""
+    if base_url:
+        kwargs["base_url"] = base_url
+    elif info.adk_provider == "openai-compatible":
+        raise ValueError("El proveedor necesita una base URL.")
+    return kwargs

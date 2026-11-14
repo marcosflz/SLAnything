@@ -18,8 +18,9 @@ Por encima, la **superadministración** gestiona usuarios, espacios, cuotas,
 cursos abiertos y el proveedor de IA de toda la plataforma.
 
 La interfaz es **Next.js 16 + React 19**; el backend es **FastAPI + SQLite** y la
-generación usa un motor por etapas con salida JSON (OpenCode queda como motor
-opcional). La biblioteca empieza **vacía**: el repositorio incluye, como
+generación usa un motor por etapas en el que cada paso es un **agente propio
+construido con [nas-adk](https://github.com/marcosflz/nas-adk)**, con herramientas
+validadas; cada persona puede usar su propia API key o su suscripción de Claude. La biblioteca empieza **vacía**: el repositorio incluye, como
 **curso de ejemplo opcional**, «Construye un LLM desde cero» (basado en *Build a
 Large Language Model (From Scratch)*), que se activa con `AULA_SAMPLE_COURSES=1`.
 
@@ -107,9 +108,11 @@ código de clase.
 Entra con la cuenta individual o con la profesora y abre
 <http://127.0.0.1:3000/estudio>.
 
-1. La superadministración configura el proveedor en `/plataforma/ia` (OpenCode
-   Go, OpenAI, Anthropic, OpenRouter, Gemini, DeepSeek, Ollama/LM Studio o un
-   endpoint OpenAI-compatible). Para probar sin red: `AULA_LLM_FAKE=1`.
+1. La superadministración configura el proveedor de la plataforma en
+   `/plataforma/ia` (OpenCode Go, OpenAI, Anthropic, OpenRouter, Gemini, DeepSeek,
+   Ollama/LM Studio o un endpoint OpenAI-compatible). Cada persona que crea
+   unidades puede usar el suyo en «Mi cuenta», incluida su suscripción personal de
+   Claude (`claude setup-token`), que nunca se comparte. Sin red: `AULA_LLM_FAKE=1`.
 2. Sube uno o varios documentos (PDF, DOCX, EPUB, ODT, Markdown, HTML o TXT),
    elige idiomas y qué secciones convertir.
 3. Revisa y edita el temario, genera las lecciones y revisa la unidad: citas,
@@ -209,7 +212,7 @@ webapp/
   analytics.py            # eventos de aprendizaje y KPIs
   routers/                # api, authoring, admin, platform, analytics, workspaces, execution
   generation/             # motor de generación por etapas
-  authoring/              # Estudio: ajustes, extracción, contrato JSON, almacén y OpenCode
+  authoring/              # Estudio: proveedores, credenciales, extracción, contrato JSON y almacén
   content/                # curso de ejemplo (ES/EN) como módulos Python
   static/
     js/labs/              # 15 laboratorios del curso de ejemplo
@@ -219,7 +222,7 @@ webapp/
 docs/
   PLAN_PLATAFORMA_WEB.md  # plan de acción e implementación
   CONTRATO_AGENTES.md     # contratos del agent swarm
-  AUTHORING.md            # documentos → unidades con OpenCode
+  AUTHORING.md            # documentos → unidades con agentes nas-adk
   DESKTOP.md              # web + PWA y ruta a escritorio
   QA.md                   # estrategia y resultados de pruebas
 notebooks/
@@ -244,7 +247,7 @@ npm run e2e                                # E2E_BASE para otra URL
 npm run e2e:labs                           # 15 laboratorios; requiere AULA_SAMPLE_COURSES=1
 ```
 
-La suite (196 tests) cubre perfiles y permisos, registro por invitación,
+La suite (211 tests) cubre perfiles y permisos, registro por invitación,
 altas (individual, academia, código e invitación), biblioteca vacía, curso activo, aislamiento por espacio,
 superadministración, matrículas, autenticación, CSRF, progreso, quiz, analítica,
 generación por etapas con modelo falso, Estudio, ejecución Python, contenido del
@@ -314,6 +317,7 @@ n-gramas.
 Las estimaciones de tokens, memoria y coste son aproximadas y de orden de magnitud; no
 sustituyen una medición sobre hardware real.
 
-El Estudio usa [OpenCode](https://opencode.ai/) como motor de autoría. El binario
-se instala desde el paquete oficial `@opencode/cli`; su licencia y la del
-proveedor LLM elegido son independientes de SLAnything.
+El Estudio usa [nas-adk](https://github.com/marcosflz/nas-adk) para sus agentes y,
+para la suscripción personal de Claude, el CLI oficial de
+[Claude Code](https://claude.com/claude-code). Sus licencias, las condiciones de
+Anthropic y las del proveedor LLM elegido son independientes de SLAnything.

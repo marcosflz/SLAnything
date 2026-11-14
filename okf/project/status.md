@@ -28,13 +28,13 @@ sources:
 | Curso de ejemplo | Construye un LLM desde cero (`AULA_SAMPLE_COURSES=1`): 7 capítulos, 56 lecciones, 15 labs, 7 quizzes, 113 términos, 26 ejemplos Python |
 | Idiomas | Español e inglés |
 | Acceso | Registro solo por invitación (`AULA_OPEN_SIGNUP=0`, ADR-022) |
-| Tests | 196 passed |
+| Tests | 211 passed |
 | E2E | `npm run e2e` (perfiles) y `npm run e2e:labs` en verde con y sin ejemplos |
 | Repositorio | GitHub privado · `marcosflz/SLAnything` |
 | Servidor local | Next `http://127.0.0.1:3000` · FastAPI `http://127.0.0.1:8000` |
-| Empaquetado | Docker Compose (`slanything-backend`, `slanything-frontend`; volumen histórico `aula-llm-data`) con OpenCode |
+| Empaquetado | Docker Compose (`slanything-backend`, `slanything-frontend`; volumen histórico `aula-llm-data`) con agentes nas-adk y CLI de Claude Code |
 | Base de datos | `aula.db` (SQLite v3, ignorada por git) |
-| Autoría | `/estudio` · OpenCode portable + proveedor configurable + PWA |
+| Autoría | `/estudio` · agentes nas-adk (ADR-023) + proveedor de plataforma o propio por usuario, incluida la suscripción de Claude (ADR-024) + PWA |
 | Última verificación | 2026-11-14 |
 
 # Qué está hecho
@@ -67,14 +67,14 @@ sistema de diseño Tailwind con shell nuevo. Ver
 
 
 - **Estudio de autoría** (`/estudio`, solo profesorado): subida de PDF, DOCX,
-  EPUB, ODT, Markdown, HTML o TXT; extracción y troceado; generación con OpenCode
-  en un subproceso aislado; paquete JSON bilingüe validado y saneado; borrador,
-  publicación, despublicación y borrado. Una reparación automática si el primer
-  paquete no pasa el contrato.
-- **OpenCode portable en la imagen Docker** (`v2.1.4`) y configuración de
-  proveedor desde la web: OpenCode Go, modelos gratuitos de OpenCode, OpenAI,
+  EPUB, ODT, Markdown, HTML o TXT; generación por etapas con agentes nas-adk que
+  entregan con herramientas validadas; paquete JSON bilingüe validado y saneado;
+  borrador, publicación, despublicación y borrado.
+- **Proveedores vía nas-adk**: OpenCode Go, OpenCode Zen gratuitos, OpenAI,
   Anthropic, OpenRouter, Gemini, DeepSeek, Ollama, LM Studio o endpoint
-  OpenAI-compatible. La API key vive en `authoring/settings.json` (0600).
+  OpenAI-compatible para la plataforma (`authoring/settings.json`, 0600); cada
+  usuario con autoría puede usar su API key o su suscripción de Claude desde
+  «Mi cuenta» (cifrada, nunca compartida).
 - **Catálogo dinámico**: los cursos generados se integran en `content_for` y
   comparten catálogo, lecciones, quizzes, glosario, búsqueda, progreso y panel del
   profesor. Slugs con prefijo `gen-`.
@@ -132,8 +132,9 @@ npm start
 ```
 
 Estudio: abre `/estudio` con `autodidacta@slanything.local / auto1234` o
-`profe@slanything.local / profe1234`. Sin red: `AULA_LLM_FAKE=1`. En Docker,
-OpenCode ya está dentro de la imagen; en local instala `@opencode/cli`. Smoke
+`profe@slanything.local / profe1234`. Sin red: `AULA_LLM_FAKE=1`. Los agentes son
+nas-adk (dependencia Python); la suscripción de Claude necesita el CLI `claude`
+(incluido en la imagen Docker). Smoke
 test con ambos servidores: `uv run python tools/smoke_next.py`.
 E2E de navegador: `cd frontend; npm run e2e`.
 Montaje de los 15 labs: `cd frontend; npm run e2e:labs`.

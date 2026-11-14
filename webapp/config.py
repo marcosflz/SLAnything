@@ -32,7 +32,7 @@ SITE_NAME = "SLAnything"
 SITE_TAGLINE = "Convierte cualquier material en un curso."
 
 # ---------------------------------------------------------------------------
-# Estudio de autoría · OpenCode + documentos
+# Estudio de autoría · agentes nas-adk + documentos (ADR-023)
 # ---------------------------------------------------------------------------
 # Los datos de autoría (subidas, logs y la API key) viven fuera de la base de
 # datos, en un directorio privado. En Docker se monta dentro del volumen /data.
@@ -40,15 +40,17 @@ AUTHORING_DIR = Path(
     os.environ.get("AULA_AUTHORING_DIR", BASE_DIR / "authoring-data")
 ).resolve()
 AUTHORING_ENABLED = os.environ.get("AULA_AUTHORING_ENABLED", "1") == "1"
-AUTHORING_OPENCODE_BIN = os.environ.get("AULA_AUTHORING_OPENCODE_BIN", "opencode")
 AUTHORING_TIMEOUT = int(os.environ.get("AULA_AUTHORING_TIMEOUT", "1800"))
 AUTHORING_MAX_UPLOAD_MB = int(os.environ.get("AULA_AUTHORING_MAX_UPLOAD_MB", "25"))
 AUTHORING_MAX_FILES = int(os.environ.get("AULA_AUTHORING_MAX_FILES", "5"))
-# ~75k tokens de texto extraído. Un libro completo se trocea por partes; si se
-# supera este límite se recorta y se avisa al agente en meta.json.
+# Límite informativo de texto por documento que muestra el Estudio.
 AUTHORING_MAX_CHARS = int(os.environ.get("AULA_AUTHORING_MAX_CHARS", "300000"))
 AUTHORING_MAX_JOBS = int(os.environ.get("AULA_AUTHORING_MAX_JOBS", "3"))
-AUTHORING_HOME = AUTHORING_DIR / "opencode-home"
+# Credenciales de IA propias de cada usuario (ADR-024) y suscripción personal
+# de Claude a través del CLI de Claude Code. Se leen en cada petición.
+USER_PROVIDERS = os.environ.get("AULA_USER_PROVIDERS", "1") == "1"
+SUBSCRIPTION_PROVIDER = os.environ.get("AULA_SUBSCRIPTION_PROVIDER", "1") == "1"
+CLAUDE_CODE_BIN = os.environ.get("AULA_CLAUDE_CODE_BIN", "claude")
 
 # Cursos de ejemplo incluidos en el repositorio (hoy, «Construye un LLM desde
 # cero»). Son opcionales: la plataforma funciona con la biblioteca vacía y todo
@@ -111,8 +113,8 @@ WORKSPACE_COOKIE = "aula_ws"
 # ---------------------------------------------------------------------------
 # Generación por etapas (webapp/generation, ADR-017/019)
 # ---------------------------------------------------------------------------
-# Motor por defecto del Estudio: "direct" (etapas JSON) u "opencode" (agente).
-GEN_DEFAULT_ENGINE = os.environ.get("AULA_GEN_ENGINE", "direct")
+# Presupuesto de contexto (tokens estimados) de cada agente nas-adk.
+GEN_CONTEXT_TOKENS = int(os.environ.get("AULA_GEN_CONTEXT_TOKENS", "60000"))
 # Hilos del pool de generación dentro del proceso web.
 GEN_WORKERS = int(os.environ.get("AULA_GEN_WORKERS", "2"))
 # Lecciones en paralelo por trabajo (limita la concurrencia contra el proveedor).

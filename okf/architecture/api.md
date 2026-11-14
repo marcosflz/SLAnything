@@ -127,6 +127,19 @@ metadatos, sin duplicar el contenido completo.
   `/downloads/plan` ya no existe y `/downloads/notebook` exige ejemplos activos.
 - Los tipos TypeScript espejo están en `frontend/src/lib/types.ts`.
 
+# Estudio y proveedor de IA (2026-11-14)
+
+- `POST /api/v1/authoring/jobs` ya no acepta `engine`; todos los trabajos son
+  `adk` ([ADR-023](/decisions/adr-023-nas-adk-agents.md)). `GET /api/v1/authoring`
+  devuelve `ai` (`source` user|platform, proveedor y modelo, sin secretos) en lugar
+  de `default_engine`; `settings.engine` informa de la versión de nas-adk.
+- `GET|PUT|DELETE /api/v1/account/ai` y `POST /api/v1/account/ai/test`: proveedor
+  propio de quien tiene `author` ([ADR-024](/decisions/adr-024-user-ai-credentials.md));
+  el alumnado recibe 403. `PUT` acepta `provider`, `model`, `secret` y
+  `accept_personal` (obligatorio para `claude-code`).
+- `PUT /api/v1/authoring/settings` y `/api/v1/platform/ai` excluyen `claude-code`.
+- `POST /courses/{slug}/regenerate` y las etapas usan las credenciales de quien las pide.
+
 # Cambios
 
 Al añadir o modificar una ruta:

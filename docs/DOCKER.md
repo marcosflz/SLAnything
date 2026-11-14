@@ -4,7 +4,7 @@ SLAnything se empaqueta en dos imágenes:
 
 | Imagen | Contenido | Puerto |
 |---|---|---|
-| `slanything-backend:local` | FastAPI, contenido, SQLite, API JSON, runner Python y OpenCode portable | 8000 interno |
+| `slanything-backend:local` | FastAPI, contenido, SQLite, API JSON, runner Python, agentes nas-adk y CLI de Claude Code (versión fija) | 8000 interno |
 | `slanything-frontend:local` | Next.js 16 en modo `standalone` + PWA | 3000 público |
 
 `compose.yaml` las conecta en una red privada. El navegador solo habla con el
@@ -41,9 +41,11 @@ llama ahora `slanything`, pero el volumen conserva su nombre histórico
 
 El frontend espera a que el backend esté `healthy`. El primer arranque crea
 `/data/aula.db` y `/data/authoring/` en el volumen `aula-llm-data` y siembra las
-cuentas demo. La imagen del backend incluye OpenCode (`/usr/local/bin/opencode`)
-para el Estudio; la superadministración configura el proveedor en
-`/plataforma/ia`.
+cuentas demo. La imagen del backend incluye el CLI de Claude Code
+(`/home/aula/.local/bin/claude`, versión `CLAUDE_CODE_VERSION`, sin autoactualizar)
+para las suscripciones personales; `--build-arg INSTALL_CLAUDE_CODE=0` lo omite.
+La superadministración configura el proveedor de la plataforma en `/plataforma/ia`
+y cada autor puede usar el suyo en «Mi cuenta».
 
 ## Comandos habituales
 
@@ -87,9 +89,12 @@ Se leen de `.env` en la raíz. Las principales:
 | `AULA_AUTHORING_MAX_JOBS` | `3` | Trabajos activos por profesor |
 | `TZ` | `Europe/Madrid` | Zona horaria de actividad/rachas |
 
-La API key del proveedor **no** va en `.env`: se guarda desde `/estudio` en
-`/data/authoring/settings.json` (0600) y viaja al subproceso de OpenCode como
-variable de entorno.
+La API key del proveedor **no** va en `.env`: la de la plataforma se guarda desde
+`/plataforma/ia` en `/data/authoring/settings.json` (0600) y las de cada usuario,
+cifradas con una clave derivada de `AULA_SECRET`, en la base de datos. Si cambias
+`AULA_SECRET`, cada usuario debe volver a pegar su credencial.
+`AULA_USER_PROVIDERS` y `AULA_SUBSCRIPTION_PROVIDER` (por defecto `1`) activan el
+proveedor propio y la suscripción de Claude.
 
 `API_INTERNAL_URL` está fijada a `http://backend:8000` dentro de Compose. Si
 cambias el nombre del servicio, actualiza también el `build.args` del frontend.
@@ -175,9 +180,9 @@ El frontend usa `output: "standalone"`; el runtime solo necesita
   `docker compose build backend && docker compose up -d backend`.
 - **Cambios de frontend no aparecen:** reconstruye
   `docker compose build frontend && docker compose up -d frontend`.
-- **El Estudio dice que OpenCode no está:** comprueba
-  `docker compose exec backend opencode --version`. Si falta, reconstruye el
-  backend; el binario se instala en la imagen.
+- **La suscripción de Claude no está disponible:** comprueba
+  `docker compose exec backend claude --version`. Si falta, reconstruye el
+  backend sin `INSTALL_CLAUDE_CODE=0` (necesita acceso a claude.ai al construir).
 - **El Estudio no puede hablar con el proveedor:** el contenedor necesita salida
   a Internet. Para Ollama/LM Studio local, usa `host.docker.internal`; en Linux
   ya está el `extra_hosts` de Compose.

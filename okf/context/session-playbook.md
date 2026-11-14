@@ -37,8 +37,9 @@ sources:
    ```
 
    Comprueba `http://127.0.0.1:8000/health` y `http://127.0.0.1:3000/salud`.
-   Para el Estudio en local, `opencode --version` debe responder; en Docker ya
-   viene incluido y `/estudio` muestra el estado del motor.
+   El Estudio usa agentes nas-adk (dependencia Python, ya en `uv sync`); sin red
+   usa `AULA_LLM_FAKE=1`. La suscripción de Claude necesita el CLI `claude` en el
+   servidor (la imagen Docker lo incluye).
 
 4. Abre solo los conceptos relacionados con la tarea. Para contenido, empieza por
    [lecciones](/product/lessons.md); para backend, por

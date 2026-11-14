@@ -1,6 +1,7 @@
 """Persistencia de trabajos del Estudio y cursos generados.
 
-La tabla guarda el paquete JSON tal cual lo produjo OpenCode, no objetos Python.
+La tabla guarda el paquete JSON tal cual lo ensamblaron los agentes, no objetos
+Python.
 Así se puede auditar, exportar o volver a validar sin ejecutar nada del modelo.
 """
 
@@ -58,6 +59,18 @@ def job_dir(job_id: str) -> Path:
     return ensure_dir() / "jobs" / safe
 
 
+def uploads_dir(job_id: str) -> Path:
+    path = job_dir(job_id) / "uploads"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def write_meta(job_id: str, meta: dict[str, Any]) -> None:
+    path = job_dir(job_id) / "meta.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def log_path(job_id: str) -> Path:
     return job_dir(job_id) / "run.log"
 
@@ -95,6 +108,7 @@ def _row_to_job(row: sqlite3.Row, with_log: bool = True) -> dict[str, Any]:
         "config": _json(row["config_json"]),
         "tokens_in": row["tokens_in"],
         "tokens_out": row["tokens_out"],
+        "actor_id": row["actor_id"] if "actor_id" in row.keys() else row["owner_id"],
     }
     return payload
 
@@ -153,18 +167,19 @@ def create_job(
     model: str,
     languages: list[str],
     workspace_id: int | None = None,
-    engine: str = "opencode",
+    engine: str = "adk",
     job_config: dict[str, Any] | None = None,
 ) -> None:
     conn = connect()
     try:
         conn.execute(
             """INSERT INTO authoring_jobs
-                   (id, owner_id, workspace_id, engine, config_json, title,
+                   (id, owner_id, actor_id, workspace_id, engine, config_json, title,
                     source_names, status, provider, model, languages, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)""",
             (
                 job_id,
+                owner_id,
                 owner_id,
                 workspace_id,
                 engine,
@@ -196,6 +211,7 @@ def update_job(job_id: str, **fields: Any) -> None:
         "config_json",
         "tokens_in",
         "tokens_out",
+        "actor_id",
     }
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:
@@ -270,8 +286,8 @@ def mark_interrupted_jobs() -> int:
                SET status = 'failed',
                    error = 'El servidor se reinició mientras la unidad se generaba. Vuelve a intentarlo.',
                    finished_at = ?
-               WHERE engine = 'opencode'
-                 AND status IN ('queued', 'extracting', 'generating', 'validating')""",
+               WHERE engine NOT IN ('adk', 'direct')
+                 AND status IN ('queued', 'extracting', 'outlining', 'generating', 'validating')""",
             (utcnow(),),
         )
         conn.commit()
@@ -286,7 +302,7 @@ def resumable_jobs() -> list[dict[str, Any]]:
     try:
         rows = conn.execute(
             """SELECT * FROM authoring_jobs
-               WHERE engine = 'direct'
+               WHERE engine IN ('adk', 'direct')
                  AND status IN ('queued', 'extracting', 'outlining', 'generating', 'validating')
                ORDER BY created_at"""
         ).fetchall()

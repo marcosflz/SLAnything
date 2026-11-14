@@ -3,7 +3,7 @@ type: ADR
 title: ADR-012 · Estudio de autoría con OpenCode y superficie web + PWA
 description: Decisión de empaquetar OpenCode en el backend, generar unidades como JSON validado y servir la misma interfaz como web instalable.
 tags: [adr, opencode, autoría, documentos, pwa, docker, seguridad]
-status: stable
+status: deprecated
 date: 2026-10-24
 generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T21:30:00Z }
 sources:
@@ -19,10 +19,12 @@ sources:
   - id: package
     resource: ../../webapp/authoring/package.py
     title: Contrato y validación del paquete
-  - id: runner
-    resource: ../../webapp/authoring/runner.py
-    title: Runner aislado de OpenCode
 ---
+
+> **Sustituido por [ADR-023](/decisions/adr-023-nas-adk-agents.md) (2026-11-14).** OpenCode
+> ya no es el agente de generación: el runner y el binario se retiraron. OpenCode Go sigue
+> disponible como *proveedor* de modelos a través de nas-adk. Se conserva el texto como
+> historia; el contrato JSON validado y la PWA siguen vigentes.
 
 # Contexto
 
@@ -96,6 +98,6 @@ plataforma.
 - [Guía del Estudio](../../docs/AUTHORING.md)
 - [Web, PWA y escritorio](../../docs/DESKTOP.md)
 - [Contrato del paquete](../../webapp/authoring/package.py)
-- [Runner de OpenCode](../../webapp/authoring/runner.py)
+- Runner de OpenCode (`webapp/authoring/runner.py`, retirado en ADR-023)
 - [OpenCode V2 · SDK](https://opencode.ai/v2/docs/build/sdk)
 - [OpenCode V2 · proveedores](https://opencode.ai/v2/docs/providers)

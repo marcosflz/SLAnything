@@ -45,7 +45,7 @@ Actualiza el OKF en la misma sesión en la que ocurra el cambio. Como mínimo:
 | Frontend Next.js o API JSON | `okf/architecture/nextjs-frontend.md`, `okf/architecture/api.md` |
 | Espacios, perfiles, permisos, superadmin o KPIs | `okf/architecture/tenancy-analytics.md`, ADR-021 |
 | Generación por etapas | `okf/architecture/generation.md` |
-| Estudio de autoría, OpenCode o generación desde documentos | `okf/architecture/authoring.md`, `okf/decisions/adr-012-authoring-opencode.md` |
+| Estudio de autoría, agentes nas-adk, proveedores o credenciales de IA | `okf/architecture/authoring.md`, `okf/architecture/generation.md`, ADR-023, ADR-024 |
 | Traducciones ES/EN o contenido inglés | `okf/architecture/i18n.md`, `okf/product/lessons.md` |
 | Ejecución de Python o sandbox | `okf/architecture/execution.md`, `okf/architecture/security.md` |
 | Dependencias, comandos o puertos | `okf/operations/run.md`, `okf/references/commands.md` |
@@ -93,7 +93,7 @@ Además, **siempre**:
 ```powershell
 uv sync
 uv run python aula.py                 # backend FastAPI · http://127.0.0.1:8000
-uv run python -m pytest -q           # suite del proyecto (196 tests)
+uv run python -m pytest -q           # suite del proyecto (211 tests)
 uv run python tools/check_chapter.py ch02   # valida un paquete de capítulo
 uv run python tools/validate_all_chapters.py
 uv run python tools/check_okf.py     # conformidad y enlaces del OKF
@@ -143,7 +143,10 @@ individual** (aprende y crea sus unidades, sin gestión de aula) o **academia**
 vacía; el curso «Construye un LLM desde cero» (56 lecciones, 15 labs) es solo un
 **ejemplo opcional** (`AULA_SAMPLE_COURSES=1`). El registro es **solo por
 invitación** (`AULA_OPEN_SIGNUP=0`): el superadmin invita a cuentas individuales y
-profesorado, y el profesorado a su alumnado. Ver ADR-020, ADR-021 y ADR-022. La única interfaz es
+profesorado, y el profesorado a su alumnado. Ver ADR-020, ADR-021 y ADR-022.
+Las unidades las generan **agentes propios con nas-adk** (ADR-023) con el
+proveedor de la plataforma o el propio de cada autor, incluida su suscripción de
+Claude (ADR-024). La única interfaz es
 **Next.js 16 + React 19** (Tailwind v4); el backend es **FastAPI + SQLite** y
 solo expone API. Los identificadores internos `aula_*` se mantienen por
 compatibilidad.
@@ -162,9 +165,13 @@ compatibilidad.
   `require_admin`, `require_platform_admin`), `webapp/routers/admin.py` y
   `webapp/routers/platform.py`. Usa siempre `Depends(get_db, scope="function")`.
 - **Analítica**: `webapp/analytics.py` y `webapp/routers/analytics.py`.
-- **Generación por etapas**: `webapp/generation/` (motor `direct`); el motor
-  OpenCode sigue en `webapp/authoring/` y su agente en
-  `webapp/authoring/agent/AGENTS.md`.
+- **Generación**: `webapp/generation/` con agentes **nas-adk** (ADR-023):
+  `agents.py` (instrucciones y límites), `tools.py` (herramientas `read_fragment`,
+  `search_document`, `check_lesson`, `submit_*`), `runtime.py` (Runner, errores,
+  cancelación) y `models.py` (ajustes → modelo; `FakeAgentLlm`). Proveedores en
+  `webapp/authoring/providers.py`; credenciales por usuario en
+  `webapp/authoring/credentials.py` y `routers/account_ai.py` (ADR-024). Una
+  credencial se usa siempre con quien lanza la acción, nunca para otra persona.
 - **Esquema**: cambios nuevos solo como migración en `webapp/migrations.py`.
 - **Ejecución Python** vive en `webapp/execution.py` + `sandbox_runner.py`.
 

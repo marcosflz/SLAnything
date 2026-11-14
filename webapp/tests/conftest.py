@@ -42,7 +42,6 @@ def db_path(tmp_path, monkeypatch):
     # El Estudio también se aísla: ningún test debe escribir en authoring-data/
     # del repositorio ni leer cursos generados reales.
     monkeypatch.setattr(config, "AUTHORING_DIR", tmp_path / "authoring")
-    monkeypatch.setattr(config, "AUTHORING_HOME", tmp_path / "authoring" / "home")
     # La mayoría de la suite ejercita el curso de ejemplo (lecciones, quiz,
     # labs). Los tests de biblioteca vacía lo desactivan con ``no_samples``.
     monkeypatch.setattr(config, "SAMPLE_COURSES", True)

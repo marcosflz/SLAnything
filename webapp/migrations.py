@@ -347,11 +347,47 @@ def _m0007_platform_invitations(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m0008_adk_engine(conn: sqlite3.Connection) -> None:
+    """Motor único nas-adk (ADR-023) y credenciales de IA por usuario (ADR-024).
+
+    - ``user_ai_settings``: proveedor, modelo y secreto cifrado de cada persona.
+    - ``authoring_jobs.actor_id``: quién lanzó la última acción del trabajo; sus
+      credenciales son las que se usan al reanudar.
+    - Los trabajos del motor por etapas pasan a ``adk``; los de OpenCode que
+      quedaron a medias se cierran (su motor ya no existe).
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS user_ai_settings (
+            user_id              INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            provider             TEXT NOT NULL,
+            model                TEXT NOT NULL DEFAULT '',
+            secret_enc           TEXT,
+            secret_hint          TEXT,
+            accepted_personal_at TEXT,
+            updated_at           TEXT NOT NULL
+        );
+        """
+    )
+    _add_column(conn, "authoring_jobs", "actor_id", "INTEGER")
+    conn.execute("UPDATE authoring_jobs SET actor_id = owner_id WHERE actor_id IS NULL")
+    conn.execute("UPDATE authoring_jobs SET engine = 'adk' WHERE engine = 'direct'")
+    conn.execute(
+        """UPDATE authoring_jobs
+           SET status = 'failed',
+               error = 'El motor OpenCode se ha retirado; vuelve a generar la unidad.',
+               finished_at = COALESCE(finished_at, created_at)
+           WHERE engine = 'opencode'
+             AND status IN ('queued', 'extracting', 'outlining', 'generating', 'validating')"""
+    )
+
+
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (4, _m0004_workspaces_and_events),
     (5, _m0005_staged_generation),
     (6, _m0006_account_profiles),
     (7, _m0007_platform_invitations),
+    (8, _m0008_adk_engine),
 ]
 
 LATEST_VERSION = MIGRATIONS[-1][0]

@@ -9,11 +9,12 @@ Android o iPad. No hay dos productos que mantener.
 El Estudio necesita tres cosas que ya viven en el servidor:
 
 1. FastAPI y SQLite con sesiones, catálogo y progreso.
-2. El binario de OpenCode y el sistema de ficheros para los documentos.
+2. Los agentes nas-adk (y el CLI de Claude Code para suscripciones) y el sistema
+   de ficheros para los documentos.
 3. El sandbox de Python que ejecuta los ejemplos de las lecciones.
 
 Una app de escritorio que solo cargue la web no aporta nada nuevo. Una app que
-quiera funcionar sin servidor tendría que empaquetar Python, SQLite, OpenCode y
+quiera funcionar sin servidor tendría que empaquetar Python, SQLite, el CLI de Claude Code y
 un binario por plataforma, además de resolver actualizaciones y firma de código.
 Es un producto distinto, no una versión de la web.
 
@@ -40,22 +41,21 @@ es **Tauri 2** con la web existente y dos sidecars:
 SLAnything.app
   ├─ Tauri shell (WebView) → http://127.0.0.1:3000
   ├─ sidecar backend FastAPI + SQLite
-  └─ sidecar opencode (binario por plataforma)
+  └─ sidecar claude (CLI por plataforma, solo para suscripciones)
 ```
 
 Ventajas: ventana nativa, menú, actualizaciones y acceso local sin Docker.
-Costes: compilar y firmar para tres sistemas, versionar el binario de OpenCode,
+Costes: compilar y firmar para tres sistemas, versionar el CLI de Claude Code,
 gestionar el puerto local, migraciones de SQLite y el sandbox de Python.
 
 Mientras eso no sea un requisito, Docker + PWA cubre escritorio y móvil con el
-mismo código. La app de escritorio oficial de OpenCode no sustituye a SLAnything:
-no tiene el catálogo, el progreso, los quizzes ni el contrato de unidades.
+mismo código.
 
 ## Alternativas descartadas por ahora
 
 - **Electron**: funciona, pero añade ~150 MB y un runtime propio para cargar la
   misma web.
-- **Solo frontend estático**: no puede ejecutar OpenCode ni Python de forma
+- **Solo frontend estático**: no puede ejecutar los agentes ni Python de forma
   segura.
 - **Dos interfaces separadas**: ya existen Next y Jinja como fallback; añadir una
   tercera multiplicaría la deuda sin mejorar el producto.

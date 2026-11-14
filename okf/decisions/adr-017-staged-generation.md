@@ -13,10 +13,14 @@ sources:
   - id: document
     resource: ../../webapp/generation/document.py
     title: Ingesta
-  - id: llm
-    resource: ../../webapp/generation/llm.py
-    title: Cliente LLM
+  - id: runtime
+    resource: ../../webapp/generation/runtime.py
+    title: Agentes nas-adk (antes cliente LLM propio)
 ---
+
+> **Matizado por [ADR-023](/decisions/adr-023-nas-adk-agents.md) (2026-11-14).** Las etapas se
+> mantienen, pero cada llamada al modelo es ahora un agente nas-adk que entrega con
+> herramientas `submit_*`; el cliente `llm.py` y el motor OpenCode se retiraron.
 
 > Relación: supersede en parte ADR-012.
 

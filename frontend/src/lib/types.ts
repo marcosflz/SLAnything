@@ -413,16 +413,52 @@ export interface AuthoringProvider {
   label: string;
   requires_key: boolean;
   default_base_url: string | null;
+  base_url_editable: boolean;
   models: string[];
+  model_optional: boolean;
   notes: string;
+  /** Suscripción personal: solo la configura su titular (ADR-024). */
+  personal: boolean;
 }
 
+/** Estado del motor de agentes nas-adk (ADR-023). */
 export interface AuthoringEngine {
   enabled: boolean;
   available: boolean;
   version: string | null;
-  binary: string;
   message: string;
+}
+
+/** Con qué proveedor generará la persona actual (sin secretos). */
+export interface AuthoringAi {
+  source: "user" | "platform";
+  provider: string;
+  provider_label: string;
+  model: string;
+  personal: boolean;
+}
+
+export interface ClaudeCliStatus {
+  available: boolean;
+  version: string | null;
+  message: string;
+}
+
+/** Proveedor de IA propio de un usuario (`/api/v1/account/ai`). */
+export interface UserAiSettings {
+  enabled: boolean;
+  subscription_enabled: boolean;
+  configured: boolean;
+  active: boolean;
+  provider: string | null;
+  model: string;
+  key_configured: boolean;
+  key_hint: string;
+  accepted_personal_at: string | null;
+  updated_at: string | null;
+  providers: AuthoringProvider[];
+  claude_cli: ClaudeCliStatus | null;
+  warning?: string;
 }
 
 export interface AuthoringSettings {
@@ -457,7 +493,8 @@ export interface AuthoringJob {
   status_label: string;
   owner_id?: number;
   workspace_id?: number | null;
-  engine: "direct" | "opencode";
+  /** "adk" = agentes nas-adk; "direct" y "opencode" son trabajos anteriores. */
+  engine: "adk" | "direct" | "opencode";
   stage: string;
   progress: {
     sections?: number;
@@ -616,7 +653,7 @@ export interface CourseOutline {
 
 export interface JobEvent {
   ts: string;
-  type: "stage" | "progress" | "done" | "warning" | "error" | "ready" | "cancelled";
+  type: "stage" | "progress" | "done" | "warning" | "error" | "ready" | "cancelled" | "tool";
   message: string;
   stage?: string;
   done?: number;
@@ -629,7 +666,7 @@ export interface AuthoringPayload {
   jobs: AuthoringJob[];
   courses: AuthoringCourse[];
   can_configure: boolean;
-  default_engine: "direct" | "opencode";
+  ai: AuthoringAi;
   quota: { limit: number; used: number; remaining: number };
   limits: {
     max_upload_mb: number;

@@ -3,6 +3,7 @@
 import {
   ArrowRight,
   BookOpen,
+  Bot,
   FileText,
   FileUp,
   Globe2,
@@ -39,7 +40,6 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
   const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState("");
   const [languages, setLanguages] = useState<string[]>(["es"]);
-  const [engine, setEngine] = useState(initial.default_engine);
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,17 +77,11 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
     const body = new FormData();
     body.set("title", title);
     body.set("notes", notes);
-    body.set("engine", engine);
     languages.forEach((code) => body.append("languages", code));
     files.forEach((file) => body.append("files", file));
     try {
       const job = await apiUpload<AuthoringJob>("/api/v1/authoring/jobs", body, csrf);
-      router.push(job.engine === "direct" ? `/estudio/trabajos/${job.id}` : "/estudio");
-      if (job.engine !== "direct") {
-        setData(await apiGetClient<AuthoringPayload>("/api/v1/authoring"));
-        setFiles([]);
-        setBusy(false);
-      }
+      router.push(`/estudio/trabajos/${job.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);
@@ -214,17 +208,19 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
               >
                 <Textarea id="unit-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
               </Field>
-              <details className="text-sm">
-                <summary className="cursor-pointer text-muted-foreground">{pick(lang, "Opciones avanzadas", "Advanced options")}</summary>
-                <div className="mt-3">
-                  <Field label={pick(lang, "Motor de generación", "Generation engine")} htmlFor="engine">
-                    <NativeSelect id="engine" value={engine} onChange={(e) => setEngine(e.target.value as "direct" | "opencode")}>
-                      <option value="direct">{pick(lang, "Por etapas (recomendado): temario editable, citas y verificación", "Staged (recommended): editable outline, citations, verification")}</option>
-                      <option value="opencode">{pick(lang, "OpenCode (agente, una sola pasada)", "OpenCode (agent, single pass)")}</option>
-                    </NativeSelect>
-                  </Field>
-                </div>
-              </details>
+              <p className="m-0 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <Bot className="size-3.5" aria-hidden="true" />
+                {data.ai.source === "user"
+                  ? pick(lang, "Generarás con tu proveedor:", "You will generate with your provider:")
+                  : pick(lang, "Generarás con el proveedor de la plataforma:", "You will generate with the platform provider:")}
+                {" "}
+                <span className="font-medium text-foreground">
+                  {data.ai.provider_label + (data.ai.model ? ` · ${data.ai.model}` : "")}
+                </span>
+                <Link href="/cuenta#proveedor-ia" className="ml-1">
+                  {pick(lang, "Cambiar", "Change")}
+                </Link>
+              </p>
               {error ? <p className="m-0 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</p> : null}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-xs text-muted-foreground">
@@ -351,7 +347,8 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
 function JobRow({ job, lang }: { job: AuthoringJob; lang: Lang }) {
   const total = job.progress?.lessons_total ?? 0;
   const done = job.progress?.lessons_done ?? 0;
-  const href = job.engine === "direct" ? `/estudio/trabajos/${job.id}` : job.course_slug ? `/estudio/cursos/${job.course_slug}` : null;
+  const legacy = job.engine === "opencode";
+  const href = !legacy ? `/estudio/trabajos/${job.id}` : job.course_slug ? `/estudio/cursos/${job.course_slug}` : null;
   const content = (
     <>
       <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -359,7 +356,7 @@ function JobRow({ job, lang }: { job: AuthoringJob; lang: Lang }) {
         <span className="block truncate text-sm font-medium text-foreground">{job.title}</span>
         <span className="block truncate text-xs text-muted-foreground">
           {job.source_names.join(", ")} · {relativeDays(job.created_at, lang)}
-          {job.engine === "opencode" ? " · OpenCode" : ""}
+          {legacy ? pick(lang, " · motor anterior", " · previous engine") : ""}
         </span>
         {job.error ? <span className="block truncate text-xs text-destructive">{job.error}</span> : null}
       </span>
@@ -420,7 +417,13 @@ export function ProviderSettings({ initial, csrf, lang }: { initial: AuthoringSe
           <CardTitle className="flex items-center gap-2">
             <Settings2 className="size-4" /> {pick(lang, "Proveedor de IA de la plataforma", "Platform AI provider")}
           </CardTitle>
-          <CardDescription>{pick(lang, "Solo visible para la administración de la plataforma.", "Only visible to platform admins.")}</CardDescription>
+          <CardDescription>
+            {pick(
+              lang,
+              "Lo usa quien no configura su propio proveedor. Los agentes funcionan con nas-adk {v}.",
+              "Used by anyone without their own provider. Agents run on nas-adk {v}."
+            ).replace("{v}", settings.engine?.version ?? "")}
+          </CardDescription>
         </div>
         {settings.key_configured ? (
           <Pill variant="success">
@@ -455,9 +458,13 @@ export function ProviderSettings({ initial, csrf, lang }: { initial: AuthoringSe
               </datalist>
             </Field>
           </div>
-          <Field label="Base URL" htmlFor="base-url" hint={provider?.notes}>
-            <Input id="base-url" value={settings.base_url} onChange={(e) => setSettings({ ...settings, base_url: e.target.value })} placeholder={provider?.default_base_url ?? ""} />
-          </Field>
+          {provider?.base_url_editable ? (
+            <Field label="Base URL" htmlFor="base-url" hint={provider?.notes}>
+              <Input id="base-url" value={settings.base_url} onChange={(e) => setSettings({ ...settings, base_url: e.target.value })} placeholder={provider?.default_base_url ?? ""} />
+            </Field>
+          ) : (
+            <p className="m-0 text-xs text-muted-foreground">{provider?.notes}</p>
+          )}
           <Field label="API key" htmlFor="api-key">
             <Input id="api-key" type="password" autoComplete="off" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={settings.key_configured ? "••••••••" : ""} />
           </Field>

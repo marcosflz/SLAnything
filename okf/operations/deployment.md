@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: Despliegue mínimo
-description: Cómo desplegar SLAnything con Uvicorn, SQLite, OpenCode y un proxy TLS.
+description: Cómo desplegar SLAnything con Uvicorn, SQLite, agentes nas-adk y un proxy TLS.
 tags: [despliegue, produccion, sqlite, tls, uvicorn]
 status: stable
 generated: { by: opencode/deepseek-v4.1-flash, at: 2026-10-24T12:00:00Z }
@@ -30,9 +30,10 @@ docker compose ps
 - `frontend` publica `${AULA_HTTP_PORT:-3000}`.
 - SQLite vive en el volumen `aula-llm-data` (`/data/aula.db`).
 - El Estudio vive en el mismo volumen (`/data/authoring`): subidas, logs,
-  `settings.json` y el `HOME` aislado de OpenCode.
-- La imagen del backend incluye OpenCode (`/usr/local/bin/opencode` v2.1.4);
-  necesita salida a Internet hacia el proveedor LLM elegido.
+  `settings.json` y los `CLAUDE_CONFIG_DIR` por usuario (`/data/authoring/claude/<id>`).
+- La imagen del backend incluye el CLI de Claude Code (versión fija) para la
+  suscripción personal; los agentes son nas-adk. Necesita salida a Internet hacia
+  el proveedor LLM elegido.
 - Healthchecks: `/health` en backend y `/salud` a través de Next.
 - `docker compose down` conserva datos; `down -v` los borra.
 
