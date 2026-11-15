@@ -82,15 +82,20 @@ sources:
 
 - Los agentes corren dentro del backend con herramientas Python que solo leen los
   fragmentos del trabajo y entregan resultados validados; sin shell, red ni rutas.
-- Credenciales: la de la plataforma en `settings.json` (0600); las de cada usuario
-  cifradas con Fernet (clave derivada de `AULA_SECRET`) en `user_ai_settings`.
+- Credenciales: la de la plataforma en `settings.json` (0600); las de cada usuario y las
+  compartidas por una academia, cifradas con Fernet (clave derivada de `AULA_SECRET`) en
+  `ai_providers` ([ADR-025](/decisions/adr-025-multiple-ai-providers.md)). Una academia
+  solo comparte claves de API, y solo con su profesorado.
   Ninguna se devuelve a la API (solo los 4 últimos caracteres).
 - Se genera siempre con las credenciales de quien lanza la acción
   (`authoring_jobs.actor_id`); una suscripción nunca se usa para otra persona ni es
   el proveedor de la plataforma. El alumnado no tiene acceso (403).
 - La suscripción de Claude se pasa solo al proceso hijo del CLI
-  (`CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CONFIG_DIR` propio 0700), con `ANTHROPIC_*`
+  (`ClaudeCodeLlm(oauth_token=…)`, `CLAUDE_CONFIG_DIR` propio 0700), con `ANTHROPIC_*`
   eliminadas; nas-adk aísla el CLI (sin herramientas, MCP ni sesión persistente).
+- ChatGPT: la sesión (token de acceso de 1 h y de refresco rotatorio) se guarda cifrada;
+  la renovación se serializa por persona y, si OpenAI la rechaza, se borra y se pide
+  volver a vincular. La vinculación web exige consentimiento y caduca a los 10 minutos.
 - Los usuarios no eligen base URL: los endpoints propios son solo de la plataforma.
 - Los documentos se tratan como datos no confiables: las instrucciones que
   contengan se ignoran. El HTML resultante se sanea y el JSON se valida.

@@ -23,7 +23,7 @@ def test_migrations_upgrade_a_v3_database(tmp_path):
 
     applied = migrations.migrate(conn)
 
-    assert applied == [4, 5, 6, 7, 8]
+    assert applied == [4, 5, 6, 7, 8, 9]
     assert migrations.current_version(conn) == migrations.LATEST_VERSION
     columns = {row[1] for row in conn.execute("PRAGMA table_info(generated_courses)")}
     assert {"workspace_id", "visibility"} <= columns
@@ -33,6 +33,9 @@ def test_migrations_upgrade_a_v3_database(tmp_path):
         "WHERE u.email = 'old@example.com'"
     )]
     assert kinds == ["personal"]
+    # v9: tabla de proveedores múltiples y predeterminado por usuario.
+    assert {row[1] for row in conn.execute("PRAGMA table_info(ai_providers)")} >= {"scope_kind", "models_json"}
+    assert "ai_default_json" in {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     # Idempotente: una segunda pasada no aplica nada.
     assert migrations.migrate(conn) == []
     conn.close()
@@ -164,3 +167,37 @@ def test_generated_courses_are_isolated_between_workspaces(client, db_path):
     outsider_titles = {course["title"] for course in outsider_catalog}
     assert len(teacher_titles) > len(outsider_titles)
     assert len(anon) == len(outsider_catalog)
+
+
+
+def test_v9_copies_the_single_user_provider_into_the_multi_provider_table(tmp_path):
+    import json
+
+    path = tmp_path / "v8.db"
+    conn = sqlite3.connect(path)
+    conn.executescript(SCHEMA)
+    conn.execute("PRAGMA user_version = 3")
+    conn.execute(
+        "INSERT INTO users (email, name, password_hash, role, created_at) "
+        "VALUES ('ana@example.com', 'Ana', 'x', 'teacher', '2026-01-01')"
+    )
+    conn.commit()
+    migrations.migrate(conn)
+    uid = conn.execute("SELECT id FROM users WHERE email = 'ana@example.com'").fetchone()[0]
+    # Simula una base que estaba en v8 con un proveedor propio guardado.
+    conn.execute("DELETE FROM ai_providers")
+    conn.execute("UPDATE users SET ai_default_json = NULL")
+    conn.execute(
+        "INSERT INTO user_ai_settings (user_id, provider, model, secret_enc, secret_hint, updated_at) "
+        "VALUES (?, 'claude-code', '', 'enc', '••••abcd', '2026-11-14')",
+        (uid,),
+    )
+    conn.execute("PRAGMA user_version = 8")
+    conn.commit()
+    assert migrations.migrate(conn) == [9]
+    row = conn.execute("SELECT provider, secret_enc, default_model, models_json FROM ai_providers").fetchone()
+    assert row[0] == "claude-code" and row[1] == "enc" and row[2] == "default"
+    assert json.loads(row[3]) == [{"id": "default", "label": "default"}]
+    default = json.loads(conn.execute("SELECT ai_default_json FROM users WHERE id = ?", (uid,)).fetchone()[0])
+    assert default == {"source": "user", "provider": "claude-code", "model": "default"}
+    conn.close()

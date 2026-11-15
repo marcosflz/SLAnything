@@ -14,6 +14,7 @@ una nueva.
 
 from __future__ import annotations
 
+import json
 import re
 import secrets
 import sqlite3
@@ -382,12 +383,65 @@ def _m0008_adk_engine(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m0009_ai_providers(conn: sqlite3.Connection) -> None:
+    """Varios proveedores de IA a la vez y modelos visibles (ADR-025).
+
+    - ``ai_providers``: una configuración por (ámbito, proveedor). Ámbito ``user``
+      (credencial propia, incluidas las suscripciones personales) o ``workspace``
+      (claves de API compartidas por una academia con su profesorado).
+    - ``users.ai_default_json``: proveedor y modelo predeterminados de la persona.
+    - Las filas de ``user_ai_settings`` (v8) se copian como ámbito ``user``; la tabla
+      antigua deja de usarse pero se conserva.
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS ai_providers (
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            scope_kind           TEXT NOT NULL CHECK (scope_kind IN ('user', 'workspace')),
+            scope_id             INTEGER NOT NULL,
+            provider             TEXT NOT NULL,
+            secret_enc           TEXT,
+            secret_hint          TEXT,
+            enabled              INTEGER NOT NULL DEFAULT 1,
+            models_json          TEXT NOT NULL DEFAULT '[]',
+            default_model        TEXT NOT NULL DEFAULT '',
+            accepted_personal_at TEXT,
+            updated_by           INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            updated_at           TEXT NOT NULL,
+            UNIQUE (scope_kind, scope_id, provider)
+        );
+        CREATE INDEX IF NOT EXISTS idx_ai_providers_scope ON ai_providers(scope_kind, scope_id);
+        """
+    )
+    _add_column(conn, "users", "ai_default_json", "TEXT")
+    rows = conn.execute(
+        "SELECT user_id, provider, model, secret_enc, secret_hint, accepted_personal_at, updated_at "
+        "FROM user_ai_settings"
+    ).fetchall()
+    for user_id, provider, model, secret_enc, secret_hint, accepted_at, updated_at in rows:
+        model = model or ("default" if provider == "claude-code" else "")
+        models = [{"id": model, "label": model}] if model else []
+        conn.execute(
+            """INSERT OR IGNORE INTO ai_providers
+                   (scope_kind, scope_id, provider, secret_enc, secret_hint, enabled, models_json,
+                    default_model, accepted_personal_at, updated_by, updated_at)
+               VALUES ('user', ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)""",
+            (user_id, provider, secret_enc, secret_hint, json.dumps(models), model, accepted_at, user_id, updated_at),
+        )
+        if model:
+            conn.execute(
+                "UPDATE users SET ai_default_json = ? WHERE id = ? AND ai_default_json IS NULL",
+                (json.dumps({"source": "user", "provider": provider, "model": model}), user_id),
+            )
+
+
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (4, _m0004_workspaces_and_events),
     (5, _m0005_staged_generation),
     (6, _m0006_account_profiles),
     (7, _m0007_platform_invitations),
     (8, _m0008_adk_engine),
+    (9, _m0009_ai_providers),
 ]
 
 LATEST_VERSION = MIGRATIONS[-1][0]

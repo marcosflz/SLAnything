@@ -30,8 +30,9 @@ import { Pill } from "@/components/ui/pill";
 import { Progress } from "@/components/ui/progress";
 import { apiGetClient, apiPost, apiPut } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
-import type { AuthoringCourse, Block, CoursePackage, PackageBlock, PackageQuestion } from "@/lib/types";
+import type { AiChoice, AuthoringCourse, Block, CoursePackage, PackageBlock, PackageQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ModelPicker } from "./ModelPicker";
 import { loc } from "./shared";
 
 type Selection = { chapter: number; kind: "lesson" | "quiz" | "glossary"; lesson: number };
@@ -355,6 +356,7 @@ function LessonEditor({
   const [editing, setEditing] = useState<number | null>(null);
   const [instructions, setInstructions] = useState("");
   const [regenerating, setRegenerating] = useState(false);
+  const [choice, setChoice] = useState<AiChoice | null>(null);
   const [error, setError] = useState("");
   const path = (d: CoursePackage) => d.chapters[chapterIndex].lessons[lessonIndex];
 
@@ -366,7 +368,7 @@ function LessonEditor({
       const before = JSON.stringify(lesson.blocks);
       const { job_id } = await apiPost<{ job_id: string }>(
         `/api/v1/authoring/courses/${courseSlug}/regenerate`,
-        { chapter: chapterIndex + 1, lesson: lessonIndex + 1, instructions },
+        { chapter: chapterIndex + 1, lesson: lessonIndex + 1, instructions, ...(choice ? { ai: choice } : {}) },
         csrf
       );
       // Espera a que el worker sustituya la lección (máx. ~5 min).
@@ -411,6 +413,7 @@ function LessonEditor({
                   placeholder={pick(lang, "Ej.: más ejemplos prácticos, nivel más básico, añade una tabla comparativa…", "E.g. more practical examples, simpler level, add a comparison table…")}
                   aria-label={pick(lang, "Instrucciones", "Instructions")}
                 />
+                <ModelPicker lang={lang} value={choice} onChange={setChoice} id="regenerate-model" />
                 {error ? <p className="m-0 text-sm text-destructive">{error}</p> : null}
                 <div className="flex justify-end">
                   <Button variant="secondary" disabled={regenerating} onClick={regenerate}>

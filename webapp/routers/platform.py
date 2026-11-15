@@ -9,6 +9,7 @@ queda en ``audit_log`` sin espacio asociado.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -16,12 +17,12 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from webapp import analytics, audit, workspaces
+from webapp import analytics, audit, repositories, workspaces
 from webapp.authoring import settings as authoring_settings
 from webapp.authoring import store
 from webapp.db import get_db, utcnow
 from webapp.deps import ensure_csrf, require_platform_admin
-from webapp.security import new_token, token_hash
+from webapp.security import hash_password, new_token, token_hash
 
 INVITE_DAYS = 14
 
@@ -92,9 +93,31 @@ def ai_settings(user: dict = Depends(require_platform_admin)):
 # Usuarios
 # ---------------------------------------------------------------------------
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 class UserPatch(BaseModel):
     disabled: bool | None = None
     is_platform_admin: bool | None = None
+    name: str | None = Field(default=None, min_length=2, max_length=80)
+    email: str | None = Field(default=None, max_length=200)
+    password: str | None = Field(default=None, min_length=8, max_length=200)
+
+
+class UserCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    email: str = Field(max_length=200)
+    password: str = Field(min_length=8, max_length=200)
+    is_platform_admin: bool = False
+    workspace_id: int | None = None
+    role: Literal["student", "teacher", "admin", "owner"] = "student"
+
+
+def _clean_email(value: str) -> str:
+    email = value.strip().lower()
+    if not EMAIL_RE.match(email):
+        raise HTTPException(status_code=400, detail="Introduce un correo electrónico válido.")
+    return email
 
 
 @router.get("/users")
@@ -125,7 +148,50 @@ def list_users(
         item["is_platform_admin"] = bool(item["is_platform_admin"])
         item["workspaces"] = workspaces.memberships_for_user(conn, int(row["id"]))
         users.append(item)
-    return {"users": users, "total": total, "me": user["id"]}
+    academies = [
+        dict(r)
+        for r in conn.execute("SELECT id, name FROM workspaces WHERE kind = 'organization' ORDER BY name").fetchall()
+    ]
+    return {"users": users, "total": total, "me": user["id"], "academies": academies}
+
+
+@router.post("/users", status_code=201)
+def create_user(
+    body: UserCreate,
+    request: Request,
+    user: dict = Depends(require_platform_admin),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
+    """Da de alta una cuenta. Sin ``workspace_id`` es una cuenta individual; con él, miembro de esa academia."""
+    ensure_csrf(request, user)
+    email = _clean_email(body.email)
+    if repositories.get_user_by_email(conn, email) is not None:
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
+    target = None
+    if body.workspace_id is not None:
+        target = workspaces.get_workspace(conn, body.workspace_id)
+        if target is None or target["kind"] != "organization":
+            raise HTTPException(status_code=404, detail="Academia no encontrada.")
+        if target["seat_limit"] is not None and workspaces.seat_count(conn, target["id"]) >= target["seat_limit"]:
+            raise HTTPException(status_code=409, detail="La academia ha alcanzado su límite de plazas.")
+    created = repositories.create_user(
+        conn,
+        email=email,
+        name=body.name,
+        password_hash=hash_password(body.password),
+        role="student",
+        personal_workspace=target is None,
+    )
+    new_id = int(created["id"])
+    if body.is_platform_admin:
+        conn.execute("UPDATE users SET is_platform_admin = 1 WHERE id = ?", (new_id,))
+    if target is not None:
+        workspaces.add_member(conn, target["id"], new_id, body.role)
+    audit.record(
+        conn, actor_id=user["id"], action="platform.user.create", target=email, request=request,
+        meta={"is_platform_admin": body.is_platform_admin, "workspace_id": body.workspace_id, "role": body.role if target else None},
+    )
+    return {"ok": True, "id": new_id}
 
 
 @router.patch("/users/{user_id}")
@@ -147,6 +213,23 @@ def update_user(
         if admins <= 1:
             raise HTTPException(status_code=409, detail="La plataforma necesita al menos un superadministrador.")
     changes: dict = {}
+    if body.name is not None:
+        conn.execute("UPDATE users SET name = ? WHERE id = ?", (body.name.strip(), user_id))
+        changes["name"] = body.name.strip()
+    if body.email is not None:
+        email = _clean_email(body.email)
+        taken = conn.execute("SELECT id FROM users WHERE email = ? AND id != ?", (email, user_id)).fetchone()
+        if taken is not None:
+            raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
+        conn.execute("UPDATE users SET email = ? WHERE id = ?", (email, user_id))
+        changes["email"] = email
+    if body.password is not None:
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(body.password), user_id))
+        if user_id != user["id"]:
+            conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        else:
+            conn.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user_id, user["session_id"]))
+        changes["password"] = "reset"
     if body.disabled is not None:
         conn.execute(
             "UPDATE users SET disabled_at = CASE WHEN ? THEN datetime('now') ELSE NULL END WHERE id = ?",
@@ -162,6 +245,51 @@ def update_user(
         changes["is_platform_admin"] = body.is_platform_admin
     audit.record(
         conn, actor_id=user["id"], action="platform.user", target=row["email"], request=request, meta=changes
+    )
+    return {"ok": True}
+
+
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    request: Request,
+    user: dict = Depends(require_platform_admin),
+    conn: sqlite3.Connection = Depends(get_db, scope="function"),
+):
+    """Borra una cuenta y lo que es solo suyo (espacio individual, borradores, trabajos, sesiones)."""
+    ensure_csrf(request, user)
+    row = conn.execute("SELECT id, email, is_platform_admin FROM users WHERE id = ?", (user_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    if user_id == user["id"]:
+        raise HTTPException(status_code=409, detail="No puedes eliminar tu propia cuenta.")
+    if row["is_platform_admin"]:
+        admins = _count(conn, "SELECT COUNT(*) FROM users WHERE is_platform_admin = 1 AND disabled_at IS NULL AND id != ?", (user_id,))
+        if admins < 1:
+            raise HTTPException(status_code=409, detail="La plataforma necesita al menos un superadministrador.")
+    owned = conn.execute(
+        "SELECT name FROM workspaces WHERE owner_id = ? AND kind = 'organization' ORDER BY name", (user_id,)
+    ).fetchall()
+    if owned:
+        names = ", ".join(r["name"] for r in owned)
+        raise HTTPException(
+            status_code=409,
+            detail=f"Es propietaria de una academia ({names}). Transfiere la propiedad o borra la academia antes.",
+        )
+    published = _count(
+        conn, "SELECT COUNT(*) FROM generated_courses WHERE owner_id = ? AND status = 'published'", (user_id,)
+    )
+    if published:
+        raise HTTPException(
+            status_code=409,
+            detail="Tiene cursos publicados. Despublícalos o desactiva la cuenta en lugar de eliminarla.",
+        )
+    personal = workspaces.personal_workspace_id(conn, user_id)
+    if personal is not None:
+        conn.execute("DELETE FROM workspaces WHERE id = ?", (personal,))
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    audit.record(
+        conn, actor_id=user["id"], action="platform.user.delete", target=row["email"], request=request,
     )
     return {"ok": True}
 

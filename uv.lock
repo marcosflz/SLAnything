@@ -2789,8 +2789,8 @@ wheels = [
 
 [[package]]
 name = "nas-adk"
-version = "0.3.0"
-source = { url = "https://github.com/marcosflz/nas-adk/releases/download/v0.3.0/nas_adk-0.3.0-py3-none-any.whl" }
+version = "0.4.0"
+source = { url = "https://github.com/marcosflz/nas-adk/releases/download/v0.4.0/nas_adk-0.4.0-py3-none-any.whl" }
 dependencies = [
     { name = "click" },
     { name = "httpx" },
@@ -2803,7 +2803,7 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://github.com/marcosflz/nas-adk/releases/download/v0.3.0/nas_adk-0.3.0-py3-none-any.whl", hash = "sha256:2bfc049455af8ec0456f9ef108910ba3281ac3189cee453fb2a2cf075b469883" },
+    { url = "https://github.com/marcosflz/nas-adk/releases/download/v0.4.0/nas_adk-0.4.0-py3-none-any.whl", hash = "sha256:cd271696f1fa2f636446ad8c515194cf6cc2a5093929ccf50f9fec8550ac9c75" },
 ]
 
 [package.optional-dependencies]
@@ -4647,7 +4647,7 @@ requires-dist = [
     { name = "ipywidgets", specifier = ">=8.1" },
     { name = "jupyterlab", specifier = ">=4.2" },
     { name = "matplotlib", specifier = ">=3.9" },
-    { name = "nas-adk", extras = ["anthropic"], url = "https://github.com/marcosflz/nas-adk/releases/download/v0.3.0/nas_adk-0.3.0-py3-none-any.whl" },
+    { name = "nas-adk", extras = ["anthropic"], url = "https://github.com/marcosflz/nas-adk/releases/download/v0.4.0/nas_adk-0.4.0-py3-none-any.whl" },
     { name = "nbconvert", specifier = ">=7.16" },
     { name = "nbformat", specifier = ">=5.10" },
     { name = "numpy", specifier = ">=1.26" },

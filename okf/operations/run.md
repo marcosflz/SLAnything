@@ -127,7 +127,7 @@ con las contraseñas nuevas.
 
 La API key del proveedor **no** es una variable de entorno del proceso: la de la
 plataforma se guarda desde `/plataforma/ia` en `AULA_AUTHORING_DIR/settings.json`
-(0600) y las de cada usuario, cifradas, en `user_ai_settings`. Los ejemplos Python necesitan `psutil`, `numpy`, `pandas` y `matplotlib`, que ya
+(0600) y las de cada usuario y academia, cifradas, en `ai_providers` (ADR-025). Los ejemplos Python necesitan `psutil`, `numpy`, `pandas` y `matplotlib`, que ya
 están en `pyproject.toml`. El idioma se guarda en la cookie `aula_lang`; también
 se puede forzar con `?lang=en` o `?lang=es`.
 

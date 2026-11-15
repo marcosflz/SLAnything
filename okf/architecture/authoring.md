@@ -31,19 +31,22 @@ sources:
 | Módulo | Responsabilidad |
 |---|---|
 | `webapp/authoring/settings.py` | Proveedor de la **plataforma** en `authoring/settings.json` (0600); estado del motor (versión de nas-adk) y del CLI `claude`. |
-| `webapp/authoring/credentials.py` | Proveedor **propio** de cada usuario (`user_ai_settings`, secreto cifrado) y `resolve(user_id)`. |
+| `webapp/authoring/credentials.py` | Proveedores **propios** y **de la academia** (`ai_providers`, secretos cifrados), modelos visibles, predeterminado, grupos del selector y `resolve(user, workspace, choice)`; renovación serializada de ChatGPT. |
+| `webapp/authoring/catalog.py` | Catálogo de modelos de cada proveedor (CLI de Claude, `/v1/models` de ChatGPT o URL fija). |
+| `webapp/authoring/links.py` | Vinculación de Claude (`claude setup-token` en PTY) y ChatGPT (OAuth+PKCE) desde la web. |
 | `webapp/authoring/providers.py` | Catálogo de proveedores y su traducción a `ModelRouter` de nas-adk (`router_kwargs`). |
 | `webapp/authoring/extract.py` | Texto de PDF, DOCX, EPUB, ODT, Markdown, HTML y TXT. |
 | `webapp/authoring/package.py` | Contrato JSON, saneado HTML, `validate_lesson`/`validate_assessment` y conversión a `Course`/`Program`. |
 | `webapp/authoring/store.py` | `authoring_jobs` (con `actor_id`), `generated_courses`, subidas, `meta.json` y caché de publicados. |
 | `webapp/generation/` | Etapas y agentes nas-adk: ver [generation](/architecture/generation.md). |
 | `webapp/routers/authoring.py` | API `/api/v1/authoring`. |
-| `webapp/routers/account_ai.py` | API `/api/v1/account/ai` (proveedor propio). |
-| `frontend/src/app/estudio/`, `components/studio/`, `components/account/UserAiPanel.tsx` | Estudio, asistente, revisión y panel «Proveedor de IA» de «Mi cuenta». |
+| `webapp/routers/account_ai.py` | API `/api/v1/account/ai`, `/api/v1/admin/ai` y `/api/v1/ai/models`. |
+| `frontend/src/app/estudio/`, `components/studio/` (`ModelPicker.tsx`), `components/account/AiProvidersPanel.tsx`, `app/admin/ia/` | Estudio con selector de modelo, asistente, revisión, «Suscripciones» y «Claves de API» de «Mi cuenta» e «IA de la academia». |
 
 Decisiones: [ADR-023](/decisions/adr-023-nas-adk-agents.md) (agentes nas-adk; sustituye a
 [ADR-012](/decisions/adr-012-authoring-opencode.md)) y
-[ADR-024](/decisions/adr-024-user-ai-credentials.md) (credenciales por usuario).
+[ADR-024](/decisions/adr-024-user-ai-credentials.md) (credenciales por usuario) y
+[ADR-025](/decisions/adr-025-multiple-ai-providers.md) (varios proveedores y selector).
 
 # Proveedores
 
@@ -55,15 +58,21 @@ Decisiones: [ADR-023](/decisions/adr-023-nas-adk-agents.md) (agentes nas-adk; su
 | `openrouter` | `openrouter` | ambos |
 | `openai`, `google`, `deepseek` | `openai-compatible` con su URL fija | ambos |
 | `custom`, `ollama`, `lmstudio` | `openai-compatible` con base URL editable | solo plataforma |
-| `claude-code` | `ClaudeCodeLlm` (suscripción personal) | solo usuario |
+| `claude-code` | `ClaudeCodeLlm` con `oauth_token` (suscripción personal) | solo usuario |
+| `chatgpt` | `ChatGptPlanLlm` (plan de ChatGPT, «Sign in with ChatGPT») | solo usuario |
+
+Las academias solo comparten claves de API (ni suscripciones ni URL base propia).
 
 # Con qué se genera
 
-`credentials.resolve(actor)` → proveedor propio del actor si está completo (y, para la
-suscripción, con el consentimiento marcado); si no, el de la plataforma. El **actor** es
+`credentials.resolve(actor, workspace, choice)` → el modelo elegido en el selector si el
+actor puede usarlo (suyo, o de su academia si es profesorado) → su predeterminado → su
+primer proveedor listo → la plataforma (ADR-025). Las suscripciones exigen el
+consentimiento marcado y solo las usa su titular. El **actor** es
 quien lanza la acción: crear el trabajo, planificar, generar, reintentar o regenerar una
 lección (`authoring_jobs.actor_id`; la reanudación tras reinicio usa el último). El
-Estudio muestra «Generarás con…» (`/api/v1/authoring` → `ai`). El alumnado no tiene
+Estudio muestra un selector agrupado (`/api/v1/ai/models`) y la elección se guarda en
+`authoring_jobs.config_json.ai`. El alumnado no tiene
 `author`: no configura proveedor ni genera.
 
 # Catálogo dinámico

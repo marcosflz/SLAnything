@@ -28,8 +28,9 @@ import { Pill } from "@/components/ui/pill";
 import { Progress } from "@/components/ui/progress";
 import { apiDelete, apiGetClient, apiPut, apiUpload } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
-import type { AuthoringCourse, AuthoringJob, AuthoringPayload, AuthoringSettings } from "@/lib/types";
+import type { AiChoice, AuthoringCourse, AuthoringJob, AuthoringPayload, AuthoringSettings } from "@/lib/types";
 import { cn, relativeDays } from "@/lib/utils";
+import { ModelPicker } from "./ModelPicker";
 import { StatusPill } from "./shared";
 
 const ACCEPT = ".pdf,.docx,.epub,.odt,.md,.markdown,.txt,.html,.htm";
@@ -41,6 +42,7 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
   const [title, setTitle] = useState("");
   const [languages, setLanguages] = useState<string[]>(["es"]);
   const [notes, setNotes] = useState("");
+  const [choice, setChoice] = useState<AiChoice | null>(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -78,6 +80,7 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
     body.set("title", title);
     body.set("notes", notes);
     languages.forEach((code) => body.append("languages", code));
+    if (choice) body.set("ai", JSON.stringify(choice));
     files.forEach((file) => body.append("files", file));
     try {
       const job = await apiUpload<AuthoringJob>("/api/v1/authoring/jobs", body, csrf);
@@ -208,19 +211,7 @@ export function StudioHome({ initial, csrf, lang }: { initial: AuthoringPayload;
               >
                 <Textarea id="unit-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
               </Field>
-              <p className="m-0 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                <Bot className="size-3.5" aria-hidden="true" />
-                {data.ai.source === "user"
-                  ? pick(lang, "Generarás con tu proveedor:", "You will generate with your provider:")
-                  : pick(lang, "Generarás con el proveedor de la plataforma:", "You will generate with the platform provider:")}
-                {" "}
-                <span className="font-medium text-foreground">
-                  {data.ai.provider_label + (data.ai.model ? ` · ${data.ai.model}` : "")}
-                </span>
-                <Link href="/cuenta#proveedor-ia" className="ml-1">
-                  {pick(lang, "Cambiar", "Change")}
-                </Link>
-              </p>
+              <ModelPicker lang={lang} value={choice} onChange={setChoice} />
               {error ? <p className="m-0 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</p> : null}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-xs text-muted-foreground">

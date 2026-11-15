@@ -110,6 +110,7 @@ export function navSections(user: User, lang: Lang, hasCourse = true): NavSectio
         { href: "/admin/usuarios", label: pick(lang, "Miembros", "Members"), icon: "members" },
         { href: "/admin/grupos", label: pick(lang, "Grupos", "Groups"), icon: "groups" },
         { href: "/admin/invitaciones", label: pick(lang, "Invitaciones", "Invitations"), icon: "invites" },
+        { href: "/admin/ia", label: pick(lang, "IA de la academia", "Academy AI"), icon: "ai" },
         { href: "/admin/auditoria", label: pick(lang, "Auditoría", "Audit log"), icon: "audit" },
       ],
     });

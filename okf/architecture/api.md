@@ -137,7 +137,25 @@ metadatos, sin duplicar el contenido completo.
   propio de quien tiene `author` ([ADR-024](/decisions/adr-024-user-ai-credentials.md));
   el alumnado recibe 403. `PUT` acepta `provider`, `model`, `secret` y
   `accept_personal` (obligatorio para `claude-code`).
-- `PUT /api/v1/authoring/settings` y `/api/v1/platform/ai` excluyen `claude-code`.
+- `PUT /api/v1/authoring/settings` y `/api/v1/platform/ai` excluyen `claude-code` y `chatgpt`.
+
+# Varios proveedores y selector de modelos (2026-11-15)
+
+[ADR-025](/decisions/adr-025-multiple-ai-providers.md) sustituye el proveedor único:
+
+- `GET /api/v1/account/ai`: catálogo con la configuración de cada proveedor (`config` con
+  `enabled`, `key_hint`, `models`, `model`, `ready`…) y el `default`. Sin secretos.
+- `PUT /api/v1/account/ai/providers` (`provider`, `secret`, `enabled`, `models`, `model`,
+  `accept_personal`), `DELETE …/providers/{id}`, `POST …/providers/{id}/models` (catálogo)
+  y `POST …/providers/{id}/test`. `PUT /api/v1/account/ai/default` fija el predeterminado.
+- Vinculación: `POST /api/v1/account/ai/claude/link/{start,finish}`,
+  `POST /api/v1/account/ai/chatgpt/link/{start,finish}` y `POST …/link/cancel`.
+- Academia (`manage`): `GET /api/v1/admin/ai` y las mismas rutas `providers` bajo
+  `/api/v1/admin/ai`, solo con claves de API.
+- `GET /api/v1/ai/models`: grupos de modelos activos (propios, de la academia y de la
+  plataforma) y el predeterminado. `POST /api/v1/authoring/jobs` acepta `ai` (JSON
+  `{source, provider, model}`); `plan`, `generate`, `retry` y `regenerate` aceptan `ai`.
+- Se retiran `PUT|DELETE /api/v1/account/ai` y `POST /api/v1/account/ai/test`.
 - `POST /courses/{slug}/regenerate` y las etapas usan las credenciales de quien las pide.
 
 # Cambios

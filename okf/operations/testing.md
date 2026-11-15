@@ -42,7 +42,10 @@ uv run python tools/validate_all_chapters.py
   (`AULA_LLM_FAKE`), que entrega con las herramientas `submit_*`;
   `test_adk_agents.py` usa además un modelo guionizado para probar correcciones,
   reintentos, errores del proveedor y cancelación, y un transporte falso para la
-  suscripción. `test_ai_credentials.py` cubre las credenciales por usuario.
+  suscripción. `test_ai_credentials.py` cubre las credenciales por usuario, varios
+proveedores con modelos visibles y predeterminado, claves de academia, la elección de
+modelo por trabajo, la renovación de ChatGPT y la vinculación (ADR-025);
+`test_workspaces.py` incluye la migración v9.
 
 # Cobertura
 

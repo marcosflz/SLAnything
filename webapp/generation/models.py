@@ -2,9 +2,12 @@
 
 - ``build_model(settings)`` devuelve un ``BaseLlm`` nuevo por ejecución: el
   cliente HTTP async de nas-adk queda ligado al bucle de eventos que lo crea.
-- La suscripción de Claude (``claude-code``) recibe el token de su titular solo
-  en el entorno del proceso hijo, mediante ``UserEnvTransport``, con un
-  ``CLAUDE_CONFIG_DIR`` propio por usuario. ``os.environ`` nunca se modifica.
+- La suscripción de Claude (``claude-code``) recibe el token de su titular con
+  ``ClaudeCodeLlm(oauth_token=…)`` (nas-adk ≥ 0.4: solo llega al proceso hijo) y un
+  ``CLAUDE_CONFIG_DIR``/``HOME`` propio por usuario vía ``UserEnvTransport``.
+  ``os.environ`` nunca se modifica.
+- El plan de ChatGPT (``chatgpt``) usa ``ChatGptPlanLlm`` con el token de acceso vigente
+  de su titular (``credentials.chatgpt_access_token``).
 - ``FakeAgentLlm`` (``AULA_LLM_FAKE=1`` y tests) llama a la herramienta
   ``submit_*`` de la tarea con el contenido determinista de ``fake.respond``.
 """
@@ -51,13 +54,22 @@ def claude_config_dir(user_id: int | None) -> Path:
     return base
 
 
-def subscription_env(token: str, user_id: int | None) -> dict[str, str]:
+def subscription_env(user_id: int | None) -> dict[str, str]:
+    """Directorio de configuración propio del CLI para cada persona (sin el token)."""
     home = claude_config_dir(user_id)
-    return {
-        "CLAUDE_CODE_OAUTH_TOKEN": token,
-        "CLAUDE_CONFIG_DIR": str(home),
-        "HOME": str(home),
-    }
+    return {"CLAUDE_CONFIG_DIR": str(home), "HOME": str(home)}
+
+
+def claude_code_llm(token: str, user_id: int | None, *, model: str = "", transport: Any = None) -> ClaudeCodeLlm:
+    return ClaudeCodeLlm(
+        model=model,
+        oauth_token=token,
+        executable=config.CLAUDE_CODE_BIN,
+        timeout=float(max(60, config.AUTHORING_TIMEOUT)),
+        env_policy="scrub",
+        max_concurrency=1,
+        transport=transport or UserEnvTransport(subscription_env(user_id)),
+    )
 
 
 def is_subscription(settings: Mapping[str, Any]) -> bool:
@@ -78,14 +90,15 @@ def build_model(settings: Mapping[str, Any], *, transport: Any = None) -> BaseLl
         token = str(settings.get("api_key") or "").strip()
         if not token:
             raise ValueError("Falta el token de tu suscripción de Claude.")
-        return ClaudeCodeLlm(
-            model=kwargs.get("model") or "",
-            executable=config.CLAUDE_CODE_BIN,
-            timeout=float(max(60, config.AUTHORING_TIMEOUT)),
-            env_policy="scrub",
-            max_concurrency=1,
-            transport=transport or UserEnvTransport(subscription_env(token, settings.get("user_id"))),
-        )
+        model = str(kwargs.get("model") or "")
+        return claude_code_llm(token, settings.get("user_id"), model="" if model == "default" else model, transport=transport)
+    if kwargs["provider"] == "chatgpt":
+        from nas.adk.models.chatgpt import ChatGptPlanLlm
+
+        token = str(settings.get("api_key") or "").strip()
+        if not token:
+            raise ValueError("Vuelve a vincular tu cuenta de ChatGPT.")
+        return ChatGptPlanLlm(model=str(kwargs.get("model") or ""), access_token=token, timeout=180.0)
     return ModelRouter(timeout=180.0, max_retries=3, **kwargs)
 
 

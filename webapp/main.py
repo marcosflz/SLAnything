@@ -105,6 +105,8 @@ app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(platform.router)
 app.include_router(account_ai.router)
+app.include_router(account_ai.workspace_router)
+app.include_router(account_ai.models_router)
 
 
 @app.middleware("http")

@@ -162,7 +162,11 @@ def test_subscription_model_gets_the_token_only_in_the_child_env(tmp_path, monke
     monkeypatch.setattr(AsyncioProcessTransport, "spawn", fake_spawn)
     import asyncio
 
-    asyncio.run(model.transport.spawn(["claude"], env={"PATH": "/bin"}, cwd=str(tmp_path)))
+    # El token va con la instancia (nas-adk ≥ 0.4) y solo al entorno del proceso hijo.
+    child_env = model._child_env()
+    assert child_env["CLAUDE_CODE_OAUTH_TOKEN"] == "tok-ana"
+    assert "ANTHROPIC_API_KEY" not in child_env
+    asyncio.run(model.transport.spawn(["claude"], env=child_env, cwd=str(tmp_path)))
     assert captured["CLAUDE_CODE_OAUTH_TOKEN"] == "tok-ana"
     assert captured["CLAUDE_CONFIG_DIR"].endswith("/claude/7")
     assert "CLAUDE_CODE_OAUTH_TOKEN" not in os.environ

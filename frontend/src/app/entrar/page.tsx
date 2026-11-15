@@ -84,17 +84,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               )
             )}
           </p>
-          {publicData.demo_accounts.length ? (
-            <div className="demo-box">
-              <strong>{pick(lang, "Cuentas de demostración", "Demo accounts")}</strong>
-              {publicData.demo_accounts.map((account) => (
-                <div key={account.email} className="mt-1">
-                  {DEMO_LABELS[account.profile][lang === "en" ? 1 : 0]}: <code>{account.email}</code> ·{" "}
-                  <code>{account.password}</code>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </section>
       </div>
     </PublicShell>

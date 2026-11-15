@@ -19,7 +19,7 @@ export default async function PlatformUsersPage({ searchParams }: { searchParams
   const { lang } = shell;
   const data = shell.user.permissions?.platform
     ? await allowForbidden(
-        apiGet<{ users: PlatformUser[]; total: number; me: number }>(`/api/v1/platform/users?limit=200&q=${encodeURIComponent(q)}`)
+        apiGet<{ users: PlatformUser[]; total: number; me: number; academies: { id: number; name: string }[] }>(`/api/v1/platform/users?limit=200&q=${encodeURIComponent(q)}`)
       )
     : null;
   return (
@@ -30,7 +30,7 @@ export default async function PlatformUsersPage({ searchParams }: { searchParams
       description={pick(lang, "Todas las cuentas de la plataforma, sus espacios y su acceso.", "Every account on the platform, its spaces and its access.")}
     >
       {data ? (
-        <PlatformUsersPanel users={data.users} total={data.total} me={data.me} query={q} csrf={shell.user.csrf_token} lang={lang} />
+        <PlatformUsersPanel users={data.users} total={data.total} me={data.me} academies={data.academies} query={q} csrf={shell.user.csrf_token} lang={lang} />
       ) : null}
     </PlatformLayout>
   );

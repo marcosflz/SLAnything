@@ -104,11 +104,14 @@ check("cuenta individual sin invitar alumnos", !links.includes("/admin/invitacio
 check("cuenta individual sin gestión de aula", !links.includes("/admin") && !links.includes("/analitica"));
 await page.goto(`${base}/estudio`, { waitUntil: "networkidle" });
 check("Estudio sin selector de motor", (await page.locator("#engine").count()) === 0);
-check("Estudio indica el proveedor", (await page.locator("main").innerText()).includes("Generarás con"));
+check("Estudio con selector de modelo", (await page.locator("[data-model-picker]").count()) > 0);
 await page.goto(`${base}/cuenta`, { waitUntil: "networkidle" });
-check("cuenta individual: panel de proveedor de IA", await page.locator("#proveedor-ia").isVisible());
-await page.selectOption("#user-ai-provider", "claude-code");
-check("suscripción exige consentimiento", await page.locator('#proveedor-ia button[type="submit"]').isDisabled());
+check("cuenta individual: proveedores de IA", await page.locator("#proveedor-ia").isVisible());
+const mainText = await page.locator("#proveedor-ia").innerText();
+check("suscripciones y claves de API separadas", mainText.includes("Suscripciones") && mainText.includes("Claves de API"));
+await page.getByRole("button", { name: "Vincular mi cuenta" }).first().click();
+check("vincular una suscripción exige consentimiento", await page.getByRole("dialog").getByRole("button", { name: "Vincular", exact: true }).isDisabled());
+await page.keyboard.press("Escape");
 
 // Tema claro por defecto y alternancia.
 const beforeTheme = await page.evaluate(() => document.documentElement.dataset.theme);

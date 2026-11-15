@@ -121,3 +121,75 @@ def test_assigned_courses_come_first_with_their_due_date(client):
     assert courses[0]["slug"] == config.SAMPLE_COURSE_SLUG
     assert courses[0]["assigned"] is True
     assert courses[0]["due_at"] == "2026-12-20"
+
+
+def test_platform_creates_edits_and_deletes_users(client, db_path):
+    token = admin_login(client)
+    headers = {"X-CSRF-Token": token}
+    created = client.post(
+        "/api/v1/platform/users",
+        json={"name": "Nueva Persona", "email": "Nueva@Example.com", "password": "clave-larga-1"},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    new_id = created.json()["id"]
+    assert _user_id(db_path, "nueva@example.com") == new_id
+    duplicate = client.post(
+        "/api/v1/platform/users",
+        json={"name": "Otra", "email": "nueva@example.com", "password": "clave-larga-1"},
+        headers=headers,
+    )
+    assert duplicate.status_code == 409
+    assert client.post(
+        "/api/v1/platform/users",
+        json={"name": "Mal", "email": "no-es-correo", "password": "clave-larga-1"},
+        headers=headers,
+    ).status_code == 400
+
+    edited = client.patch(
+        f"/api/v1/platform/users/{new_id}",
+        json={"name": "Nombre Nuevo", "email": "cambio@example.com", "password": "otra-clave-22"},
+        headers=headers,
+    )
+    assert edited.status_code == 200
+    taken = client.patch(
+        f"/api/v1/platform/users/{new_id}", json={"email": config.TEACHER_EMAIL}, headers=headers
+    )
+    assert taken.status_code == 409
+
+    client.cookies.clear()
+    assert login(client, "cambio@example.com", "otra-clave-22").status_code == 200
+    client.cookies.clear()
+    token = admin_login(client)
+    headers = {"X-CSRF-Token": token}
+    assert client.delete(f"/api/v1/platform/users/{new_id}", headers=headers).status_code == 200
+    assert client.delete(f"/api/v1/platform/users/{new_id}", headers=headers).status_code == 404
+    conn = sqlite3.connect(db_path)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM memberships WHERE user_id = ?", (new_id,)).fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
+def test_platform_adds_a_member_to_an_academy_and_protects_deletions(client, db_path):
+    token = admin_login(client)
+    headers = {"X-CSRF-Token": token}
+    academy = next(
+        item for item in client.get("/api/v1/platform/workspaces?kind=organization").json()["workspaces"]
+        if item["slug"] == "academia-demo"
+    )
+    created = client.post(
+        "/api/v1/platform/users",
+        json={"name": "Docente Nuevo", "email": "docente@example.com", "password": "clave-larga-1",
+              "workspace_id": academy["id"], "role": "teacher"},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    listed = client.get("/api/v1/platform/users?q=docente@example.com").json()["users"][0]
+    assert any(ws["id"] == academy["id"] and ws["role"] == "teacher" for ws in listed["workspaces"])
+
+    me = _user_id(db_path, config.ADMIN_EMAIL)
+    assert client.delete(f"/api/v1/platform/users/{me}", headers=headers).status_code == 409
+    owner = _user_id(db_path, config.TEACHER_EMAIL)
+    assert client.delete(f"/api/v1/platform/users/{owner}", headers=headers).status_code == 409
+    assert client.delete("/api/v1/platform/users/999999", headers=headers).status_code == 404

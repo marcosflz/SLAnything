@@ -34,7 +34,7 @@ dev = [
 package = false
 
 [tool.uv.sources]
-nas-adk = { url = "https://github.com/marcosflz/nas-adk/releases/download/v0.3.0/nas_adk-0.3.0-py3-none-any.whl" }
+nas-adk = { url = "https://github.com/marcosflz/nas-adk/releases/download/v0.4.0/nas_adk-0.4.0-py3-none-any.whl" }
 
 [tool.pytest.ini_options]
 testpaths = ["webapp/tests"]

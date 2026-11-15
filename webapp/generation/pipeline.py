@@ -116,7 +116,12 @@ def _settings(job_id: str, actor_id: int | None = None) -> dict:
     """Proveedor con el que trabaja este paso: el de quien lanzó la acción."""
     job = store.get_job(job_id, with_log=False) or {}
     user_id = actor_id or job.get("actor_id") or job.get("owner_id")
-    return credentials.resolve(int(user_id) if user_id else None)
+    choice = (job.get("config") or {}).get("ai")
+    return credentials.resolve(
+        int(user_id) if user_id else None,
+        job.get("workspace_id"),
+        choice if isinstance(choice, dict) else None,
+    )
 
 
 _usage_lock = __import__("threading").Lock()

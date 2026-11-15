@@ -25,8 +25,9 @@ import { Pill } from "@/components/ui/pill";
 import { Progress } from "@/components/ui/progress";
 import { apiGetClient, apiPost, apiPut } from "@/lib/client";
 import { pick, type Lang } from "@/lib/messages";
-import type { AuthoringJob, CourseOutline, DocumentOutline, JobEvent, OutlineLesson } from "@/lib/types";
+import type { AiChoice, AuthoringJob, CourseOutline, DocumentOutline, JobEvent, OutlineLesson } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ModelPicker } from "./ModelPicker";
 import { STEPS, StatusPill, loc, stepFor, stepLabel } from "./shared";
 
 const WORKING = new Set(["queued", "extracting", "outlining", "generating", "validating"]);
@@ -36,6 +37,11 @@ export function JobWizard({ initial, csrf, lang }: { initial: AuthoringJob; csrf
   const [events, setEvents] = useState<JobEvent[]>([]);
   const [error, setError] = useState("");
   const working = WORKING.has(job.status);
+  // Modelo con el que se lanzan las siguientes etapas (empieza por el del trabajo, ADR-025).
+  const [choice, setChoice] = useState<AiChoice | null>(() => {
+    const saved = (initial.config as { ai?: AiChoice } | undefined)?.ai;
+    return saved && saved.source && saved.provider && saved.model ? saved : null;
+  });
 
   const refresh = useCallback(async () => {
     setJob(await apiGetClient<AuthoringJob>(`/api/v1/authoring/jobs/${initial.id}`));
@@ -73,10 +79,11 @@ export function JobWizard({ initial, csrf, lang }: { initial: AuthoringJob; csrf
     };
   }, [initial.id, working, refresh]);
 
-  async function act(path: string, body: unknown = {}) {
+  async function act(path: string, body: Record<string, unknown> = {}) {
     setError("");
     try {
-      await apiPost(`/api/v1/authoring/jobs/${job.id}/${path}`, body, csrf);
+      const payload = choice && path !== "cancel" ? { ...body, ai: choice } : body;
+      await apiPost(`/api/v1/authoring/jobs/${job.id}/${path}`, payload, csrf);
       // Recarga completa: reinicia la suscripción SSE si el trabajo vuelve a correr.
       setJob(await apiGetClient<AuthoringJob>(`/api/v1/authoring/jobs/${job.id}`));
     } catch (err) {
@@ -118,6 +125,8 @@ export function JobWizard({ initial, csrf, lang }: { initial: AuthoringJob; csrf
       </nav>
 
       {error ? <p className="m-0 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</p> : null}
+
+      {!working && job.status !== "ready" ? <ModelPicker lang={lang} value={choice} onChange={setChoice} id="job-model" /> : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">

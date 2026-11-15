@@ -67,8 +67,10 @@ activo) y `courses` (resumen del catálogo) en las pantallas que lo necesitan.
 envía a la cola de `webapp/generation/worker.py`. Cada etapa ejecuta agentes nas-adk
 (`generation/runtime.py`) con herramientas propias y valida el paquete final con
 `package.parse_package()` ([ADR-023](/decisions/adr-023-nas-adk-agents.md)). El
-proveedor propio de cada usuario vive en `routers/account_ai.py` +
-`authoring/credentials.py` ([ADR-024](/decisions/adr-024-user-ai-credentials.md)).
+proveedores de cada usuario y de cada academia viven en `routers/account_ai.py` +
+`authoring/credentials.py`, `catalog.py` y `links.py`
+([ADR-024](/decisions/adr-024-user-ai-credentials.md),
+[ADR-025](/decisions/adr-025-multiple-ai-providers.md)).
 Detalles en [authoring](/architecture/authoring.md) y
 [generation](/architecture/generation.md).
 

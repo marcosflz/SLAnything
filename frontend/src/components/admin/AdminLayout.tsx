@@ -11,6 +11,7 @@ const TABS = [
   ["/admin/usuarios", "Miembros", "Members"],
   ["/admin/grupos", "Grupos", "Groups"],
   ["/admin/invitaciones", "Invitaciones", "Invitations"],
+  ["/admin/ia", "IA", "AI"],
   ["/admin/auditoria", "Auditoría", "Audit log"],
 ] as const;
 

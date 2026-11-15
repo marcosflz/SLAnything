@@ -109,7 +109,7 @@ de cursos publicados en su academia debajo.
 - `/api/v1/admin/invitations`: `teach`; devuelve `roles` invitables.
 - `/api/v1/workspaces`: listar, `switch`, crear academia, `join` por código,
   `personal` (abrir la cuenta individual).
-- `/api/v1/platform/*` (superadmin): `overview`, `users` (+`PATCH`),
+- `/api/v1/platform/*` (superadmin): `overview`, `users` (`POST` crea una cuenta individual o miembro de una academia con rol, `PATCH` edita nombre, correo, contraseña, desactivación y superadmin, `DELETE` elimina; se niega a borrarte a ti, al último superadmin, a quien es propietario de una academia o tiene cursos publicados),
   `workspaces` (+`PATCH` plan, plazas y cuota `gen_monthly`; `DELETE` academias
   sin cursos), `courses` (+`visibility`, `unpublish`), `ai`, `invitations`
   (+`POST`, `DELETE`).

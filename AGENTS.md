@@ -45,7 +45,7 @@ Actualiza el OKF en la misma sesión en la que ocurra el cambio. Como mínimo:
 | Frontend Next.js o API JSON | `okf/architecture/nextjs-frontend.md`, `okf/architecture/api.md` |
 | Espacios, perfiles, permisos, superadmin o KPIs | `okf/architecture/tenancy-analytics.md`, ADR-021 |
 | Generación por etapas | `okf/architecture/generation.md` |
-| Estudio de autoría, agentes nas-adk, proveedores o credenciales de IA | `okf/architecture/authoring.md`, `okf/architecture/generation.md`, ADR-023, ADR-024 |
+| Estudio de autoría, agentes nas-adk, proveedores o credenciales de IA | `okf/architecture/authoring.md`, `okf/architecture/generation.md`, ADR-023, ADR-024, ADR-025 |
 | Traducciones ES/EN o contenido inglés | `okf/architecture/i18n.md`, `okf/product/lessons.md` |
 | Ejecución de Python o sandbox | `okf/architecture/execution.md`, `okf/architecture/security.md` |
 | Dependencias, comandos o puertos | `okf/operations/run.md`, `okf/references/commands.md` |
@@ -93,7 +93,7 @@ Además, **siempre**:
 ```powershell
 uv sync
 uv run python aula.py                 # backend FastAPI · http://127.0.0.1:8000
-uv run python -m pytest -q           # suite del proyecto (211 tests)
+uv run python -m pytest -q           # suite del proyecto (224 tests)
 uv run python tools/check_chapter.py ch02   # valida un paquete de capítulo
 uv run python tools/validate_all_chapters.py
 uv run python tools/check_okf.py     # conformidad y enlaces del OKF

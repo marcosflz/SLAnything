@@ -18,6 +18,10 @@ sources:
     title: UserEnvTransport y suscripción
 ---
 
+> Ampliado por [ADR-025](/decisions/adr-025-multiple-ai-providers.md): varios proveedores a la vez
+> (tabla `ai_providers`, migración v9), modelos visibles, ChatGPT, claves de academia y selector de
+> modelo en el Estudio. Las reglas de este ADR siguen vigentes.
+
 # Contexto
 
 Con nas-adk ([ADR-023](/decisions/adr-023-nas-adk-agents.md)) se puede usar la suscripción

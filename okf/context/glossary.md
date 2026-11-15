@@ -61,8 +61,13 @@ sources:
   `course`, `lesson`, `assessment`) definidos en `generation/agents.py`; entregan
   con herramientas `submit_*` (ADR-023).
 - **Proveedor propio / actor**: credencial de IA de un usuario (API key o
-  suscripción de Claude) y persona que lanza una etapa; se genera siempre con las
-  credenciales del actor (ADR-024).
+  suscripción de Claude o ChatGPT) y persona que lanza una etapa; se genera siempre
+  con las credenciales del actor (ADR-024). Cada persona puede tener varios a la vez
+  (ADR-025).
+- **Modelos visibles / predeterminado**: modelos de cada proveedor que aparecen en el
+  selector del Estudio y el que se usa si no se elige otro (ADR-025).
+- **Clave de academia**: clave de API que la administración de una academia comparte
+  con su profesorado; nunca una suscripción (ADR-025).
 - **Job**: trabajo de generación con estado, proveedor, modelo, documentos y log.
 - **PWA**: web instalable con manifiesto y service worker; no sustituye al
   backend.

@@ -28,13 +28,13 @@ sources:
 | Curso de ejemplo | Construye un LLM desde cero (`AULA_SAMPLE_COURSES=1`): 7 capítulos, 56 lecciones, 15 labs, 7 quizzes, 113 términos, 26 ejemplos Python |
 | Idiomas | Español e inglés |
 | Acceso | Registro solo por invitación (`AULA_OPEN_SIGNUP=0`, ADR-022) |
-| Tests | 211 passed |
+| Tests | 224 passed |
 | E2E | `npm run e2e` (perfiles) y `npm run e2e:labs` en verde con y sin ejemplos |
 | Repositorio | GitHub privado · `marcosflz/SLAnything` |
 | Servidor local | Next `http://127.0.0.1:3000` · FastAPI `http://127.0.0.1:8000` |
 | Empaquetado | Docker Compose (`slanything-backend`, `slanything-frontend`; volumen histórico `aula-llm-data`) con agentes nas-adk y CLI de Claude Code |
 | Base de datos | `aula.db` (SQLite v3, ignorada por git) |
-| Autoría | `/estudio` · agentes nas-adk (ADR-023) + proveedor de plataforma o propio por usuario, incluida la suscripción de Claude (ADR-024) + PWA |
+| Autoría | `/estudio` · agentes nas-adk 0.4 (ADR-023) + proveedor de plataforma, varios propios por usuario (claves de API y suscripciones de Claude y ChatGPT) y claves compartidas por la academia, con selector de modelo (ADR-024, ADR-025) + PWA |
 | Última verificación | 2026-11-14 |
 
 # Qué está hecho

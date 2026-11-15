@@ -17,6 +17,7 @@ Decisiones de diseño:
   al motor OpenCode.
 - [ADR-017](../okf/decisions/adr-017-staged-generation.md): las etapas.
 - [ADR-024](../okf/decisions/adr-024-user-ai-credentials.md): las credenciales.
+- [ADR-025](../okf/decisions/adr-025-multiple-ai-providers.md): varios proveedores y el selector de modelos.
 
 ## Flujo
 
@@ -49,18 +50,24 @@ por ejemplo «Consultando un fragmento…».
 
 ## Proveedor de IA
 
-Hay dos niveles:
+Hay tres niveles:
 
 1. **Plataforma.** Lo configura la superadministración en `/plataforma/ia` y lo
    usa quien no tenga uno propio. Puede ser OpenCode Go, OpenCode Zen gratuitos,
    Anthropic (API), OpenRouter, OpenAI, Gemini, DeepSeek, un endpoint compatible
    con OpenAI, Ollama o LM Studio.
-2. **Propio.** Cualquier persona que crea unidades puede configurarlo en
-   **Mi cuenta → Proveedor de IA**. Puede ser una API key o **su suscripción de
-   Claude**. Los endpoints con URL propia (Ollama, LM Studio, gateway) solo los
-   puede configurar la plataforma.
+2. **Propios.** Cualquier persona que crea unidades configura en **Mi cuenta** sus
+   **Suscripciones** (Claude, ChatGPT, OpenCode Go) y sus **Claves de API**. Puede
+   tener varios activos a la vez, elegir qué modelos de cada uno se ven («Elegir
+   modelos») y marcar uno como predeterminado (la estrella). Los endpoints con URL
+   propia (Ollama, LM Studio, gateway) solo los puede configurar la plataforma.
+3. **De la academia.** La administración de una academia puede compartir claves de
+   API con su profesorado en **Administrar academia → IA de la academia**. Las
+   suscripciones nunca se comparten.
 
-El Estudio indica con qué proveedor vas a generar («Generarás con…»).
+El Estudio tiene un selector **Generar con** que agrupa todos los modelos que puedes
+usar (tuyos, de tu academia y de la plataforma). También aparece en el asistente y al
+regenerar una lección.
 
 Cada etapa se genera siempre con las credenciales de **quien la lanza**. Si otra
 persona regenera una lección de tu unidad, por ejemplo un admin de la academia,
@@ -68,12 +75,20 @@ se usan sus credenciales o las de la plataforma, nunca las tuyas.
 
 ### Suscripción de Claude (personal)
 
-1. Instala [Claude Code](https://claude.com/claude-code) en tu equipo e inicia
-   sesión con tu plan Pro o Max.
-2. Ejecuta `claude setup-token` y copia el token.
-3. En **Mi cuenta → Proveedor de IA**, elige **Claude · mi suscripción
-   personal**, pega el token y marca la casilla de uso personal. Después pulsa
-   **Probar**.
+1. En **Mi cuenta → Suscripciones → Claude**, pulsa **Vincular mi cuenta**.
+2. Abre Anthropic, inicia sesión con tu plan Pro o Max, autoriza y pega el código que
+   te muestra. Marca la casilla de uso personal y pulsa **Vincular**.
+3. También puedes ejecutar `claude setup-token` en tu equipo y pegar el token
+   («Prefiero pegar un token»). Después pulsa **Probar** y **Elegir modelos**.
+
+### Plan de ChatGPT (personal)
+
+1. En **Mi cuenta → Suscripciones → ChatGPT**, pulsa **Vincular mi cuenta** y abre
+   ChatGPT («Sign in with ChatGPT», la vía oficial de OpenAI, en preview).
+2. Al autorizar, el navegador va a una página que no carga
+   (`http://127.0.0.1:1455/…`). Es normal: copia su dirección completa y pégala.
+3. El acceso se renueva solo. Puedes limitar el uso o desconectar SLAnything en
+   ChatGPT → Ajustes → Uso.
 
 Cómo se protege el token:
 
@@ -117,8 +132,9 @@ Los datos del Estudio se guardan en `/data/authoring`, dentro del volumen:
     course.json  report.json  events.jsonl  meta.json
 ```
 
-Las credenciales propias de cada usuario no van en este directorio: se guardan
-cifradas en la base de datos (`user_ai_settings`).
+Las credenciales propias de cada usuario y de cada academia no van en este
+directorio: se guardan cifradas en la base de datos (`ai_providers`). Aquí solo está
+`chatgpt-host-id`, el identificador opaco de la instalación para OpenAI.
 
 ### Local
 

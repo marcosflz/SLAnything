@@ -199,6 +199,48 @@ export function AccountPanel({
   );
 }
 
+/** La invitación está fijada a otro correo: hay que cerrar la sesión actual para usarla. */
+export function InviteWrongAccount({
+  token,
+  current,
+  expected,
+  csrf,
+  lang,
+}: {
+  token: string;
+  current: string;
+  expected: string;
+  csrf: string;
+  lang: Lang;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="grid gap-3">
+      <p className="m-0 text-sm text-destructive">
+        {pick(
+          lang,
+          `Has iniciado sesión como ${current}, pero esta invitación es solo para ${expected}.`,
+          `You are signed in as ${current}, but this invitation is only for ${expected}.`
+        )}
+      </p>
+      <Button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await apiPost("/api/v1/auth/logout", {}, csrf);
+          } catch {
+            // Si la sesión ya no existe, recargar basta.
+          }
+          window.location.href = `/invitacion/${encodeURIComponent(token)}`;
+        }}
+      >
+        <LogOut /> {pick(lang, "Cerrar sesión y continuar", "Sign out and continue")}
+      </Button>
+    </div>
+  );
+}
+
 export function AcceptInvite({
   token,
   csrf,

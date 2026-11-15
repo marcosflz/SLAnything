@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { UserAiPanel } from "@/components/account/UserAiPanel";
+import { AiProvidersPanel } from "@/components/account/AiProvidersPanel";
 import { AccountPanel, type AccountData } from "@/components/admin/AccountPanel";
 import { PageHeader } from "@/components/charts/Kpi";
 import { allowForbidden, ShellPage } from "@/components/shell/ShellPage";
 import { apiGet, getLang, getShell } from "@/lib/api";
 import { pick } from "@/lib/messages";
-import type { UserAiSettings } from "@/lib/types";
+import type { AiProvidersData } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
@@ -19,7 +19,7 @@ export default async function AccountPage() {
   const data = await apiGet<AccountData>("/api/v1/account");
   // Solo quien crea unidades tiene proveedor propio; el alumnado recibe 403.
   const ai = shell.user.permissions?.author
-    ? await allowForbidden(apiGet<UserAiSettings>("/api/v1/account/ai"))
+    ? await allowForbidden(apiGet<AiProvidersData>("/api/v1/account/ai"))
     : null;
   return (
     <ShellPage shell={shell} path="/cuenta" title={pick(lang, "Mi cuenta", "My account")} kicker={shell.user.name}>
@@ -32,7 +32,7 @@ export default async function AccountPage() {
       />
       {ai ? (
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <UserAiPanel initial={ai} csrf={shell.user.csrf_token} lang={lang} />
+          <AiProvidersPanel initial={ai} csrf={shell.user.csrf_token} lang={lang} scope="user" />
         </div>
       ) : null}
     </ShellPage>

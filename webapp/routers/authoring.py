@@ -44,6 +44,32 @@ class SettingsBody(BaseModel):
     clear_key: bool = False
 
 
+class AiChoice(BaseModel):
+    """Modelo elegido en el selector del Estudio (ADR-025)."""
+
+    source: Literal["user", "workspace", "platform"]
+    provider: str = Field(min_length=1, max_length=40)
+    model: str = Field(min_length=1, max_length=160)
+
+
+class StageBody(BaseModel):
+    ai: AiChoice | None = None
+
+
+def _parse_choice(raw: str) -> dict[str, str] | None:
+    if not (raw or "").strip():
+        return None
+    try:
+        return AiChoice.model_validate_json(raw).model_dump()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="El modelo elegido no es válido.") from exc
+
+
+def _job_choice(job: dict[str, Any]) -> dict[str, str] | None:
+    choice = (job.get("config") or {}).get("ai")
+    return choice if isinstance(choice, dict) else None
+
+
 def _error(message: str, status_code: int = 400) -> HTTPException:
     return HTTPException(status_code=status_code, detail=message)
 
@@ -114,7 +140,7 @@ def _payload(user: dict) -> dict[str, Any]:
         "jobs": _visible_jobs(user),
         "courses": _visible_courses(user),
         "can_configure": bool(user.get("is_platform_admin")),
-        "ai": credentials.describe(credentials.resolve(user["id"])),
+        "ai": credentials.describe(credentials.resolve(user["id"], _ws_id(user))),
         "quota": _quota(user),
         "limits": {
             "max_upload_mb": config.AUTHORING_MAX_UPLOAD_MB,
@@ -147,11 +173,11 @@ def _quota(user: dict) -> dict[str, Any]:
 ADK_ENGINES = {"adk", "direct"}
 
 
-def _assert_ai_ready(user: dict) -> None:
-    """¿Puede ``user`` lanzar ahora una llamada a la IA? (credencial propia o de plataforma)."""
+def _assert_ai_ready(user: dict, choice: dict[str, str] | None = None, workspace_id: int | None = None) -> dict[str, Any]:
+    """¿Puede ``user`` lanzar ahora una llamada a la IA? Devuelve con qué se generará."""
+    resolved = credentials.resolve(user["id"], workspace_id if workspace_id is not None else _ws_id(user), choice)
     if config.LLM_FAKE:
-        return
-    resolved = credentials.resolve(user["id"])
+        return resolved
     try:
         providers.router_kwargs(resolved)
     except ValueError as exc:
@@ -162,6 +188,7 @@ def _assert_ai_ready(user: dict) -> None:
             "«Mi cuenta» o pide a la administración que lo configure.",
             400,
         ) from exc
+    return resolved
 
 
 def _assert_ready(user: dict) -> None:
@@ -238,9 +265,10 @@ async def _create_job(
     desired_slug: str,
     languages: str | list[str],
     notes: str,
+    choice: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     _assert_ready(user)
-    current = credentials.resolve(user["id"])
+    current = _assert_ai_ready(user, choice)
     lang_list = _languages(languages)
     clean_title = (title or "").strip()[:200]
     if not clean_title and files:
@@ -266,7 +294,15 @@ async def _create_job(
         model=current["model"],
         languages=lang_list,
         engine="adk",
-        job_config={k: meta[k] for k in ("title", "slug", "languages", "notes")},
+        job_config={
+            **{k: meta[k] for k in ("title", "slug", "languages", "notes")},
+            # Con qué modelo se genera; cada etapa lo vuelve a resolver con quien la lanza.
+            "ai": {
+                "source": current.get("source", "platform"),
+                "provider": current["provider"],
+                "model": current["model"] or ("default" if current["provider"] == "claude-code" else ""),
+            },
+        },
     )
     store.write_meta(job_id, meta)
     worker.submit(job_id, "analyze")
@@ -325,10 +361,12 @@ async def create_job(
     slug: str = Form(""),
     languages: list[str] = Form(["es", "en"]),
     notes: str = Form(""),
+    ai: str = Form(""),
     files: list[UploadFile] = File(...),
     user: dict = Depends(require_author),
 ):
     ensure_csrf(request, user)
+    choice = _parse_choice(ai)
     try:
         return await _create_job(
             user=user,
@@ -337,6 +375,7 @@ async def create_job(
             desired_slug=slug,
             languages=languages,
             notes=notes,
+            choice=choice,
         )
     except ValueError as exc:
         raise _error(str(exc)) from exc
@@ -443,6 +482,8 @@ class PlanBody(BaseModel):
     question_kinds: list[Literal["single", "multiple", "true_false"]] = Field(
         default_factory=lambda: ["single", "multiple", "true_false"], min_length=1
     )
+    # Modelo elegido en el selector para esta etapa y las siguientes (ADR-025).
+    ai: AiChoice | None = None
     tone: str = Field(default="cercano y riguroso", max_length=120)
     code_examples: bool = False
     auto_approve: bool = False
@@ -461,6 +502,7 @@ class RegenerateBody(BaseModel):
     chapter: int = Field(ge=1)
     lesson: int = Field(ge=1)
     instructions: str = Field(default="", max_length=1500)
+    ai: AiChoice | None = None
 
 
 def _direct_job(job_id: str, user: dict) -> dict[str, Any]:
@@ -470,10 +512,23 @@ def _direct_job(job_id: str, user: dict) -> dict[str, Any]:
     return job
 
 
-def _take_over(job_id: str, user: dict) -> None:
-    """Quien lanza una etapa pasa a ser el actor: se usan sus credenciales (ADR-024)."""
-    _assert_ai_ready(user)
-    store.update_job(job_id, actor_id=user["id"])
+def _take_over(job_id: str, user: dict, choice: AiChoice | None = None) -> None:
+    """Quien lanza una etapa pasa a ser el actor: se usan sus credenciales (ADR-024).
+
+    Si elige otro modelo en el selector, se guarda en el trabajo para las etapas siguientes.
+    """
+    job = store.get_job(job_id, with_log=False) or {}
+    chosen = choice.model_dump() if choice else _job_choice(job)
+    resolved = _assert_ai_ready(user, chosen, job.get("workspace_id"))
+    updates: dict[str, Any] = {"actor_id": user["id"]}
+    if choice is not None:
+        config_now = {**(job.get("config") or {}), "ai": chosen}
+        updates.update(
+            config_json=json.dumps(config_now, ensure_ascii=False),
+            provider=resolved["provider"],
+            model=resolved["model"],
+        )
+    store.update_job(job_id, **updates)
 
 
 @router.get("/jobs/{job_id}/document")
@@ -493,8 +548,9 @@ def plan_job(job_id: str, body: PlanBody, request: Request, user: dict = Depends
         raise _error("El trabajo no está esperando la selección de contenido.", 409)
     if not pipeline.job_path(job_id, "document.json").is_file():
         raise _error("El documento todavía no se ha analizado.", 409)
-    _take_over(job_id, user)
-    options = {**(job.get("config") or {}), **body.model_dump()}
+    _take_over(job_id, user, body.ai)
+    job = store.get_job(job_id, with_log=False) or job
+    options = {**(job.get("config") or {}), **body.model_dump(exclude={"ai"})}
     if body.notes:
         options["notes"] = body.notes
     store.update_job(job_id, config_json=json.dumps(options, ensure_ascii=False), status="outlining")
@@ -526,27 +582,27 @@ def put_outline(job_id: str, body: OutlineBody, request: Request, user: dict = D
 
 
 @router.post("/jobs/{job_id}/generate", status_code=202)
-def generate_job(job_id: str, request: Request, user: dict = Depends(require_author)):
+def generate_job(job_id: str, request: Request, body: StageBody | None = None, user: dict = Depends(require_author)):
     ensure_csrf(request, user)
     job = _direct_job(job_id, user)
     if job["status"] not in {"awaiting_outline", "failed"}:
         raise _error("El temario no está listo para generar.", 409)
     if not pipeline.job_path(job_id, "outline.json").is_file():
         raise _error("Falta el temario.", 409)
-    _take_over(job_id, user)
+    _take_over(job_id, user, body.ai if body else None)
     store.update_job(job_id, status="generating", error=None, finished_at=None)
     worker.submit(job_id, "generate")
     return store.get_job(job_id, with_log=False)
 
 
 @router.post("/jobs/{job_id}/retry", status_code=202)
-def retry_job(job_id: str, request: Request, user: dict = Depends(require_author)):
+def retry_job(job_id: str, request: Request, body: StageBody | None = None, user: dict = Depends(require_author)):
     """Reanuda un trabajo fallido desde la última etapa completada."""
     ensure_csrf(request, user)
     job = _direct_job(job_id, user)
     if job["status"] not in {"failed", "cancelled"}:
         raise _error("Solo se reintentan trabajos fallidos o cancelados.", 409)
-    _take_over(job_id, user)
+    _take_over(job_id, user, body.ai if body else None)
     if pipeline.job_path(job_id, "outline.json").is_file():
         store.update_job(job_id, status="generating", error=None, finished_at=None)
         worker.submit(job_id, "generate")
@@ -634,7 +690,10 @@ def regenerate(slug: str, body: RegenerateBody, request: Request, user: dict = D
     job = store.get_job(job_id, with_log=False) if job_id else None
     if job is None or job.get("engine") not in ADK_ENGINES:
         raise _error("Solo se pueden regenerar lecciones de unidades del Estudio actual.", 409)
-    _assert_ai_ready(user)
+    if body.ai is not None:
+        _take_over(job_id, user, body.ai)
+    else:
+        _assert_ai_ready(user, _job_choice(job), job.get("workspace_id"))
     # Se pasa quién lo pide: nunca se usa la credencial del autor original.
     if not worker.submit(job_id, "regenerate", body.chapter, body.lesson, body.instructions, user["id"]):
         raise _error("Ya hay una tarea en marcha para esta unidad.", 409)

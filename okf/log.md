@@ -1,5 +1,14 @@
 # Historial de cambios del OKF
 
+## 2026-11-15 (usuarios)
+
+* **Update**: Gestor de usuarios de la superadministración (`/plataforma/usuarios`): alta de cuentas (individuales o miembros de una academia con rol), edición de nombre, correo y contraseña (restablecerla cierra sus sesiones) y eliminación con salvaguardas (`POST`/`PATCH`/`DELETE /api/v1/platform/users`, auditadas). La pantalla de entrada ya no muestra las cuentas de demostración. Una invitación fijada a otro correo, abierta con otra sesión iniciada, ofrece «Cerrar sesión y continuar» en lugar de fallar al aceptar.
+## 2026-11-15
+
+* **Update**: Varios proveedores de IA a la vez ([ADR-025](/decisions/adr-025-multiple-ai-providers.md), amplía ADR-024): migración v9 (`ai_providers` por ámbito usuario/academia con modelos visibles y predeterminado; `users.ai_default_json`; copia de `user_ai_settings`). «Mi cuenta» separa **Suscripciones** (Claude, ChatGPT, OpenCode Go) y **Claves de API** (`components/account/AiProvidersPanel.tsx`), con «Elegir modelos» desde el catálogo del proveedor y estrella de predeterminado. Nueva pestaña «IA de la academia» (`/admin/ia`) para claves de API compartidas con el profesorado; nunca suscripciones.
+* **Update**: Suscripciones vinculadas desde la web (`authoring/links.py`): Claude con el `claude setup-token` oficial en un pseudo-terminal (o pegando el token) y ChatGPT con «Sign in with ChatGPT» (OAuth+PKCE, dirección `127.0.0.1:1455` pegada). La sesión de ChatGPT se renueva sola con bloqueo por persona y guarda el token de refresco rotado. Listado de modelos: CLI de Claude (sin inferencia), `/v1/models` del plan de ChatGPT o la URL fija del proveedor (`authoring/catalog.py`).
+* **Update**: Estudio con selector **Generar con** (`components/studio/ModelPicker.tsx`, `GET /api/v1/ai/models`) al crear, en el asistente y al regenerar; la elección va en `authoring_jobs.config_json.ai` y cada etapa la resuelve con su actor. nas-adk pasa a 0.4.0 (`oauth_token` por instancia, `list_models`, `ChatGptPlanLlm`); `generation/models.py` deja de inyectar el token por el transporte. 222 tests; smoke y E2E actualizados y en verde.
+
 ## 2026-11-14
 
 * **Update**: Agentes propios con nas-adk ([ADR-023](/decisions/adr-023-nas-adk-agents.md), sustituye a ADR-012 y matiza ADR-017): un único motor por etapas (`engine = "adk"`) en el que cada llamada al modelo es un agente nas-adk (`generation/runtime.py`, `agents.py`) con herramientas propias (`generation/tools.py`: `read_fragment`, `search_document`, `check_lesson` y `submit_*` validadas con `package.validate_lesson`/`validate_assessment`). Se retiran `authoring/runner.py`, `authoring/agent/AGENTS.md`, `generation/llm.py`, el selector de motor y el binario OpenCode de la imagen; OpenCode Go sigue como proveedor. `AULA_LLM_FAKE` usa `FakeAgentLlm` a través del `Runner` real. Nuevo `AULA_GEN_CONTEXT_TOKENS`; fuera `AULA_GEN_ENGINE` y `AULA_AUTHORING_OPENCODE_BIN`.

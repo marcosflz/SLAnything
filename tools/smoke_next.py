@@ -63,9 +63,9 @@ def _check_profile(base: str, email: str, password: str, allowed: list[str], den
             print(f"{email.split('@')[0]} {path} -> {page.status_code} {'ok' if ok else 'FALLA'}")
             failures += 0 if ok else 1
         if "/estudio" in allowed:
-            # Quien crea unidades ve con qué proveedor genera y puede usar el suyo.
-            studio_ok = "Generarás con" in client.get("/estudio").text
-            account_ok = "Proveedor de IA" in client.get("/cuenta").text
+            # Quien crea unidades elige modelo en el Estudio y gestiona sus proveedores (ADR-025).
+            studio_ok = "data-model-picker" in client.get("/estudio").text
+            account_ok = "Claves de API" in client.get("/cuenta").text
             print(f"{email.split('@')[0]} proveedor de IA -> {'ok' if studio_ok and account_ok else 'FALLA'}")
             failures += 0 if studio_ok and account_ok else 1
         for path in denied:
@@ -127,9 +127,9 @@ def main() -> int:
             if not ok:
                 failures += 1
 
-        # El alumnado no tiene proveedor de IA propio (ADR-024).
+        # El alumnado no tiene proveedores de IA propios (ADR-024/025).
         account = client.get("/cuenta").text
-        ok = "Proveedor de IA" not in account
+        ok = "Claves de API" not in account
         print(f"alumno /cuenta sin proveedor de IA -> {'ok' if ok else 'FALLA'}")
         failures += 0 if ok else 1
         # El alumnado solo consume: el Estudio está restringido.

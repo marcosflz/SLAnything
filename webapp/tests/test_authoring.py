@@ -315,7 +315,7 @@ def test_provider_maps_to_nas_adk_router(authoring_dir):
     from nas.adk.models import ModelRouter
 
     for item in providers.PROVIDERS:
-        if item.adk_provider == "claude-code":
+        if item.adk_provider in ("claude-code", "chatgpt"):  # se construyen aparte, con el token de la persona
             continue
         kwargs = providers.router_kwargs(
             {"provider": item.id, "model": item.models[0] if item.models else "m", "api_key": "k"}

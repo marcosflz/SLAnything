@@ -38,6 +38,8 @@ const LABELS: Record<string, [string, string]> = {
   "course.publish": ["Unidad publicada", "Unit published"],
   "course.unpublish": ["Unidad retirada", "Unit unpublished"],
   "course.delete": ["Unidad borrada", "Unit deleted"],
+  "workspace.ai.update": ["Clave de IA de la academia", "Academy AI key"],
+  "workspace.ai.delete": ["Clave de IA quitada", "Academy AI key removed"],
   "course.edit": ["Unidad editada", "Unit edited"],
   "workspace.create": ["Academia creada", "Academy created"],
   "workspace.join_code": ["Código de clase cambiado", "Class code rotated"],

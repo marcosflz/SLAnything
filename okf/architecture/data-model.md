@@ -102,5 +102,12 @@ revocación). v8 ([ADR-023](/decisions/adr-023-nas-adk-agents.md),
 (`user_id` PK, `provider`, `model`, `secret_enc` cifrado, `secret_hint`,
 `accepted_personal_at`, `updated_at`) y `authoring_jobs.actor_id` (quién lanzó la
 última etapa; se rellena con `owner_id`), pasa `engine='direct'` a `adk` y cierra
-como fallidos los trabajos OpenCode a medias. Detalle de uso
+como fallidos los trabajos OpenCode a medias. v9
+([ADR-025](/decisions/adr-025-multiple-ai-providers.md)) añade `ai_providers`
+(`scope_kind` user|workspace, `scope_id`, `provider`, `secret_enc`, `secret_hint`,
+`enabled`, `models_json` con los modelos visibles, `default_model`,
+`accepted_personal_at`, `updated_by`, `updated_at`; único por ámbito y proveedor) y
+`users.ai_default_json` (modelo predeterminado), y copia ahí las filas de
+`user_ai_settings`, que deja de usarse. La elección de modelo de cada trabajo va en
+`authoring_jobs.config_json.ai`. Detalle de uso
 en [tenancy-analytics](/architecture/tenancy-analytics.md).

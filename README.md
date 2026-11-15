@@ -247,7 +247,7 @@ npm run e2e                                # E2E_BASE para otra URL
 npm run e2e:labs                           # 15 laboratorios; requiere AULA_SAMPLE_COURSES=1
 ```
 
-La suite (211 tests) cubre perfiles y permisos, registro por invitación,
+La suite (224 tests) cubre perfiles y permisos, registro por invitación,
 altas (individual, academia, código e invitación), biblioteca vacía, curso activo, aislamiento por espacio,
 superadministración, matrículas, autenticación, CSRF, progreso, quiz, analítica,
 generación por etapas con modelo falso, Estudio, ejecución Python, contenido del

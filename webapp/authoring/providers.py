@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 Scope = Literal["platform", "user", "both"]
+Kind = Literal["api", "subscription"]
+Link = Literal["key", "claude", "chatgpt"]
 
 
 @dataclass(frozen=True)
@@ -28,8 +30,19 @@ class Provider:
     personal: bool = False
     # Si la base URL la elige quien configura (custom/ollama/lmstudio).
     base_url_editable: bool = False
+    # ``api``: servicios de pago por uso con clave. ``subscription``: planes personales.
+    kind: Kind = "api"
+    # Cómo se conecta la cuenta: clave/token pegado, o vinculación (Claude, ChatGPT).
+    link: Link = "key"
+    # Listado de modelos (URL fija nuestra, nunca del usuario: sin SSRF).
+    models_url: str | None = None
+    models_auth: Literal["bearer", "anthropic", "none"] = "bearer"
 
     def allowed_for(self, level: str) -> bool:
+        """``platform``, ``user`` o ``workspace`` (claves compartidas de una academia)."""
+        if level == "workspace":
+            # Una academia solo comparte claves de API: nunca suscripciones ni URLs propias.
+            return self.scope == "both" and not self.personal and not self.base_url_editable
         return self.scope == "both" or self.scope == level
 
 
@@ -52,6 +65,8 @@ PROVIDERS: tuple[Provider, ...] = (
             "step-5-preview",
         ),
         notes="Suscripción de OpenCode Go. Pega la API key del Console de OpenCode.",
+        kind="subscription",
+        models_url="https://opencode.ai/zen/go/v1/models",
     ),
     Provider(
         id="opencode",
@@ -69,6 +84,8 @@ PROVIDERS: tuple[Provider, ...] = (
             "Modelos gratuitos de OpenCode Zen para probar el Estudio. Tienen límites "
             "y pueden cambiar; para uso real, usa Go u otro proveedor."
         ),
+        models_url="https://opencode.ai/zen/v1/models",
+        models_auth="none",
     ),
     Provider(
         id="anthropic",
@@ -78,6 +95,8 @@ PROVIDERS: tuple[Provider, ...] = (
         default_base_url=None,
         models=("claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"),
         notes="API key de console.anthropic.com (facturación por uso).",
+        models_url="https://api.anthropic.com/v1/models?limit=100",
+        models_auth="anthropic",
     ),
     Provider(
         id="claude-code",
@@ -85,14 +104,32 @@ PROVIDERS: tuple[Provider, ...] = (
         adk_provider="claude-code",
         requires_key=True,
         default_base_url=None,
-        models=("", "sonnet", "opus", "haiku"),
+        models=("default", "sonnet", "opus", "haiku"),
         notes=(
             "Tu suscripción de Claude (Pro/Max) a través del CLI oficial de Claude Code. "
-            "Ejecuta `claude setup-token` en tu equipo y pega aquí el token. Solo se usa "
-            "en las unidades que generas tú; nadie más puede usarla."
+            "Vincúlala desde aquí o ejecuta `claude setup-token` en tu equipo y pega el token. "
+            "Solo se usa en las unidades que generas tú; nadie más puede usarla."
         ),
         scope="user",
         personal=True,
+        kind="subscription",
+        link="claude",
+    ),
+    Provider(
+        id="chatgpt",
+        label="ChatGPT · mi plan personal",
+        adk_provider="chatgpt",
+        requires_key=True,
+        default_base_url=None,
+        models=(),
+        notes=(
+            "Tu plan de ChatGPT (Plus, Pro…) con «Sign in with ChatGPT», la vía oficial de "
+            "OpenAI para apps de terceros (en preview). Solo se usa en las unidades que generas tú."
+        ),
+        scope="user",
+        personal=True,
+        kind="subscription",
+        link="chatgpt",
     ),
     Provider(
         id="openrouter",
@@ -106,6 +143,7 @@ PROVIDERS: tuple[Provider, ...] = (
             "google/gemini-4-argon",
         ),
         notes="Un solo proveedor para cientos de modelos; usa el ID completo del modelo.",
+        models_url="https://openrouter.ai/api/v1/models",
     ),
     Provider(
         id="openai",
@@ -115,6 +153,7 @@ PROVIDERS: tuple[Provider, ...] = (
         default_base_url="https://api.openai.com/v1",
         models=("gpt-6.1-sol", "gpt-6-luna", "gpt-5.6-luna"),
         notes="API key de platform.openai.com.",
+        models_url="https://api.openai.com/v1/models",
     ),
     Provider(
         id="google",
@@ -124,6 +163,7 @@ PROVIDERS: tuple[Provider, ...] = (
         default_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         models=("gemini-4-argon", "gemini-3-pro"),
         notes="API key de Google AI Studio (endpoint compatible con OpenAI).",
+        models_url="https://generativelanguage.googleapis.com/v1beta/openai/models",
     ),
     Provider(
         id="deepseek",
@@ -133,6 +173,7 @@ PROVIDERS: tuple[Provider, ...] = (
         default_base_url="https://api.deepseek.com/v1",
         models=("deepseek-chat", "deepseek-reasoner"),
         notes="API directa de DeepSeek.",
+        models_url="https://api.deepseek.com/models",
     ),
     Provider(
         id="custom",
@@ -196,6 +237,9 @@ def providers_payload(level: str = "platform") -> list[dict[str, Any]]:
             "model_optional": item.adk_provider == "claude-code",
             "notes": item.notes,
             "personal": item.personal,
+            "kind": item.kind,
+            "link": item.link,
+            "can_list": item.link != "key" or bool(item.models_url),
         }
         for item in PROVIDERS
         if item.allowed_for(level)
@@ -212,7 +256,8 @@ def router_kwargs(settings: dict[str, Any]) -> dict[str, Any]:
     if info.requires_key and not key:
         raise ValueError(f"Falta la credencial de {info.label}.")
     kwargs: dict[str, Any] = {"provider": info.adk_provider, "model": model}
-    if info.adk_provider == "claude-code":
+    if info.adk_provider in ("claude-code", "chatgpt"):
+        # Se construyen aparte (generation/models.py): token de la persona, nunca del entorno.
         return kwargs
     kwargs["api_key"] = key
     base_url = str(settings.get("base_url") or "").strip() if info.base_url_editable else ""

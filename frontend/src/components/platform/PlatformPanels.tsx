@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Check, Copy, Eye, EyeOff, Link2, Search, ShieldCheck, ShieldOff, Trash2, Undo2 } from "lucide-react";
+import { Ban, Check, Copy, Eye, EyeOff, Link2, Pencil, Plus, Search, ShieldCheck, ShieldOff, Trash2, Undo2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -43,10 +43,124 @@ function ErrorLine({ error }: { error: string }) {
 // Usuarios
 // ---------------------------------------------------------------------------
 
+function UserForm({
+  user,
+  academies,
+  csrf,
+  lang,
+  onDone,
+}: {
+  user?: PlatformUser;
+  academies: { id: number; name: string }[];
+  csrf: string;
+  lang: Lang;
+  onDone: () => void;
+}) {
+  const { run, error, busy } = useAction();
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [password, setPassword] = useState("");
+  const [admin, setAdmin] = useState(false);
+  const [academyId, setAcademyId] = useState("");
+  const [role, setRole] = useState("student");
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    void run(async () => {
+      if (user) {
+        const body: Record<string, unknown> = {};
+        if (name.trim() !== user.name) body.name = name.trim();
+        if (email.trim().toLowerCase() !== user.email) body.email = email.trim();
+        if (password) body.password = password;
+        if (Object.keys(body).length) await apiSendPatch(`/api/v1/platform/users/${user.id}`, body, csrf);
+      } else {
+        await apiPost("/api/v1/platform/users", {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          is_platform_admin: admin,
+          workspace_id: academyId ? Number(academyId) : null,
+          role,
+        }, csrf);
+      }
+      setPassword("");
+      onDone();
+    });
+  }
+
+  return (
+    <form className="grid gap-3 rounded-md border border-border p-4" onSubmit={submit}>
+      <ErrorLine error={error} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={pick(lang, "Nombre", "Name")} htmlFor={`pu-name-${user?.id ?? "new"}`}>
+          <Input id={`pu-name-${user?.id ?? "new"}`} required minLength={2} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
+        <Field label={pick(lang, "Correo", "Email")} htmlFor={`pu-email-${user?.id ?? "new"}`}>
+          <Input id={`pu-email-${user?.id ?? "new"}`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+        <Field
+          label={user ? pick(lang, "Nueva contraseña (opcional)", "New password (optional)") : pick(lang, "Contraseña", "Password")}
+          htmlFor={`pu-pass-${user?.id ?? "new"}`}
+        >
+          <Input
+            id={`pu-pass-${user?.id ?? "new"}`}
+            type="password"
+            autoComplete="new-password"
+            required={!user}
+            minLength={8}
+            maxLength={200}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </Field>
+        {!user ? (
+          <Field label={pick(lang, "Cuenta", "Account")} htmlFor="pu-academy">
+            <NativeSelect id="pu-academy" value={academyId} onChange={(e) => setAcademyId(e.target.value)}>
+              <option value="">{pick(lang, "Individual (espacio propio)", "Individual (own space)")}</option>
+              {academies.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {pick(lang, "Miembro de ", "Member of ")}
+                  {a.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+        ) : null}
+        {!user && academyId ? (
+          <Field label={pick(lang, "Rol en la academia", "Role in the academy")} htmlFor="pu-role">
+            <NativeSelect id="pu-role" value={role} onChange={(e) => setRole(e.target.value)}>
+              {(["student", "teacher", "admin", "owner"] as const).map((r) => (
+                <option key={r} value={r}>
+                  {roleLabel(r, lang)}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+        ) : null}
+      </div>
+      {!user ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} />
+          {pick(lang, "Superadministrador de la plataforma", "Platform superadmin")}
+        </label>
+      ) : null}
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy}>
+          {user ? pick(lang, "Guardar cambios", "Save changes") : pick(lang, "Crear usuario", "Create user")}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          <X /> {pick(lang, "Cancelar", "Cancel")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function PlatformUsersPanel({
   users,
   total,
   me,
+  academies,
   query,
   csrf,
   lang,
@@ -54,11 +168,15 @@ export function PlatformUsersPanel({
   users: PlatformUser[];
   total: number;
   me: number;
+  academies: { id: number; name: string }[];
   query: string;
   csrf: string;
   lang: Lang;
 }) {
   const { run, error, busy } = useAction();
+  const router = useRouter();
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
   return (
     <Card>
       <CardContent className="pt-5">
@@ -69,6 +187,23 @@ export function PlatformUsersPanel({
           </Button>
         </form>
         <ErrorLine error={error} />
+        <div className="mb-4">
+          {creating ? (
+            <UserForm
+              academies={academies}
+              csrf={csrf}
+              lang={lang}
+              onDone={() => {
+                setCreating(false);
+                router.refresh();
+              }}
+            />
+          ) : (
+            <Button type="button" onClick={() => setCreating(true)}>
+              <Plus /> {pick(lang, "Añadir usuario", "Add user")}
+            </Button>
+          )}
+        </div>
         <p className="m-0 mb-2 text-xs text-muted-foreground">
           {pick(lang, "{n} usuarios", "{n} users").replace("{n}", String(total))}
         </p>
@@ -91,6 +226,20 @@ export function PlatformUsersPanel({
                     {user.disabled_at ? <Pill variant="destructive">{pick(lang, "Desactivado", "Disabled")}</Pill> : null}
                   </span>
                   <span className="text-xs text-muted-foreground">{user.email}</span>
+                  {editing === user.id ? (
+                    <div className="mt-3">
+                      <UserForm
+                        user={user}
+                        academies={academies}
+                        csrf={csrf}
+                        lang={lang}
+                        onDone={() => {
+                          setEditing(null);
+                          router.refresh();
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </TD>
                 <TD>
                   <span className="flex flex-wrap gap-1">
@@ -113,6 +262,16 @@ export function PlatformUsersPanel({
                         size="sm"
                         variant="ghost"
                         disabled={busy}
+                        onClick={() => setEditing(editing === user.id ? null : user.id)}
+                        title={pick(lang, "Editar", "Edit")}
+                        aria-label={pick(lang, "Editar", "Edit")}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
                         onClick={() => run(() => apiSendPatch(`/api/v1/platform/users/${user.id}`, { is_platform_admin: !user.is_platform_admin }, csrf))}
                         title={user.is_platform_admin ? pick(lang, "Quitar superadmin", "Remove superadmin") : pick(lang, "Hacer superadmin", "Make superadmin")}
                       >
@@ -126,6 +285,28 @@ export function PlatformUsersPanel({
                         title={user.disabled_at ? pick(lang, "Reactivar", "Re-enable") : pick(lang, "Desactivar", "Disable")}
                       >
                         {user.disabled_at ? <Undo2 /> : <Ban />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              pick(
+                                lang,
+                                `¿Eliminar a ${user.email}? Se borran su cuenta, su espacio individual y sus borradores. No se puede deshacer.`,
+                                `Delete ${user.email}? Their account, individual space and drafts are removed. This cannot be undone.`
+                              )
+                            )
+                          ) {
+                            void run(() => apiDelete(`/api/v1/platform/users/${user.id}`, csrf));
+                          }
+                        }}
+                        title={pick(lang, "Eliminar", "Delete")}
+                        aria-label={pick(lang, "Eliminar", "Delete")}
+                      >
+                        <Trash2 />
                       </Button>
                     </span>
                   ) : (

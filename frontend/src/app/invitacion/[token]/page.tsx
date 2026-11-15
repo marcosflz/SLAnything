@@ -2,7 +2,7 @@ import { Building2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AcceptInvite } from "@/components/admin/AccountPanel";
+import { AcceptInvite, InviteWrongAccount } from "@/components/admin/AccountPanel";
 import { invitationLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,7 +44,15 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
               {invitationLabel(invite, lang)}
               {invite.email ? ` · ${invite.email}` : ""}
             </p>
-            {session.user ? (
+            {session.user && invite.email && session.user.email.toLowerCase() !== invite.email.toLowerCase() ? (
+              <InviteWrongAccount
+                token={token}
+                current={session.user.email}
+                expected={invite.email}
+                csrf={session.csrf_token}
+                lang={lang}
+              />
+            ) : session.user ? (
               <AcceptInvite
                 token={token}
                 csrf={session.csrf_token}

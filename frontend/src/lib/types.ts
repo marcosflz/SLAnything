@@ -419,6 +419,66 @@ export interface AuthoringProvider {
   notes: string;
   /** Suscripción personal: solo la configura su titular (ADR-024). */
   personal: boolean;
+  /** `api`: claves de pago por uso. `subscription`: planes personales (ADR-025). */
+  kind?: "api" | "subscription";
+  /** Cómo se conecta: clave pegada o vinculación (Claude, ChatGPT). */
+  link?: "key" | "claude" | "chatgpt";
+  /** Se pueden consultar sus modelos. */
+  can_list?: boolean;
+}
+
+/** Un modelo activo de un proveedor (ADR-025). */
+export interface AiModelEntry {
+  id: string;
+  label: string;
+  /** Aviso del catálogo (p. ej. versión conocida no anunciada por la cuenta). */
+  hint?: string;
+}
+
+/** Configuración de un proveedor en un ámbito (cuenta o academia). */
+export interface AiProviderConfig {
+  enabled: boolean;
+  key_configured: boolean;
+  key_readable: boolean;
+  key_hint: string;
+  model: string;
+  models: AiModelEntry[];
+  accepted_personal_at: string | null;
+  account: string | null;
+  ready: boolean;
+  updated_at: string | null;
+}
+
+export interface AiProviderView extends AuthoringProvider {
+  config: AiProviderConfig | null;
+}
+
+/** Elección de modelo: de quién es la credencial, proveedor y modelo. */
+export interface AiChoice {
+  source: "user" | "workspace" | "platform";
+  provider: string;
+  model: string;
+}
+
+/** `/api/v1/account/ai` (cuenta) o `/api/v1/admin/ai` (academia). */
+export interface AiProvidersData {
+  enabled: boolean;
+  subscription_enabled?: boolean;
+  providers: AiProviderView[];
+  default?: AiChoice | null;
+  claude_cli?: ClaudeCliStatus | null;
+}
+
+/** `/api/v1/ai/models`: modelos activos agrupados para el selector del Estudio. */
+export interface AiModelGroups {
+  groups: {
+    source: AiChoice["source"];
+    provider: string;
+    label: string;
+    kind: "api" | "subscription";
+    models: AiModelEntry[];
+  }[];
+  default: AiChoice | null;
 }
 
 /** Estado del motor de agentes nas-adk (ADR-023). */
@@ -431,7 +491,7 @@ export interface AuthoringEngine {
 
 /** Con qué proveedor generará la persona actual (sin secretos). */
 export interface AuthoringAi {
-  source: "user" | "platform";
+  source: "user" | "workspace" | "platform";
   provider: string;
   provider_label: string;
   model: string;
@@ -442,23 +502,6 @@ export interface ClaudeCliStatus {
   available: boolean;
   version: string | null;
   message: string;
-}
-
-/** Proveedor de IA propio de un usuario (`/api/v1/account/ai`). */
-export interface UserAiSettings {
-  enabled: boolean;
-  subscription_enabled: boolean;
-  configured: boolean;
-  active: boolean;
-  provider: string | null;
-  model: string;
-  key_configured: boolean;
-  key_hint: string;
-  accepted_personal_at: string | null;
-  updated_at: string | null;
-  providers: AuthoringProvider[];
-  claude_cli: ClaudeCliStatus | null;
-  warning?: string;
 }
 
 export interface AuthoringSettings {
